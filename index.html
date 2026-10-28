@@ -1,0 +1,2033 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>F-Class Range Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+/* Layout: map-led workstation — satellite map on the left, instrument cards stacked on the right; stacks on phones. */
+:root{
+  --bg:#e9ece7; --panel:#f7f8f5; --fg:#1b201c; --muted:#5a645c; --line:#d0d6cd;
+  --accent:#c23f1b; --wind:#1b6a9c; --good:#2f7a3d; --warn:#a86a00;
+  --face-bg:#f2efe6; --face-ring:#2a2a2a; --face-v:#1b201c;
+  --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --body:"Barlow","Segoe UI",Roboto,Arial,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111513; --panel:#191e1b; --fg:#e4e9e2; --muted:#97a299; --line:#2b332e;
+  --accent:#ee6a3c; --wind:#62b2e8; --good:#5fbf6e; --warn:#e0a53a;
+  --face-bg:#d9d5c9; --face-ring:#222; --face-v:#111; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111513; --panel:#191e1b; --fg:#e4e9e2; --muted:#97a299; --line:#2b332e;
+  --accent:#ee6a3c; --wind:#62b2e8; --good:#5fbf6e; --warn:#e0a53a;
+  --face-bg:#d9d5c9; --face-ring:#222; --face-v:#111; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+.chip:empty{display:none}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--body)}
+header{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;
+  padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  border-bottom:1px solid var(--line);background:var(--panel)}
+h1{font:700 22px/1 var(--display);letter-spacing:.04em;text-transform:uppercase;margin:0}
+h1 b{color:var(--accent)}
+.search{display:flex;gap:6px;flex:1 1 280px;max-width:520px}
+input,select,button,textarea{font:inherit;color:var(--fg)}
+input,select,textarea{background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:6px 8px;min-width:0}
+textarea{font:13px/1.4 var(--mono);width:100%}
+button{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:6px 10px;cursor:pointer}
+button:hover{border-color:var(--muted)}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.on{outline:2px solid var(--accent);outline-offset:1px}
+:focus-visible{outline:2px solid var(--wind);outline-offset:2px}
+.search input{flex:1}
+main{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(340px,1fr);height:calc(100% - 58px)}
+#map{min-height:420px;height:100%}
+.panel{overflow-y:auto;padding:14px max(16px,env(safe-area-inset-right,0px)) 40px 16px;display:flex;flex-direction:column;gap:14px}
+@media (max-width:860px){main{grid-template-columns:1fr;height:auto}#map{height:55vh}.panel{overflow:visible;padding-left:max(16px,env(safe-area-inset-left,0px))}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px 14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.card h2{font:600 15px/1 var(--display);letter-spacing:.09em;text-transform:uppercase;margin:0;color:var(--muted);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.card h2 small{font:400 12px var(--body);letter-spacing:0;text-transform:none}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:8px 14px}
+.kv div{display:flex;flex-direction:column;min-width:0}
+.kv span{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.kv b{font:600 18px/1.2 var(--mono);font-variant-numeric:tabular-nums}
+.big{font:700 30px/1 var(--mono)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.row label{display:flex;flex-direction:column;font-size:12px;color:var(--muted);gap:3px;text-transform:uppercase;letter-spacing:.04em}
+.row label input,.row label select{text-transform:none;letter-spacing:0;font-size:15px}
+.note{font-size:13px;color:var(--muted);margin:0}
+.chip{display:inline-block;font:600 12px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;padding:4px 7px;border-radius:3px;border:1px solid currentColor}
+.chip.warn{color:var(--warn)} .chip.good{color:var(--good)} .chip.acc{color:var(--accent)}
+.wind-strip{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center}
+.dial{width:112px;height:112px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.seg button{border:0;border-radius:0;border-right:1px solid var(--line);padding:5px 9px}
+.seg button:last-child{border-right:0}
+.seg button.sel{background:var(--fg);color:var(--panel)}
+.truth{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.truth > div{border:1px solid var(--line);border-radius:4px;padding:8px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.truth > div.active{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.truth span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.truth b{font:600 17px var(--mono)}
+.truth input{width:100%}
+@media (max-width:420px){.truth{grid-template-columns:1fr}}
+.facewrap{display:grid;grid-template-columns:minmax(0,1fr);gap:10px}
+#face{width:100%;max-width:460px;aspect-ratio:1;justify-self:center;cursor:crosshair;touch-action:none;user-select:none;border-radius:4px}
+table{border-collapse:collapse;width:100%;font:13px var(--mono);font-variant-numeric:tabular-nums}
+th,td{text-align:right;padding:4px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font:600 12px var(--display);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+th:first-child,td:first-child{text-align:left}
+.scroll{overflow-x:auto}
+.pin{display:grid;place-items:center;border-radius:50%;font:700 12px/1 var(--display);letter-spacing:.04em;color:#fff;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.5)}
+.pin-fp{background:#1b201c}.pin-t{background:#c23f1b}
+.pin-wx{background:#1b6a9c;font-size:10px;cursor:pointer}
+.pin-wx-off{background:#4d6b80;opacity:.85}
+.windarrow{pointer-events:none}
+.mapnote{position:absolute;left:calc(10px + env(safe-area-inset-left,0px));bottom:24px;z-index:500;background:rgba(20,24,22,.82);color:#f2f2f2;font:13px var(--body);padding:6px 10px;border-radius:4px;max-width:70%}
+details summary{cursor:pointer;color:var(--muted);font-size:13px}
+.err{color:var(--accent);font-size:13px}
+.solbig{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.solbig > div{border:1px solid var(--line);border-radius:4px;padding:10px;display:flex;flex-direction:column;gap:3px;min-width:0}
+.solbig span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.solbig b{font:700 26px/1.1 var(--mono);font-variant-numeric:tabular-nums}
+.solbig small{font:13px var(--mono);color:var(--muted)}
+@media (max-width:420px){.solbig b{font-size:21px}}
+#rm{position:fixed;inset:0;z-index:3000;background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding-bottom:calc(24px + env(safe-area-inset-bottom,0px))}
+.rm-bar{position:sticky;top:0;z-index:2;display:flex;gap:12px;align-items:center;background:var(--panel);border-bottom:1px solid var(--line);
+  padding-block:calc(8px + env(safe-area-inset-top,0px)) 8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.rm-bar b{font:700 22px/1 var(--display);letter-spacing:.06em;text-transform:uppercase}
+.rm-sub{flex:1;font:14px var(--mono);color:var(--muted)}
+.rm-bar button{min-height:44px;font-size:16px}
+.rm-body{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;padding-block:12px;
+  padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px))}
+.rm-card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.rm-card h3{margin:0;font:600 17px/1 var(--display);letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.rm-sol{grid-column:1/-1}
+.rm-solgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.rm-solgrid > div{border:1px solid var(--line);border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.rm-solgrid span{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.rm-solgrid b{font:700 clamp(26px,6vw,46px)/1.05 var(--mono);font-variant-numeric:tabular-nums}
+.rm-solgrid small{font:15px var(--mono);color:var(--muted)}
+.rm-note{margin:0;font-size:15px;color:var(--muted)}
+.rm-lab{display:flex;flex-direction:column;gap:4px;font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+#rm input,#rm select,#rm output{font:600 22px var(--mono);min-height:52px;padding:6px 10px;text-align:center;width:100%;min-width:0;
+  background:var(--bg);border:1px solid var(--line);border-radius:6px;color:var(--fg);display:flex;align-items:center;justify-content:center}
+#rm select{font:500 17px var(--body)}
+#rm button{min-height:52px;font-size:17px;border-radius:6px}
+.rm-step{display:grid;grid-template-columns:minmax(80px,auto) minmax(0,1fr) minmax(80px,auto);gap:8px;align-items:stretch}
+.rm-trio{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.rm-seg{display:flex;flex-wrap:wrap;gap:6px}
+.rm-seg button{flex:1 1 auto;min-width:72px}
+.rm-seg button.sel{background:var(--fg);color:var(--panel);border-color:var(--fg)}
+.rm-clock{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}
+.rm-clock button{font:600 18px var(--mono)!important;padding:0}
+.rm-clock button.sel{background:var(--wind);color:#fff;border-color:var(--wind)}
+.rm-big{font-size:20px!important;min-height:64px!important}
+#photoSheet{position:fixed;inset:0;z-index:4000;background:rgba(10,14,12,.55);display:flex;align-items:flex-end;justify-content:center}
+#photoSheet[hidden]{display:none}
+.ps-in{background:var(--panel);color:var(--fg);width:min(640px,100%);max-height:85vh;overflow-y:auto;border-radius:12px 12px 0 0;display:flex;flex-direction:column;gap:12px;
+  padding:16px max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.ps-in b{font:700 20px var(--display);letter-spacing:.05em;text-transform:uppercase}
+.ps-row{display:flex;gap:12px;align-items:center;font-size:18px;padding:8px 0;border-bottom:1px solid var(--line)}
+.ps-row input{width:24px;height:24px;flex:none}
+.ps-row span{flex:1}
+.ps-row b{font:600 20px var(--mono);text-transform:none;letter-spacing:0}
+.ps-warn{color:var(--warn);font-size:16px;margin:0}
+.ps-in button{min-height:52px;font-size:17px;border-radius:6px}
+.rm-photo{border-style:dashed!important}
+#settleChart{width:100%;height:auto;max-height:240px}
+.logbox{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:10px}
+.loadgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.loadgrid label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;min-width:0}
+.loadgrid input,.loadgrid select{text-transform:none;letter-spacing:0;font-size:15px;width:100%}
+#solTbl tr.hl td{background:color-mix(in srgb, var(--accent) 14%, transparent);font-weight:600}
+#cmpWrap table td,#cmpWrap table th{padding:4px 5px;text-align:center}
+#cmpWrap td.mname{text-align:left;white-space:nowrap}
+#cmpWrap td.mname button{background:none;border:0;padding:0;color:var(--fg);font:600 13px var(--body);cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
+#cmpWrap td.mname button.drv{color:var(--accent);text-decoration:none}
+#cmpWrap td.mname small{display:block;color:var(--muted);font:11px var(--body)}
+#cmpWrap tr.cons td{border-top:2px solid var(--fg);font-weight:600}
+#cmpWrap .cell{display:flex;flex-direction:column;align-items:center;gap:1px;line-height:1.1}
+#cmpWrap .cell small{color:var(--muted);font-size:10px}
+#cmpWrap .na{color:var(--muted)}
+#windyFrame iframe{width:100%;height:100%;border:0;display:block}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Range <b>Desk</b></h1>
+  <form class="search" id="searchForm">
+    <input id="q" placeholder="Search a range or paste lat, lon" aria-label="Search a range or coordinates">
+    <button type="submit">Go</button>
+  </form>
+  <div class="row">
+    <button id="btnFP" type="button">Place firing point</button>
+    <button id="btnT" type="button">Place target</button>
+    <button id="btnRM" type="button" class="primary">Range mode</button>
+  </div>
+</header>
+<main>
+  <div id="mapbox" style="position:relative;min-width:0">
+    <div id="map"></div>
+    <div class="mapnote" id="mapnote" hidden></div>
+  </div>
+  <div class="panel">
+
+    <section class="card" id="cardDist">
+      <h2>Distance truing <small id="distSourceLbl"></small></h2>
+      <div class="row">
+        <label>Target face distance (nominal)
+          <select id="nominal"></select>
+        </label>
+        <label>Units
+          <select id="distUnit"><option value="yd">yards</option><option value="m">metres</option></select>
+        </label>
+      </div>
+      <div class="truth">
+        <div id="tNom"><span>Nominal</span><b id="vNom">–</b></div>
+        <div id="tMap"><span>Map pins</span><b id="vMap">–</b></div>
+        <div id="tLrf"><span>Rangefinder</span><input id="lrf" inputmode="decimal" placeholder="e.g. 812"></div>
+      </div>
+      <p class="note" id="distMsg"></p>
+    </section>
+
+    <section class="card" id="cardSol">
+      <h2>Ballistic solution <small id="solLoadLbl"></small></h2>
+      <div class="row">
+        <label style="flex:1;min-width:0">Load
+          <select id="loadSel" style="width:100%"></select>
+        </label>
+      </div>
+      <div class="solbig">
+        <div><span>Elevation from zero</span><b id="sElev">–</b><small id="sElevC"></small></div>
+        <div><span>Windage to dial</span><b id="sWind">–</b><small id="sWindC"></small></div>
+      </div>
+      <p class="note" id="sParts"></p>
+      <div class="kv">
+        <div><span>Velocity at target</span><b id="sVel">–</b></div>
+        <div><span>Time of flight</span><b id="sTof">–</b></div>
+        <div><span>Energy</span><b id="sEn">–</b></div>
+        <div><span>Stability (Sg)</span><b id="sSg">–</b></div>
+        <div><span>Muzzle velocity used</span><b id="sMv">–</b></div>
+      </div>
+      <p class="note" id="sCond"></p>
+      <p class="err" id="sWarn" hidden></p>
+      <div class="scroll"><table id="solTbl"></table></div>
+      <div class="logbox">
+        <div class="note" style="font-weight:600;color:var(--fg)">String log</div>
+        <div class="row">
+          <label><span>Elevation dialled, <span class="sUnit">MOA</span></span><input id="dE" inputmode="decimal" size="7"></label>
+          <label><span>Windage dialled, <span class="sUnit">MOA</span></span><input id="dW" inputmode="decimal" size="6"></label>
+          <label>Direction<select id="dWd"><option value="L">Left</option><option value="R">Right</option></select></label>
+          <button type="button" id="dCopy">Copy solution</button>
+        </div>
+        <div class="row">
+          <button type="button" class="primary" id="logNow">Log conditions for this string</button>
+          <button type="button" id="logUndo">Remove last log</button>
+        </div>
+        <p class="note">Log at the start of each string, after taking the Kestrel reading and dialling. Shots plotted here or imported from ShotMarker are matched to the latest log before them.</p>
+        <div class="scroll"><table id="logTbl"></table></div>
+      </div>
+      <div class="row">
+        <label class="note" style="display:flex;flex-direction:row;gap:6px;align-items:center;text-transform:none;letter-spacing:0;font-size:13px"><input type="checkbox" id="optSpin"> Spin drift</label>
+        <label class="note" style="display:flex;flex-direction:row;gap:6px;align-items:center;text-transform:none;letter-spacing:0;font-size:13px"><input type="checkbox" id="optAJ"> Aerodynamic jump</label>
+        <label class="note" style="display:flex;flex-direction:row;gap:6px;align-items:center;text-transform:none;letter-spacing:0;font-size:13px"><input type="checkbox" id="optCor"> Coriolis</label>
+      </div>
+      <details id="loadEdit">
+        <summary>Edit load</summary>
+        <div class="loadgrid" style="margin-top:8px">
+          <label>Name<input id="lName"></label>
+          <label>Calibre<input id="lCal"></label>
+          <label>Bullet<input id="lBullet"></label>
+          <label>Weight (gr)<input id="lGr" inputmode="decimal"></label>
+          <label>Drag model<select id="lDrag"><option>G7</option><option>G1</option></select></label>
+          <label>BC<input id="lBc" inputmode="decimal"></label>
+          <label>Muzzle velocity (fps)<input id="lMv" inputmode="decimal"></label>
+          <label>MV measured at (°C)<input id="lMvT" inputmode="decimal"></label>
+          <label>MV change (fps per °C)<input id="lMvS" inputmode="decimal"></label>
+          <label>Zero distance (yd)<input id="lZero" inputmode="decimal"></label>
+          <label>Sight height (in)<input id="lSh" inputmode="decimal"></label>
+          <label>Twist (in per turn)<input id="lTw" inputmode="decimal"></label>
+          <label>Twist direction<select id="lTwD"><option value="R">Right hand</option><option value="L">Left hand</option></select></label>
+          <label>Bullet length (in)<input id="lLen" inputmode="decimal"></label>
+          <label>Bullet diameter (in)<input id="lDia" inputmode="decimal"></label>
+          <label>Scope unit<select id="lSU"><option value="moa">True MOA</option><option value="smoa">Shooter's MOA (IPHY)</option><option value="mil">Mil</option></select></label>
+          <label>Click value<input id="lClick" inputmode="decimal"></label>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <button type="button" id="loadNew">New load</button>
+          <button type="button" id="loadDup">Duplicate</button>
+          <button type="button" id="loadDel">Delete</button>
+        </div>
+        <p class="note" id="loadDelConfirm" hidden>Tap Delete again to remove this load.</p>
+        <p class="note">The rifle is zeroed in standard conditions (15 °C, 1013 hPa) with no wind. MV change per °C is your powder's temperature sensitivity; leave 0 if unknown.</p>
+      </details>
+    </section>
+
+    <section class="card">
+      <h2>Line of fire <small>true north</small></h2>
+      <div class="kv">
+        <div><span>Bearing</span><b id="vBrg">–</b></div>
+        <div><span>Firing point</span><b id="vFPel">–</b></div>
+        <div><span>Target</span><b id="vTel">–</b></div>
+        <div><span>Shot angle</span><b id="vAng">–</b></div>
+      </div>
+      <p class="note">Heights come from a 90 m terrain model, good enough to flag a slope but not to replace a survey.</p>
+    </section>
+
+    <section class="card">
+      <h2>Wind on the line <small id="wxTime"></small></h2>
+      <div class="row" style="justify-content:space-between">
+        <span class="note" id="updLine">Fetching…</span>
+        <button type="button" id="refreshNow">Refresh now</button>
+      </div>
+      <div class="row">
+        <div class="seg" id="srcSeg" role="group" aria-label="Wind source">
+          <button type="button" data-src="model" class="sel">Model</button>
+          <button type="button" data-src="consensus">Consensus</button>
+          <button type="button" data-src="metar">Airfield</button>
+          <button type="button" data-src="manual">Kestrel / mine</button>
+          <button type="button" data-src="calypso">Calypso</button>
+        </div>
+        <label>Model
+          <select id="model"></select>
+        </label>
+      </div>
+      <div class="row" id="manualRow" hidden>
+        <label>Speed (mph)<input id="mSpd" inputmode="decimal" size="5" value="8"></label>
+        <label>From (° true)<input id="mDir" inputmode="decimal" size="5" value="240"></label>
+      </div>
+      <div class="wind-strip">
+        <svg class="dial" id="dial" viewBox="-60 -60 120 120" aria-label="Wind clock relative to line of fire"></svg>
+        <div style="display:flex;flex-direction:column;gap:6px;min-width:0">
+          <div><span class="big" id="vCross">–</span> <span id="vCrossDir" class="chip acc"></span></div>
+          <div class="note" id="vWindDesc">Fetching wind…</div>
+          <label class="note" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="hAdj" checked> Scale 10 m model wind to rifle height (≈2 m, open grass)</label>
+        </div>
+      </div>
+      <div class="kv">
+        <div><span>Speed</span><b id="vSpd">–</b></div>
+        <div><span>Gust</span><b id="vGust">–</b></div>
+        <div><span>From</span><b id="vDir">–</b></div>
+        <div><span>Head / tail</span><b id="vHead">–</b></div>
+      </div>
+      <div>
+        <div class="note" style="margin-bottom:4px">Crosswind trend, last 3 h and next 6 h (mph, + = from right)</div>
+        <svg id="spark" viewBox="0 0 320 70" style="width:100%;height:70px" role="img" aria-label="Crosswind trend"></svg>
+      </div>
+      <p class="err" id="wxErr" hidden></p>
+    </section>
+
+    <section class="card">
+      <h2>Atmosphere <small id="atmLbl"></small></h2>
+      <div class="row">
+        <div class="seg" id="atmSeg" role="group" aria-label="Atmosphere source">
+          <button type="button" data-asrc="model" class="sel">Model</button>
+          <button type="button" data-asrc="kestrel">Kestrel / Weatherdot</button>
+        </div>
+      </div>
+      <div class="row" id="kesRow" hidden>
+        <label>Temp (°C)<input id="kT" inputmode="decimal" size="5"></label>
+        <label>Station pressure (hPa)<input id="kP" inputmode="decimal" size="7"></label>
+        <label>Humidity (%)<input id="kRH" inputmode="decimal" size="4"></label>
+      </div>
+      <p class="note" id="kesNote" hidden>Use station pressure (the Kestrel's "Station" reading), not barometric or QNH. Wind from the Kestrel goes in the wind card under Kestrel / mine.</p>
+      <div class="kv">
+        <div><span>Temp</span><b id="vT">–</b></div>
+        <div><span>Station press.</span><b id="vP">–</b></div>
+        <div><span>Humidity</span><b id="vRH">–</b></div>
+        <div><span>Air density</span><b id="vRho">–</b></div>
+        <div><span>Density alt.</span><b id="vDA">–</b></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Model comparison <small>next 12 h, at rifle height if scaling is on</small></h2>
+      <div class="row">
+        <div class="seg" id="cmpMode" role="group" aria-label="Comparison display">
+          <button type="button" data-mode="cross" class="sel">Crosswind</button>
+          <button type="button" data-mode="speed">Speed and gust</button>
+        </div>
+        <span class="note" id="cmpSpread"></span>
+      </div>
+      <div class="scroll" id="cmpWrap"><p class="note">Loading models…</p></div>
+      <p class="note">Tick the models to include in the consensus. Tap a model's name to make it the one driving the wind card. Crosswind cells show the speed with R for wind from the right and L for wind from the left. A model with no data here doesn't cover this location.</p>
+    </section>
+
+    <section class="card">
+      <h2>Windy map</h2>
+      <details id="windyBox">
+        <summary>Show the animated Windy wind map for this range</summary>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+          <div class="row">
+            <label>Windy model
+              <select id="windyProd">
+                <option value="ecmwf">ECMWF</option><option value="gfs">GFS</option><option value="iconEu">ICON-EU</option><option value="iconD2">ICON-D2</option><option value="arome">AROME</option><option value="ukv">UKV</option>
+              </select>
+            </label>
+          </div>
+          <div id="windyFrame" style="width:100%;aspect-ratio:4/3;max-width:100%;border:1px solid var(--line);border-radius:4px;overflow:hidden"></div>
+          <p class="note">Windy's map shows model forecasts animated, not live measurements. It needs a data connection and loads only when this panel is open. If Windy doesn't recognise a model choice it shows its default.</p>
+        </div>
+      </details>
+    </section>
+
+    <section class="card">
+      <h2>Airfield report <small id="mtStn"></small></h2>
+      <div class="row">
+        <label style="flex:1;min-width:0">Station
+          <select id="stnSel" style="width:100%"><option value="auto">Looking for airfields…</option></select>
+        </label>
+      </div>
+      <p class="note" id="stnNote"></p>
+      <details id="relayBox">
+        <summary>Airfield data relay</summary>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+          <p class="note">Airfield reports come from the US Aviation Weather Center, which doesn't allow web pages to fetch them directly. Paste the address of your relay here (it ends in .workers.dev).</p>
+          <div class="row"><input id="relayUrl" style="flex:1" placeholder="https://metar-relay.yourname.workers.dev" aria-label="Relay address"><button type="button" id="relaySave">Save</button></div>
+          <label class="note" style="display:flex;flex-direction:column;gap:4px">Photo reading key (the APP_KEY passphrase set in Cloudflare)
+            <input id="appKey" type="password" autocomplete="off" placeholder="Your passphrase"></label>
+          <p class="note" id="appKeyMsg"></p>
+        </div>
+      </details>
+      <div class="kv">
+        <div><span>Wind</span><b id="mtWind">–</b></div>
+        <div><span>From range</span><b id="mtDist">–</b></div>
+        <div><span>Observed</span><b id="mtTime">–</b></div>
+      </div>
+      <p class="note">Up to 10 reporting airfields within about 110 km are listed, nearest first. You can also tap a blue marker on the map. Your choice is remembered until you move to a range where that airfield isn't in reach.</p>
+      <p class="note" id="mtRaw" style="font-family:var(--mono);font-size:12px;word-break:break-word"></p>
+    </section>
+
+    <section class="card">
+      <h2>Sun and light</h2>
+      <div class="kv">
+        <div><span>Sun azimuth</span><b id="vSunAz">–</b></div>
+        <div><span>Sun elevation</span><b id="vSunEl">–</b></div>
+        <div><span>Off line of fire</span><b id="vSunRel">–</b></div>
+      </div>
+      <div class="row">
+        <label>Light now
+          <select id="light">
+            <option>Overcast</option><option>Bright overcast</option><option selected>Full sun</option><option>Changing</option>
+          </select>
+        </label>
+      </div>
+      <p class="note" id="sunMsg"></p>
+    </section>
+
+    <section class="card">
+      <h2>Target face <small>tap to plot, pinch to zoom</small></h2>
+      <div class="row">
+        <label>Scoring
+          <select id="sysSel"><option value="uk">UK (ICFRA / NRA): V, 5 to 1</option><option value="us">US (NRA): X, 10 to 5</option><option value="grid">Plain grid (no score)</option></select>
+        </label>
+        <label>Face <select id="faceSel"></select></label>
+        <label>Units
+          <select id="unit"><option value="moa">MOA (true)</option><option value="smoa">Shooter's MOA (IPHY)</option><option value="mil">Mil</option></select>
+        </label>
+        <label>Click
+          <select id="click"></select>
+        </label>
+        <label>Calibre (in)<input id="cal" inputmode="decimal" size="5" value="0.308"></label>
+      </div>
+      <div class="facewrap">
+        <svg id="face" viewBox="-10 -10 20 20" role="img" aria-label="Target face. Tap to plot an impact, pinch or scroll to zoom, drag to move"></svg>
+        <div class="row" style="justify-content:center">
+          <button type="button" id="zOut" aria-label="Zoom out">−</button>
+          <button type="button" id="zIn" aria-label="Zoom in">+</button>
+          <button type="button" id="zBull">Bull</button>
+          <button type="button" id="zGroup">Group</button>
+          <button type="button" id="zFit">Whole face</button>
+        </div>
+        <p class="note" style="text-align:center">Tap to plot. Pinch or scroll to zoom, drag to move. Shots are drawn at true bullet size.</p>
+      </div>
+      <div class="scroll"><table id="ringTbl"></table></div>
+      <details>
+        <summary>Edit target faces</summary>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+          <p class="note">One ring diameter in inches per line, innermost first. The scoring system above labels them (<span id="labelHint"></span>). Ring sizes seeded here are placeholders; check them against your current rulebook.</p>
+          <input id="faceName" aria-label="Face name">
+          <textarea id="faceRings" rows="7" aria-label="Ring diameters in inches"></textarea>
+          <div class="row"><button type="button" id="faceSave">Save face</button><button type="button" id="faceNew">New face</button></div>
+        </div>
+      </details>
+    </section>
+
+    <section class="card">
+      <h2>Plotted shots <small id="shotCount"></small></h2>
+      <div class="kv">
+        <div><span>Group centre</span><b id="vMean">–</b></div>
+        <div><span>Correction</span><b id="vCorr">–</b></div>
+        <div><span>Score</span><b id="vTotal">–</b></div>
+        <div><span>Extreme spread</span><b id="vES">–</b></div>
+        <div><span>Mean radius</span><b id="vMR">–</b></div>
+      </div>
+      <div class="scroll"><table id="shotTbl"></table></div>
+      <div class="row">
+        <button type="button" id="undoShot">Undo last</button>
+        <button type="button" id="clearShots">Clear string</button>
+        <button type="button" id="csv">Export CSV</button>
+      </div>
+      <p class="note" id="clearConfirm" hidden>Tap Clear string again to delete all plotted shots and the off-target fouler count. Save the session to barrel history first if you want to keep it.</p>
+      <details id="smBox">
+        <summary>Import ShotMarker shots</summary>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+          <p class="note">In ShotMarker, export the session as CSV, then choose the file here. Shots are added to this string using the true distance set above (or ShotMarker's distance if none is set), and matched to your string logs by time.</p>
+          <input type="file" id="smFile" accept=".csv,text/csv">
+          <div class="row" id="smPick" hidden>
+            <label style="flex:1;min-width:0">Session<select id="smSess" style="width:100%"></select></label>
+            <button type="button" class="primary" id="smImport">Import shots</button>
+          </div>
+          <p class="note" id="smMsg"></p>
+        </div>
+      </details>
+      <div id="settleBox">
+        <div class="note" style="font-weight:600;color:var(--fg);margin-top:4px">Barrel settling <span id="settleState" style="font-weight:400"></span></div>
+        <div class="row">
+          <label>Settled after round<input id="settleK" inputmode="numeric" size="3"></label>
+          <label>Cold bore after (min)<input id="coldMin" inputmode="numeric" size="3"></label>
+        </div>
+        <p class="note" id="settleMsg">Plot or import a session's shots, including foulers on target, to see how the first rounds compare with the settled group.</p>
+        <svg id="settleChart" viewBox="0 0 360 170" role="img" aria-label="Offset of each round from the settled group centre"></svg>
+        <div class="row">
+          <button type="button" id="saveSession">Save session to barrel history</button>
+          <button type="button" id="clearHistory">Clear history</button>
+        </div>
+        <p class="note" id="saveMsg"></p>
+        <div class="note" style="font-weight:600;color:var(--fg)">Forecast from barrel history <span id="histCount" style="font-weight:400"></span></div>
+        <div class="scroll"><table id="foreTbl"></table></div>
+      </div>
+      <div id="valBox" hidden>
+        <div class="note" style="font-weight:600;color:var(--fg);margin-top:4px">Predicted against observed, per logged string</div>
+        <div class="scroll"><table id="valTbl"></table></div>
+        <p class="note">Observed = what you dialled, corrected by where the group centre landed. Elevation: + means the solver asked for too little, − too much. Windage: + means the group needed more right than predicted. A consistent elevation difference across distances points to muzzle velocity; one that grows with distance points to BC.</p>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<input type="file" id="photoIn" accept="image/*" hidden>
+<div id="photoSheet" hidden role="dialog" aria-label="Photo reading">
+  <div class="ps-in">
+    <b id="psTitle">Reading photo…</b>
+    <div id="psBody"></div>
+    <div class="rm-step" style="grid-template-columns:1fr 1fr">
+      <button type="button" id="psDiscard">Discard</button>
+      <button type="button" class="primary" id="psApply">Apply ticked values</button>
+    </div>
+  </div>
+</div>
+<div id="rm" hidden role="dialog" aria-label="Range mode">
+  <div class="rm-bar">
+    <b>Range mode</b>
+    <span class="rm-sub" id="rmClock"></span>
+    <button type="button" id="rmExit">Full view</button>
+  </div>
+  <div class="rm-body">
+    <section class="rm-card rm-sol">
+      <div class="rm-solgrid">
+        <div><span>Elevation</span><b id="rmElev">–</b><small id="rmElevC"></small></div>
+        <div><span>Windage</span><b id="rmWind">–</b><small id="rmWindC"></small></div>
+      </div>
+      <p class="rm-note" id="rmSolNote"></p>
+    </section>
+
+    <section class="rm-card">
+      <h3>Distance</h3>
+      <div class="rm-seg" id="rmNom"></div>
+      <label class="rm-lab" for="rmLrf"><span>Rangefinder, line of sight (<span id="rmDU">yd</span>)</span></label>
+      <div class="rm-step">
+        <button type="button" data-lrf="-1">−1</button>
+        <input id="rmLrf" inputmode="decimal" placeholder="e.g. 603">
+        <button type="button" data-lrf="1">+1</button>
+      </div>
+      <p class="rm-note">Enter the Sig's line-of-sight distance, not the angle-modified (AMR) figure; the app applies the shot angle itself.</p>
+      <p class="rm-note" id="rmDistMsg"></p>
+      <button type="button" class="rm-photo" data-photo="range">Read rangefinder photo</button>
+    </section>
+
+    <section class="rm-card">
+      <h3>Atmosphere</h3>
+      <div class="rm-seg" id="rmAtmSeg">
+        <button type="button" data-asrc="model">Model</button>
+        <button type="button" data-asrc="kestrel">Kestrel / Weatherdot</button>
+      </div>
+      <div class="rm-trio" id="rmKes">
+        <label class="rm-lab">Temp °C<input id="rmT" inputmode="decimal"></label>
+        <label class="rm-lab">Station hPa<input id="rmP" inputmode="decimal"></label>
+        <label class="rm-lab">Humidity %<input id="rmRH" inputmode="decimal"></label>
+      </div>
+      <p class="rm-note" id="rmAtmMsg"></p>
+      <button type="button" class="rm-photo" data-photo="atmos">Read Kestrel / Weatherdot photo</button>
+    </section>
+
+    <section class="rm-card">
+      <h3>Wind</h3>
+      <div class="rm-seg" id="rmSrc">
+        <button type="button" data-src="manual">Kestrel / mine</button>
+        <button type="button" data-src="calypso">Calypso</button>
+        <button type="button" data-src="model">Model</button>
+        <button type="button" data-src="consensus">Consensus</button>
+        <button type="button" data-src="metar">Airfield</button>
+      </div>
+      <div id="rmManual">
+        <label class="rm-lab" for="rmSpd"><span>Speed (mph)</span></label>
+        <div class="rm-step">
+          <button type="button" data-spd="-1">−1</button>
+          <input id="rmSpd" inputmode="decimal">
+          <button type="button" data-spd="1">+1</button>
+        </div>
+        <div class="rm-lab"><span>Wind from (clock: 12 = from the target, 3 = from the right)</span></div>
+        <div class="rm-clock" id="rmClockPick"></div>
+        <p class="rm-note" id="rmDirMsg"></p>
+        <button type="button" class="rm-photo" data-photo="atmos">Read wind from Kestrel photo</button>
+      </div>
+      <div id="rmCal" hidden>
+        <div class="rm-step" style="grid-template-columns:1fr 1fr">
+          <button type="button" id="calBtn" class="primary">Connect Calypso</button>
+          <select id="calWin" aria-label="Averaging time"><option value="5">5 s average</option><option value="10">10 s average</option><option value="30">30 s average</option></select>
+        </div>
+        <p class="rm-note" id="calStatus">Not connected. Point the orientation mark on the Calypso at the target.</p>
+        <div class="rm-solgrid"><div><span>Live</span><b id="calLive">–</b></div><div><span>Average</span><b id="calAvg">–</b></div></div>
+      </div>
+      <p class="rm-note" id="rmWindMsg"></p>
+    </section>
+
+    <section class="rm-card">
+      <h3>Dial and log</h3>
+      <label class="rm-lab" for="rmDE"><span>Elevation dialled (<span class="sUnit">MOA</span>)</span></label>
+      <div class="rm-step">
+        <button type="button" data-de="-1">−1 click</button>
+        <input id="rmDE" inputmode="decimal">
+        <button type="button" data-de="1">+1 click</button>
+      </div>
+      <div class="rm-lab"><span>Windage dialled (<span class="sUnit">MOA</span>)</span></div>
+      <div class="rm-step">
+        <button type="button" data-dw="-1">◄ L 1 click</button>
+        <output id="rmDW">0</output>
+        <button type="button" data-dw="1">R 1 click ►</button>
+      </div>
+      <div class="rm-step" style="grid-template-columns:1fr 1fr">
+        <button type="button" id="rmCopy">Copy solution</button>
+        <select id="rmLight" aria-label="Light"><option>Overcast</option><option>Bright overcast</option><option>Full sun</option><option>Changing</option></select>
+      </div>
+      <button type="button" class="primary rm-big" id="rmLog">Log conditions for this string</button>
+      <p class="rm-note" id="rmLogMsg"></p>
+      <button type="button" class="rm-photo" data-photo="chrono">Read Garmin photo (after the string)</button>
+      <p class="rm-note" id="rmChrono"></p>
+    </section>
+
+    <section class="rm-card">
+      <h3>Barrel</h3>
+      <div class="rm-seg" id="rmBarrel">
+        <button type="button" data-bstate="clean">Cleaned before today</button>
+        <button type="button" data-bstate="fouled">Fouled from last session</button>
+      </div>
+      <label class="rm-lab" for="rmRounds"><span>Rounds since last clean, before today</span></label>
+      <input id="rmRounds" inputmode="numeric" placeholder="e.g. 0">
+      <div class="rm-step" style="grid-template-columns:1fr auto">
+        <button type="button" id="rmFoul" class="primary">Off-target fouler fired +1</button>
+        <button type="button" id="rmFoulUndo">Undo</button>
+      </div>
+      <p class="rm-note" id="rmBarrelMsg"></p>
+      <p class="rm-note">Foulers fired onto the ShotMarker target at the same dial are recorded with their impacts, which is what the settling forecast needs. Count only foulers fired elsewhere here.</p>
+    </section>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const R2D = 180/Math.PI, D2R = Math.PI/180;
+const M_PER_YD = 0.9144;
+const store = {
+  get(k,d){try{const v=localStorage.getItem('frd_'+k);return v!=null?JSON.parse(v):d}catch(e){return d}},
+  set(k,v){try{localStorage.setItem('frd_'+k,JSON.stringify(v))}catch(e){}}
+};
+
+/* ---------- Geodesy: Vincenty inverse on WGS84 (mm-level accuracy) ---------- */
+function vincenty(lat1,lon1,lat2,lon2){
+  const a=6378137,f=1/298.257223563,b=a*(1-f);
+  const L=(lon2-lon1)*D2R;
+  const U1=Math.atan((1-f)*Math.tan(lat1*D2R)), U2=Math.atan((1-f)*Math.tan(lat2*D2R));
+  const sU1=Math.sin(U1),cU1=Math.cos(U1),sU2=Math.sin(U2),cU2=Math.cos(U2);
+  let lam=L,lamP,it=100,sS,cS,sig,sA,c2A,c2SM,sL,cL;
+  do{
+    sL=Math.sin(lam);cL=Math.cos(lam);
+    sS=Math.sqrt((cU2*sL)**2+(cU1*sU2-sU1*cU2*cL)**2);
+    if(sS===0)return{m:0,az:0};
+    cS=sU1*sU2+cU1*cU2*cL; sig=Math.atan2(sS,cS);
+    sA=cU1*cU2*sL/sS; c2A=1-sA*sA;
+    c2SM=c2A?cS-2*sU1*sU2/c2A:0;
+    const C=f/16*c2A*(4+f*(4-3*c2A));
+    lamP=lam;
+    lam=L+(1-C)*f*sA*(sig+C*sS*(c2SM+C*cS*(-1+2*c2SM*c2SM)));
+  }while(Math.abs(lam-lamP)>1e-12&&--it>0);
+  const uSq=c2A*(a*a-b*b)/(b*b);
+  const A=1+uSq/16384*(4096+uSq*(-768+uSq*(320-175*uSq)));
+  const B=uSq/1024*(256+uSq*(-128+uSq*(74-47*uSq)));
+  const dS=B*sS*(c2SM+B/4*(cS*(-1+2*c2SM*c2SM)-B/6*c2SM*(-3+4*sS*sS)*(-3+4*c2SM*c2SM)));
+  const az=Math.atan2(cU2*sL,cU1*sU2-sU1*cU2*cL)*R2D;
+  return{m:b*A*(sig-dS),az:(az+360)%360};
+}
+const norm180 = d => ((d%360)+540)%360-180;
+const norm360 = d => ((d%360)+360)%360;
+
+/* ---------- Sun position (NOAA low-precision, ~0.1°) ---------- */
+function sunPos(date,lat,lon){
+  const n=date.getTime()/86400000+2440587.5-2451545.0;
+  const L=norm360(280.460+0.9856474*n), g=norm360(357.528+0.9856003*n)*D2R;
+  const lam=(L+1.915*Math.sin(g)+0.020*Math.sin(2*g))*D2R;
+  const eps=(23.439-0.0000004*n)*D2R;
+  const ra=Math.atan2(Math.cos(eps)*Math.sin(lam),Math.cos(lam));
+  const dec=Math.asin(Math.sin(eps)*Math.sin(lam));
+  const gmst=norm360((18.697374558+24.06570982441908*n)*15);
+  const ha=(gmst+lon)*D2R-ra, phi=lat*D2R;
+  const el=Math.asin(Math.sin(phi)*Math.sin(dec)+Math.cos(phi)*Math.cos(dec)*Math.cos(ha));
+  const az=Math.atan2(-Math.sin(ha),Math.tan(dec)*Math.cos(phi)-Math.sin(phi)*Math.cos(ha));
+  return{az:norm360(az*R2D),el:el*R2D};
+}
+
+/* ---------- Air density / density altitude ---------- */
+function airDensity(Tc,PhPa,RH){
+  const T=Tc+273.15, es=6.1078*Math.pow(10,7.5*Tc/(Tc+237.3)), pv=RH/100*es, pd=PhPa-pv;
+  return pd*100/(287.058*T)+pv*100/(461.495*T);
+}
+const densityAltFt = rho => (44.3308-42.2665*Math.pow(rho,0.234969))*1000*3.28084;
+
+/* ---------- Angular units ---------- */
+const UNITS={
+  moa:{label:'MOA',inPer100:1.047198,clicks:[['1/4 MOA',0.25],['1/8 MOA',0.125],['1/2 MOA',0.5]]},
+  smoa:{label:'SMOA',inPer100:1.0,clicks:[['1/4 in @100',0.25],['1/8 in @100',0.125],['1/2 in @100',0.5]]},
+  mil:{label:'mil',inPer100:3.6,clicks:[['0.1 mil',0.1],['0.05 mil',0.05]]}
+};
+const inPerUnit = (unit,yd) => UNITS[unit].inPer100*yd/100;
+
+/* ---------- Target faces (placeholders: user must verify) ---------- */
+const SYSTEMS={
+  uk:{labels:['V','5','4','3','2','1'],bonus:'V',bonusPts:5,miss:'0'},
+  us:{labels:['X','10','9','8','7','6','5'],bonus:'X',bonusPts:10,miss:'M'},
+  grid:{labels:null}
+};
+const DEFAULT_FACES=[
+  {id:'uk-lr',system:'uk',name:'UK F-Class long range (placeholder sizes)',dias:[5,10,20,30,44,60]},
+  {id:'uk-mr',system:'uk',name:'UK F-Class mid range (placeholder sizes)',dias:[2,4,7,11,17,26]},
+  {id:'us-lr',system:'us',name:'US F-Class 1000 yd (placeholder sizes)',dias:[5,10,20,30,40,50,60]},
+  {id:'us-mr',system:'us',name:'US F-Class 600 yd (placeholder sizes)',dias:[1,3,6,9,12,18,24]},
+  {id:'grid',system:'grid',name:'Plain 1 in grid (load development)',dias:[1,2,4,8]}
+];
+// Older saved faces stored [label, diameter] pairs; convert them once.
+const LEGACY={f1:'5,10,20,30,44,60',f2:'2,4,7,11,17,26',f3:'1,2,4,8'};
+function migrateFaces(list){
+  // drop untouched copies of the first prototype's faces; the new defaults replace them
+  list=list.filter(f=>!(f.rings&&LEGACY[f.id]===f.rings.map(r=>+r[1]).join(',')));
+  return list.map(f=>{
+    if(f.dias)return f;
+    const labs=f.rings.map(r=>String(r[0]));
+    const system=labs.includes('X')?'us':labs.some(l=>l.includes('"'))?'grid':'uk';
+    return{id:f.id,name:f.name.replace(/\(placeholder\)/,'(placeholder sizes)'),system,dias:f.rings.map(r=>+r[1])};
+  });
+}
+function ringsOf(f){
+  const sys=SYSTEMS[f.system]||SYSTEMS.grid;
+  return f.dias.map((d,i)=>{
+    if(!sys.labels)return[d+'"',d];
+    let lab=sys.labels[i];
+    if(lab==null){const last=+sys.labels[sys.labels.length-1];lab=String(Math.max(0,last-(i-sys.labels.length+1)))}
+    return[lab,d];
+  });
+}
+function points(lab,sysKey){
+  const sys=SYSTEMS[sysKey]; if(!sys||!sys.labels)return null;
+  if(lab===sys.bonus)return sys.bonusPts;
+  const n=parseInt(lab,10); return isNaN(n)?0:n;
+}
+const MODELS=[
+  {id:'best_match',name:'Best match',res:'auto'},
+  {id:'ukmo_uk_deterministic_2km',name:'Met Office UKV',res:'2 km'},
+  {id:'icon_d2',name:'DWD ICON-D2',res:'2.2 km'},
+  {id:'meteofrance_arome_france_hd',name:'Météo-France AROME-HD',res:'1.5 km'},
+  {id:'knmi_seamless',name:'KNMI HARMONIE',res:'2 km'},
+  {id:'dmi_seamless',name:'DMI HARMONIE',res:'2 km'},
+  {id:'icon_eu',name:'DWD ICON-EU',res:'7 km'},
+  {id:'ecmwf_ifs025',name:'ECMWF IFS',res:'25 km'},
+  {id:'gfs_seamless',name:'NOAA GFS / HRRR',res:'3–25 km'},
+  {id:'gem_seamless',name:'Canada GEM',res:'2.5–15 km'}
+];
+const modelName=id=>(MODELS.find(m=>m.id===id)||{name:id}).name;
+/* Standard drag functions (US Army BRL, public domain), Mach vs Cd */
+const G7=[[0,0.1198],[0.05,0.1197],[0.1,0.1196],[0.15,0.1194],[0.2,0.1193],[0.25,0.1194],[0.3,0.1194],[0.35,0.1194],[0.4,0.1193],[0.45,0.1193],[0.5,0.1194],[0.55,0.1193],[0.6,0.1194],[0.65,0.1197],[0.7,0.1202],[0.725,0.1207],[0.75,0.1215],[0.775,0.1226],[0.8,0.1242],[0.825,0.1266],[0.85,0.1306],[0.875,0.1368],[0.9,0.1464],[0.925,0.166],[0.95,0.2054],[0.975,0.2993],[1,0.3803],[1.025,0.4015],[1.05,0.4043],[1.075,0.4034],[1.1,0.4014],[1.125,0.3987],[1.15,0.3955],[1.2,0.3884],[1.25,0.381],[1.3,0.3732],[1.35,0.3657],[1.4,0.358],[1.5,0.344],[1.55,0.3376],[1.6,0.3315],[1.65,0.326],[1.7,0.3209],[1.75,0.316],[1.8,0.3117],[1.85,0.3078],[1.9,0.3042],[1.95,0.301],[2,0.298],[2.05,0.2951],[2.1,0.2922],[2.15,0.2892],[2.2,0.2864],[2.25,0.2835],[2.3,0.2807],[2.35,0.2779],[2.4,0.2752],[2.45,0.2725],[2.5,0.2697],[2.55,0.267],[2.6,0.2643],[2.65,0.2615],[2.7,0.2588],[2.75,0.2561],[2.8,0.2533],[2.85,0.2506],[2.9,0.2479],[2.95,0.2451],[3,0.2424],[3.1,0.2368],[3.2,0.2313],[3.3,0.2258],[3.4,0.2205],[3.5,0.2154],[3.6,0.2106],[3.7,0.206],[3.8,0.2017],[3.9,0.1975],[4,0.1935],[4.2,0.1861],[4.4,0.1793],[4.6,0.173],[4.8,0.1672],[5,0.1618]];
+
+const G1=[[0,0.2629],[0.05,0.2558],[0.1,0.2487],[0.15,0.2413],[0.2,0.2344],[0.25,0.2278],[0.3,0.2214],[0.35,0.2155],[0.4,0.2104],[0.45,0.2061],[0.5,0.2032],[0.55,0.202],[0.6,0.2034],[0.7,0.2165],[0.725,0.223],[0.75,0.2313],[0.775,0.2417],[0.8,0.2546],[0.825,0.2706],[0.85,0.2901],[0.875,0.3136],[0.9,0.3415],[0.925,0.3734],[0.95,0.4084],[0.975,0.4448],[1,0.4805],[1.025,0.5136],[1.05,0.5427],[1.075,0.5677],[1.1,0.5883],[1.125,0.6053],[1.15,0.6191],[1.2,0.6393],[1.25,0.6518],[1.3,0.6589],[1.35,0.6621],[1.4,0.6625],[1.45,0.6607],[1.5,0.6573],[1.55,0.6528],[1.6,0.6474],[1.65,0.6413],[1.7,0.6347],[1.75,0.628],[1.8,0.621],[1.85,0.6141],[1.9,0.6072],[1.95,0.6003],[2,0.5934],[2.05,0.5867],[2.1,0.5804],[2.15,0.5743],[2.2,0.5685],[2.25,0.563],[2.3,0.5577],[2.35,0.5527],[2.4,0.5481],[2.45,0.5438],[2.5,0.5397],[2.6,0.5325],[2.7,0.5264],[2.8,0.5211],[2.9,0.5168],[3,0.5133],[3.1,0.5105],[3.2,0.5084],[3.3,0.5067],[3.4,0.5054],[3.5,0.504],[3.6,0.503],[3.7,0.5022],[3.8,0.5016],[3.9,0.501],[4,0.5006],[4.2,0.4998],[4.4,0.4995],[4.6,0.4992],[4.8,0.499],[5,0.4988]];
+const DEFAULT_LOADS=[{id:'kw-7-65prc',name:'KW Precision 7/6.5 PRC G238',calibre:'7/6.5 PRC',bullet:'Berger 7 mm 180 gr',grains:180,
+  drag:'G7',bc:0.349,mvFps:2900,mvTempC:15,mvSens:0,zeroYd:109,sightIn:2.0,twistIn:8.5,twistDir:'R',lenIn:1.527,diaIn:0.284,scopeUnit:'moa',click:0.125}];
+const NOMINALS={yd:[300,500,600,700,800,900,1000,1100,1200],m:[300,500,600,800,900,1000]};
+
+/* ---------- State ---------- */
+const S={
+  fp:store.get('fp',{lat:51.31205,lng:-0.66440}),
+  tgt:store.get('tgt',{lat:51.31940,lng:-0.66440}),
+  example:store.get('example',true),
+  distUnit:store.get('distUnit','yd'),
+  nominal:store.get('nominal',800),
+  lrf:store.get('lrf',''),
+  unit:store.get('unit','moa'),
+  click:store.get('click',0.25),
+  faces:(()=>{const f=migrateFaces(store.get('faces',DEFAULT_FACES));DEFAULT_FACES.forEach(d=>{if(!f.some(x=>x.id===d.id))f.push({...d,dias:[...d.dias]})});return f})(),
+  faceId:store.get('faceId','uk-lr'),
+  sys:store.get('sys','uk'),
+  relay:store.get('relay',''), appKey:store.get('appKey',''),
+  barrel:store.get('barrel',{state:'fouled',roundsBefore:'',foulers:[]}), settleK:store.get('settleK',7), coldMin:store.get('coldMin',10),
+  history:store.get('history',[]), photo:null,
+  ticked:store.get('ticked',['ukmo_uk_deterministic_2km','icon_d2','meteofrance_arome_france_hd','ecmwf_ifs025','gfs_seamless']),
+  loads:store.get('loads',DEFAULT_LOADS), loadId:store.get('loadId','kw-7-65prc'),
+  rmOpen:store.get('rmOpen',false),
+  atmSrc:store.get('atmSrc','model'), kestrel:store.get('kestrel',{T:'',P:'',RH:''}), logs:store.get('logs',[]),
+  dial:store.get('dial',{e:'',w:'',wd:'L'}), smParsed:null, lastSol:null,
+  optSpin:store.get('optSpin',true), optAJ:store.get('optAJ',true), optCor:store.get('optCor',true),
+  cmpMode:store.get('cmpMode','cross'), windyProd:store.get('windyProd','ecmwf'),
+  cmp:{}, lastFetch:null, nextFetch:null,
+  src:store.get('src','model'),
+  model:store.get('model','best_match'),
+  hAdj:store.get('hAdj',true),
+  manual:store.get('manual',{spd:8,dir:240}),
+  cal:store.get('cal',0.308),
+  shots:store.get('shots',[]),
+  light:store.get('light','Full sun'),
+  stn:store.get('stn','auto'), metars:[],
+  mode:null, wx:null, metar:null, elev:null
+};
+const save=()=>{for(const k of ['fp','tgt','example','distUnit','nominal','lrf','unit','click','faces','faceId','src','model','hAdj','manual','cal','shots','light','stn','sys','relay','ticked','cmpMode','windyProd','loads','loadId','optSpin','optAJ','optCor','atmSrc','kestrel','logs','dial','rmOpen','appKey','barrel','settleK','coldMin','history'])store.set(k,S[k])};
+
+/* ---------- Distance resolution: rangefinder > map pins > nominal ---------- */
+function geom(){ return vincenty(S.fp.lat,S.fp.lng,S.tgt.lat,S.tgt.lng); }
+function toYd(v,unit){return unit==='m'?v/M_PER_YD:v}
+function fromYd(yd,unit){return unit==='m'?yd*M_PER_YD:yd}
+function trueDistance(){
+  const lrf=parseFloat(S.lrf);
+  if(lrf>0) return{yd:toYd(lrf,S.distUnit),src:'Rangefinder'};
+  if(!S.example) return{yd:geom().m/M_PER_YD,src:'Map pins'};
+  return{yd:toYd(S.nominal,S.distUnit),src:'Nominal'};
+}
+const fmtD = yd => `${fromYd(yd,S.distUnit).toFixed(1)} ${S.distUnit}`;
+
+/* ---------- Map ---------- */
+const map=L.map('map',{zoomControl:true,attributionControl:true});
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  {maxZoom:20,maxNativeZoom:19,attribution:'Imagery © Esri, Maxar, Earthstar Geographics, GIS User Community'}).addTo(map);
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+  {maxZoom:20,maxNativeZoom:19,opacity:.85}).addTo(map);
+const icon=(cls,txt,sz=34)=>L.divIcon({className:'',html:`<div class="pin ${cls}" style="width:${sz}px;height:${sz}px">${txt}</div>`,iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]});
+const mFP=L.marker(S.fp,{draggable:true,icon:icon('pin-fp','FP'),title:'Firing point'}).addTo(map);
+const mT=L.marker(S.tgt,{draggable:true,icon:icon('pin-t','T'),title:'Target'}).addTo(map);
+const lof=L.polyline([S.fp,S.tgt],{color:'#ffd23f',weight:3,dashArray:'8 6'}).addTo(map);
+let mWind=null;
+map.fitBounds(L.latLngBounds([S.fp,S.tgt]).pad(.35));
+
+function onPinsMoved(refetch){
+  S.example=false; save(); lof.setLatLngs([S.fp,S.tgt]); render();
+  if(refetch){fetchElev();debouncedWx();}
+}
+mFP.on('dragend',()=>{S.fp=mFP.getLatLng();onPinsMoved(true)});
+mT.on('dragend',()=>{S.tgt=mT.getLatLng();onPinsMoved(true)});
+function setMode(m){
+  S.mode=S.mode===m?null:m;
+  $('#btnFP').classList.toggle('on',S.mode==='fp');$('#btnT').classList.toggle('on',S.mode==='t');
+  const n=$('#mapnote');n.hidden=!S.mode;n.textContent=S.mode==='fp'?'Tap the map at your firing point':'Tap the map at the target frame';
+}
+$('#btnFP').onclick=()=>setMode('fp');$('#btnT').onclick=()=>setMode('t');
+map.on('click',e=>{
+  if(!S.mode)return;
+  if(S.mode==='fp'){S.fp=e.latlng;mFP.setLatLng(e.latlng)}else{S.tgt=e.latlng;mT.setLatLng(e.latlng)}
+  setMode(S.mode); onPinsMoved(true);
+});
+
+/* Search: coordinates or place name (OpenStreetMap Nominatim) */
+$('#searchForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const q=$('#q').value.trim(); if(!q)return;
+  const m=q.match(/^\s*(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)\s*$/);
+  if(m){map.setView([+m[1],+m[2]],16);return}
+  try{
+    const r=await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`);
+    const j=await r.json();
+    if(j[0])map.setView([+j[0].lat,+j[0].lon],16); else alertNote('No match for that search. Try coordinates instead.');
+  }catch(err){alertNote('Search is unavailable right now. Paste coordinates instead.')}
+});
+function alertNote(t){const n=$('#mapnote');n.hidden=false;n.textContent=t;setTimeout(()=>{if(!S.mode)n.hidden=true},4000)}
+
+/* ---------- Data fetches ---------- */
+async function fetchElev(){
+  try{
+    const r=await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${S.fp.lat.toFixed(5)},${S.tgt.lat.toFixed(5)}&longitude=${S.fp.lng.toFixed(5)},${S.tgt.lng.toFixed(5)}`);
+    const j=await r.json(); S.elev=j.elevation; render();
+  }catch(e){S.elev=null}
+}
+let wxTimer=null;
+function debouncedWx(){clearTimeout(wxTimer);wxTimer=setTimeout(()=>{refreshAll();scheduleRefresh();loadWindy()},600)}
+async function fetchCmp(){
+  const lat=S.fp.lat.toFixed(4), lon=S.fp.lng.toFixed(4);
+  await Promise.all(MODELS.filter(m=>m.id!=='best_match').map(async m=>{
+    const p=new URLSearchParams({latitude:lat,longitude:lon,hourly:'wind_speed_10m,wind_direction_10m,wind_gusts_10m',
+      forecast_hours:12,wind_speed_unit:'mph',timezone:'auto',models:m.id});
+    try{
+      const r=await fetch('https://api.open-meteo.com/v1/forecast?'+p); const j=await r.json();
+      if(j.error)throw new Error(j.reason);
+      const h=j.hourly, ok=h.wind_speed_10m.some(v=>v!=null);
+      S.cmp[m.id]=ok?{time:h.time,spd:h.wind_speed_10m,dir:h.wind_direction_10m,gust:h.wind_gusts_10m}:{none:true};
+    }catch(e){S.cmp[m.id]={error:e.message||'unavailable'}}
+  }));
+  renderCmp(); render();
+}
+function refreshAll(){
+  S.lastFetch=new Date(); S.nextFetch=new Date(Date.now()+10*60*1000);
+  fetchWx(); fetchMetar(); fetchCmp(); updLine();
+}
+function updLine(){
+  if(!S.lastFetch)return;
+  const f=d=>d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',hour12:false});
+  $('#updLine').textContent=`Updated ${f(S.lastFetch)} · next ${f(S.nextFetch)}`;
+}
+let refreshTimer=null;
+function scheduleRefresh(){clearInterval(refreshTimer);refreshTimer=setInterval(refreshAll,10*60*1000)}
+async function fetchWx(){
+  const p=new URLSearchParams({latitude:S.fp.lat.toFixed(4),longitude:S.fp.lng.toFixed(4),
+    current:'temperature_2m,relative_humidity_2m,surface_pressure,wind_speed_10m,wind_direction_10m,wind_gusts_10m',
+    hourly:'wind_speed_10m,wind_direction_10m',past_hours:3,forecast_hours:7,
+    wind_speed_unit:'mph',timezone:'auto',models:S.model});
+  try{
+    const r=await fetch('https://api.open-meteo.com/v1/forecast?'+p);
+    const j=await r.json(); if(j.error)throw new Error(j.reason);
+    S.wx=j; $('#wxErr').hidden=true;
+  }catch(e){S.wx=null;$('#wxErr').hidden=false;$('#wxErr').textContent='Model wind unavailable: '+(e.message||'network error')+'. Try another model or enter your own reading.'}
+  render();
+}
+async function fetchMetar(){
+  const {lat,lng}=S.fp;
+  if(!S.relay){S.metars=[];S.metar={error:'relay'};fillStations();render();return}
+  try{
+    const bbox=`${(lat-1).toFixed(2)},${(lng-1.6).toFixed(2)},${(lat+1).toFixed(2)},${(lng+1.6).toFixed(2)}`;
+    const r=await fetch(S.relay.replace(/\/+$/,'')+'/metar?bbox='+bbox);
+    if(!r.ok)throw new Error('relay answered '+r.status);
+    const txt=await r.text(); const j=txt.trim()?JSON.parse(txt):[];
+    if(!Array.isArray(j))throw new Error('unexpected reply');
+    const seen=new Set();
+    S.metars=j.filter(s=>s.lat!=null&&s.icaoId&&!seen.has(s.icaoId)&&seen.add(s.icaoId))
+      .map(s=>{const v=vincenty(lat,lng,s.lat,s.lon);return{...s,d:v.m,brgTo:v.az}})
+      .sort((a,b)=>a.d-b.d).slice(0,10);
+    pickStation();
+  }catch(e){S.metars=[];S.metar={error:e.message||'network error'}}
+  fillStations(); render();
+}
+function pickStation(){
+  const chosen=S.stn!=='auto'&&S.metars.find(s=>s.icaoId===S.stn);
+  S.metar=chosen||S.metars[0]||null;
+}
+const COMPASS=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+const compass=d=>COMPASS[Math.round(norm360(d)/22.5)%16];
+const metarWind=m=>m.wspd==null?'no wind':`${m.wdir==='VRB'?'VRB':String(m.wdir).padStart(3,'0')+'°'} ${m.wspd} kt${m.wgst?' G'+m.wgst:''}`;
+let stnMarkers=[];
+function fillStations(){
+  const sel=$('#stnSel'), list=S.metars||[];
+  if(!list.length){sel.innerHTML=`<option value="auto">${S.metar&&S.metar.error==='relay'?'Set up the airfield relay first':S.metar&&S.metar.error?'Airfield reports unavailable':'No airfields found nearby'}</option>`;}
+  else{
+    sel.innerHTML=`<option value="auto">Nearest automatically (${list[0].icaoId})</option>`+
+      list.map(s=>`<option value="${s.icaoId}">${s.icaoId}${s.name?' '+s.name.split(',')[0]:''} · ${(s.d/1000).toFixed(0)} km ${compass(s.brgTo)} · ${metarWind(s)}</option>`).join('');
+  }
+  sel.value=list.some(s=>s.icaoId===S.stn)?S.stn:'auto';
+  if(S.stn!=='auto'&&!list.some(s=>s.icaoId===S.stn)) $('#stnNote').textContent=`${S.stn} isn't reporting near this range, so the nearest airfield is in use.`;
+  else $('#stnNote').textContent='';
+  stnMarkers.forEach(m=>m.remove());
+  stnMarkers=list.map(s=>{
+    const isSel=S.metar&&s.icaoId===S.metar.icaoId;
+    const mk=L.marker([s.lat,s.lon],{icon:icon(isSel?'pin-wx':'pin-wx pin-wx-off',s.icaoId.slice(0,4),isSel?40:32),title:`${s.icaoId} · ${metarWind(s)} · tap to use`,zIndexOffset:isSel?500:0}).addTo(map);
+    mk.on('click',()=>{S.stn=s.icaoId;save();pickStation();fillStations();render()});
+    return mk;
+  });
+}
+
+/* ---------- Wind selection ---------- */
+const H_FACTOR=Math.log(2/0.03)/Math.log(10/0.03); // log wind profile 10 m -> 2 m, z0 = 0.03 m
+/* ---------- Ballistic solver: 3-DOF point mass, standard G7/G1 drag, RK4 ---------- */
+function cdAt(table,M){
+  if(M<=table[0][0])return table[0][1];
+  let lo=0,hi=table.length-1;
+  if(M>=table[hi][0])return table[hi][1];
+  while(hi-lo>1){const mid=(lo+hi)>>1;if(table[mid][0]<=M)lo=mid;else hi=mid}
+  const [m0,c0]=table[lo],[m1,c1]=table[hi];return c0+(c1-c0)*(M-m0)/(m1-m0);
+}
+const ATM_STD={rho:1.2250,c:340.294};                       // ICAO sea level, 15 °C
+function atmosphere(Tc,PhPa,RH){
+  const rho=airDensity(Tc,PhPa,RH);
+  const c=331.3*Math.sqrt(1+Tc/273.15);                     // speed of sound, dry air
+  return{rho,c,Tc,PhPa,RH};
+}
+// Integrate one trajectory. Frame: x along line of sight, y up (perpendicular), z right.
+// Returns {pts:[{x,y,z,v,t}]} at each requested range (metres). y,z are relative to the line of sight.
+function flyPath(L,atm,cond,rangesM,bore){
+  const table=L.drag==='G1'?G1:G7;
+  const k=Math.PI/(8*L.bc*703.0696);                       // BC lb/in² -> kg/m²
+  const g=9.80665, th=cond.angle||0;
+  const gx=-g*Math.sin(th), gy=-g*Math.cos(th);
+  const Om=7.292115e-5, ph=(cond.lat||0)*D2R, A=(cond.az||0)*D2R, cor=cond.coriolis?1:0;
+  const Ox=cor*Om*Math.cos(ph)*Math.cos(A), Oy=cor*Om*Math.sin(ph), Oz=-cor*Om*Math.cos(ph)*Math.sin(A);
+  const wx=cond.wx||0, wz=cond.wz||0, rho=atm.rho, c=atm.c;
+  const acc=(vx,vy,vz)=>{
+    const rx=vx-wx, ry=vy, rz=vz-wz, vr=Math.hypot(rx,ry,rz);
+    const d=rho*k*cdAt(table,vr/c)*vr;
+    return[-d*rx+gx-2*(Oy*vz-Oz*vy), -d*ry+gy-2*(Oz*vx-Ox*vz), -d*rz-2*(Ox*vy-Oy*vx)];
+  };
+  let x=0,y=-L.sightM,z=0,vx=L.mv*Math.cos(bore),vy=L.mv*Math.sin(bore),vz=0,t=0;
+  const out=[], targets=[...rangesM].sort((a,b)=>a-b); let ti=0;
+  const maxX=targets[targets.length-1];
+  while(ti<targets.length&&t<6){
+    const v=Math.hypot(vx,vy,vz), dt=Math.min(0.0005, 0.5/v);   // ≤ 0.5 m per step
+    const k1=acc(vx,vy,vz);
+    const k2=acc(vx+k1[0]*dt/2,vy+k1[1]*dt/2,vz+k1[2]*dt/2);
+    const k3=acc(vx+k2[0]*dt/2,vy+k2[1]*dt/2,vz+k2[2]*dt/2);
+    const k4=acc(vx+k3[0]*dt,vy+k3[1]*dt,vz+k3[2]*dt);
+    const nvx=vx+dt/6*(k1[0]+2*k2[0]+2*k3[0]+k4[0]);
+    const nvy=vy+dt/6*(k1[1]+2*k2[1]+2*k3[1]+k4[1]);
+    const nvz=vz+dt/6*(k1[2]+2*k2[2]+2*k3[2]+k4[2]);
+    const nx=x+dt/6*(vx+2*(vx+k1[0]*dt/2)+2*(vx+k2[0]*dt/2)+(vx+k3[0]*dt));
+    const ny=y+dt/6*(vy+2*(vy+k1[1]*dt/2)+2*(vy+k2[1]*dt/2)+(vy+k3[1]*dt));
+    const nz=z+dt/6*(vz+2*(vz+k1[2]*dt/2)+2*(vz+k2[2]*dt/2)+(vz+k3[2]*dt));
+    while(ti<targets.length&&nx>=targets[ti]){
+      const f=(targets[ti]-x)/(nx-x);
+      out.push({x:targets[ti],y:y+(ny-y)*f,z:z+(nz-z)*f,v:Math.hypot(vx+(nvx-vx)*f,vy+(nvy-vy)*f,vz+(nvz-vz)*f),t:t+dt*f});
+      ti++;
+    }
+    x=nx;y=ny;z=nz;vx=nvx;vy=nvy;vz=nvz;t+=dt;
+    if(x>maxX)break;
+  }
+  return out;
+}
+// Bore angle (rad) that puts the bullet on the line of sight at the zero range, in zero conditions.
+function zeroBore(L,atmZero){
+  const zr=L.zeroM; let a=L.sightM/zr;
+  for(let i=0;i<8;i++){const p=flyPath(L,atmZero,{},[zr],a)[0]; if(!p)break; a-=p.y/zr; if(Math.abs(p.y)<1e-6)break}
+  return a;
+}
+// Miller stability, corrected for velocity and air density
+function millerSg(L,atm){
+  const t=L.twistIn/L.diaIn, l=L.lenIn/L.diaIn;
+  const base=30*L.grains/(t*t*Math.pow(L.diaIn,3)*l*(1+l*l));
+  const fv=Math.cbrt((L.mv/0.3048)/2800);
+  const TF=atm.Tc*9/5+32, PinHg=atm.PhPa*0.0295300;
+  return base*fv*((TF+460)/519)*(29.92/PinHg);
+}
+
+const MPH=0.44704, FT=0.3048, INCH=0.0254;
+function atmNow(){
+  if(S.atmSrc==='kestrel'){
+    const k=S.kestrel, T=parseFloat(k.T), P=parseFloat(k.P), RH=parseFloat(k.RH);
+    if(isFinite(T)&&P>500&&P<1100) return{Tc:T,PhPa:P,RH:isFinite(RH)?RH:50,src:'kestrel',label:'Kestrel'};
+  }
+  const c=S.wx&&S.wx.current;
+  return c?{Tc:c.temperature_2m,PhPa:c.surface_pressure,RH:c.relative_humidity_2m,src:'model',label:S.atmSrc==='kestrel'?'Model (Kestrel entry incomplete)':'Model'}:null;
+}
+const ANG_IN=(inch,yd)=>inch/(yd*36);                 // inches on target -> radians
+function logFor(tIso){
+  const t=Date.parse(tIso); let best=null;
+  for(const l of S.logs){const lt=Date.parse(l.t); if(lt<=t+60000&&(!best||lt>Date.parse(best.t)))best=l}
+  if(best&&t-Date.parse(best.t)>3*3600*1000)return null; // older than 3 h: don't match
+  return best;
+}
+function renderLogs(){
+  const l=curLoad(), u=(l&&l.scopeUnit)||'moa', U=UNIT_LBL[u];
+  document.querySelectorAll('.sUnit').forEach(e=>e.textContent=U);
+  if(!S.logs.length){$('#logTbl').innerHTML='';return}
+  const f=r=>r==null?'–':(r/RAD_PER[u]).toFixed(2);
+  let t=`<tr><th>Time</th><th>Dist</th><th>°C</th><th>hPa</th><th>RH</th><th>Cross mph</th><th>Pred elev</th><th>Dialled</th><th>Pred wind</th><th>Dialled</th></tr>`;
+  S.logs.slice().reverse().forEach(g=>{
+    const w=v=>v==null?'–':(v>=0?'R ':'L ')+Math.abs(v/RAD_PER[u]).toFixed(2);
+    t+=`<tr><td>${new Date(g.t).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',hour12:false})}</td><td>${fromYd(g.yd,S.distUnit).toFixed(1)}</td><td>${g.Tc!=null?g.Tc.toFixed(1):'–'}</td><td>${g.PhPa!=null?g.PhPa.toFixed(1):'–'}</td><td>${g.RH!=null?g.RH.toFixed(0):'–'}</td><td>${g.cross!=null?(g.cross>=0?'R ':'L ')+Math.abs(g.cross).toFixed(1):'–'}</td><td>${f(g.predE)}</td><td>${f(g.dialE)}</td><td>${w(g.predW)}</td><td>${w(g.dialW)}</td></tr>`;
+  });
+  $('#logTbl').innerHTML=t;
+}
+function renderValidation(){
+  const l=curLoad(), u=(l&&l.scopeUnit)||'moa', U=UNIT_LBL[u], ck=(l&&+l.click)||0.125;
+  const groups=new Map();
+  for(const s of S.shots){const g=logFor(s.t); if(!g||g.dialE==null)continue; if(!groups.has(g.t))groups.set(g.t,{g,shots:[]}); groups.get(g.t).shots.push(s)}
+  if(!groups.size){$('#valBox').hidden=true;return}
+  const f=r=>(r/RAD_PER[u]).toFixed(2), sg=r=>(r>=0?'+':'−')+Math.abs(r/RAD_PER[u]).toFixed(2);
+  let t=`<tr><th>String</th><th>Shots</th><th>Pred elev</th><th>Observed</th><th>Diff ${U}</th><th>Clicks</th><th>Pred wind</th><th>Observed</th><th>Diff ${U}</th><th>Garmin fps</th></tr>`;
+  for(const {g,shots} of [...groups.values()].sort((a,b)=>Date.parse(a.g.t)-Date.parse(b.g.t))){
+    const n=shots.length, mx=shots.reduce((a,s)=>a+ANG_IN(s.xIn,s.yd),0)/n, my=shots.reduce((a,s)=>a+ANG_IN(s.yIn,s.yd),0)/n;
+    const obsE=g.dialE-my, obsW=(g.dialW??0)-mx, dE=obsE-g.predE, dW=g.predW!=null?obsW-g.predW:null;
+    const wf=v=>(v>=0?'R ':'L ')+Math.abs(v/RAD_PER[u]).toFixed(2);
+    t+=`<tr><td>${new Date(g.t).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',hour12:false})} · ${fromYd(g.yd,S.distUnit).toFixed(0)}</td><td>${n}</td><td>${f(g.predE)}</td><td>${f(obsE)}</td><td>${sg(dE)}</td><td>${dE>=0?'+':'−'}${Math.abs(dE/RAD_PER[u]/ck).toFixed(1)}</td><td>${g.predW!=null?wf(g.predW):'–'}</td><td>${wf(obsW)}</td><td>${dW!=null?sg(dW):'–'}</td><td>${g.chrono?g.chrono.avg.toFixed(0):'–'}</td></tr>`;
+  }
+  $('#valTbl').innerHTML=t; $('#valBox').hidden=false;
+}
+/* ShotMarker CSV: sessions separated by blank lines; a session line starts with a date ("Oct 31 2026,name,...600y...");
+   its shot table has a header row containing "x (" and "y (", data rows start with "," */
+function parseShotMarker(text){
+  const lines=text.replace(/^﻿/,'').split(/\r?\n/);
+  const blank=l=>!l.trim()||/^,*\s*$/.test(l);
+  const splitCsv=l=>{const out=[];let cur='',q=false;for(const ch of l){if(ch==='"'){q=!q}else if(ch===','&&!q){out.push(cur);cur=''}else cur+=ch}out.push(cur);return out.map(x=>x.trim())};
+  const sessions=[]; let cur=null, hdr=null;
+  for(let i=0;i<lines.length;i++){
+    const l=lines[i];
+    if(blank(l)){hdr=null;continue}
+    if(l[0]!==','&&/^[A-Za-z]{3}\s+\d{1,2}\s+\d{4}/.test(l)){
+      const cells=splitCsv(l), dm=l.match(/(\d+(?:\.\d+)?)\s*(mm|m|yd|y|ft|f)\b/i);
+      cur={date:cells[0],name:cells[1]||'Session '+(sessions.length+1),dist:dm?+dm[1]:null,dunit:dm?dm[2].toLowerCase():null,shots:[]};
+      sessions.push(cur); hdr=null; continue;
+    }
+    if(!cur)continue;
+    const cells=splitCsv(l[0]===','?l.slice(1):l);
+    if(!hdr){ if(cells.some(c=>/^x\s*\(/i.test(c))&&cells.some(c=>/^y\s*\(/i.test(c))) hdr=cells.map(c=>c.toLowerCase()); continue }
+    if(/^(avg|sd)\s*:/i.test(cells[0]||'')){hdr=null;continue}
+    const get=re=>{const k=hdr.findIndex(h=>re.test(h));return k<0?null:cells[k]};
+    const xr=get(/^x\s*\(/), yr=get(/^y\s*\(/); if(xr==null||yr==null||xr===''||yr==='')continue;
+    const xu=hdr.find(h=>/^x\s*\(/.test(h)), conv=/mm/.test(xu)?1/25.4:/cm/.test(xu)?1/2.54:1;
+    const vRaw=get(/^v\s*\(/), vu=hdr.find(h=>/^v\s*\(/.test(h))||'';
+    cur.shots.push({label:get(/^(id|#|shot)$/)||String(cur.shots.length+1),time:get(/^time$/),xIn:parseFloat(xr)*conv,yIn:parseFloat(yr)*conv,
+      score:get(/^score$/),vFps:vRaw!=null&&vRaw!==''?parseFloat(vRaw)*(/m\/s/.test(vu)?3.28084:1):null});
+  }
+  return sessions.filter(s=>s.shots.length);
+}
+function smDate(dateStr,timeStr){
+  const d=new Date(`${dateStr} ${timeStr||'12:00:00 PM'}`); return isNaN(d)?null:d;
+}
+const RAD_PER={moa:Math.PI/180/60, smoa:Math.atan(1/3600), mil:0.001};
+const UNIT_LBL={moa:'MOA',smoa:'SMOA',mil:'mil'};
+const curLoad=()=>S.loads.find(l=>l.id===S.loadId)||S.loads[0];
+function solverLoad(l,TcNow){
+  const mvFps=(+l.mvFps)+(+l.mvSens||0)*((TcNow??l.mvTempC)-(+l.mvTempC||15));
+  return{drag:l.drag,bc:+l.bc,mv:mvFps*FT,mvFps,sightM:(+l.sightIn)*INCH,zeroM:(+l.zeroYd)*M_PER_YD,
+    twistIn:+l.twistIn,diaIn:+l.diaIn,lenIn:+l.lenIn,grains:+l.grains};
+}
+const boreCache={};
+function boreFor(l){
+  const L=solverLoad(l,null), key=JSON.stringify([L.drag,L.bc,L.mvFps,L.sightM,L.zeroM]);
+  if(!(key in boreCache)) boreCache[key]=zeroBore(L,atmosphere(15,1013.25,0));
+  return boreCache[key];
+}
+function loadValid(l){return ['bc','mvFps','zeroYd','sightIn'].every(k=>+l[k]>0)}
+function computeSolution(trueYd){
+  const l=curLoad(); if(!l||!loadValid(l))return null;
+  const an=atmNow(), c=an;
+  const atm=an?atmosphere(an.Tc,an.PhPa,an.RH):atmosphere(15,1013.25,50);
+  const L=solverLoad(l,atm.Tc), bore=boreFor(l);
+  const g=geom(), brg=g.az;
+  let angle=0; if(S.elev&&!S.example)angle=Math.atan2(S.elev[1]-S.elev[0],g.m);
+  const w=windNow(); const r=w&&w.dir!=null?resolve(w,brg):{cross:0,head:0};
+  const base={angle,lat:S.fp.lat,az:brg,coriolis:S.optCor};
+  const rows=[...new Set([...NOMINALS[S.distUnit].map(v=>toYd(v,S.distUnit)),trueYd])].sort((a,b)=>a-b);
+  const rM=rows.map(y=>y*M_PER_YD);
+  const live=flyPath(L,atm,{...base,wx:-r.head*MPH,wz:-r.cross*MPH},rM,bore);
+  const calm=flyPath(L,atm,{...base},rM,bore);
+  const ten=flyPath(L,atm,{...base,wz:-10*MPH},rM,bore);
+  const Sg=(+l.twistIn>0&&+l.lenIn>0&&+l.diaIn>0&&+l.grains>0)?millerSg(L,atm):null;
+  const tdir=l.twistDir==='L'?-1:1;
+  const ajMoaPerMph=Sg?0.01*Sg-0.0024*((+l.lenIn)/(+l.diaIn))+0.032:0;
+  const out=rows.map((yd,i)=>{
+    const p=live[i], q=calm[i], t10=ten[i]; if(!p||!q||!t10)return null;
+    const x=p.x;
+    const sd=(S.optSpin&&Sg)?tdir*1.25*(Sg+1.2)*Math.pow(p.t,1.83)*INCH:0;           // Litz spin drift, metres
+    const ajRad=(S.optAJ&&Sg)?-tdir*ajMoaPerMph*r.cross*RAD_PER.moa:0;               // + = impact high
+    const elevRad=-p.y/x-ajRad;
+    const windRad=-(p.z+sd)/x;                                                        // + = dial right
+    return{yd,x,elevRad,windRad,v:p.v,t:p.t,
+      parts:{wind:-(p.z-q.z)/x, spin:-sd/x, aj:ajRad, cor:-q.z/x},
+      w10:Math.abs(t10.z-q.z)/x};
+  });
+  return{rows:out,atm,L,Sg,cross:r.cross,head:r.head,wLabel:w?w.label:null,angle,haveWx:!!c,atmLabel:an?an.label:'Standard',l};
+}
+const fmtAng=(rad,u,dp)=>(rad/RAD_PER[u]).toFixed(dp??(u==='mil'?2:3));
+function renderSolution(trueYd){
+  const sol=computeSolution(trueYd), l=curLoad();
+  $('#loadSel').innerHTML=S.loads.map(x=>`<option value="${x.id}" ${x.id===l.id?'selected':''}>${x.name||'Unnamed load'}</option>`).join('');
+  if(!sol){['#sElev','#sWind'].forEach(k=>$(k).textContent='–');$('#sWarn').hidden=false;$('#sWarn').textContent='Enter BC, muzzle velocity, zero distance and sight height under Edit load.';$('#solTbl').innerHTML='';return}
+  const u=l.scopeUnit||'moa', ck=+l.click||0.125, U=UNIT_LBL[u];
+  const here=sol.rows.find(r=>r&&Math.abs(r.yd-trueYd)<1e-6);
+  S.lastSol=here?{yd:trueYd,elevRad:here.elevRad,windRad:here.windRad,mvFps:sol.L.mvFps,load:l.name,unit:l.scopeUnit||'moa',click:+l.click||0.125}:null;
+  $('#solLoadLbl').textContent=`at ${fmtD(trueYd)}`;
+  if(here){
+    const e=here.elevRad/RAD_PER[u], w=here.windRad/RAD_PER[u];
+    const eC=Math.round(e/ck), wC=Math.round(w/ck);
+    $('#sElev').textContent=`${e>=0?'↑':'↓'} ${Math.abs(eC*ck).toFixed(u==='mil'?2:3)} ${U}`;
+    $('#sElevC').textContent=`${Math.abs(eC)} clicks ${e>=0?'up':'down'} (calc ${e.toFixed(3)})`;
+    $('#sWind').textContent=Math.abs(wC)===0?`0 ${U}`:`${w>0?'R':'L'} ${Math.abs(wC*ck).toFixed(u==='mil'?2:3)} ${U}`;
+    $('#sWindC').textContent=Math.abs(wC)===0?'hold centre':`${Math.abs(wC)} clicks ${w>0?'right':'left'} (calc ${w.toFixed(3)})`;
+    const pr=here.parts, f=v=>(v>=0?'R ':'L ')+Math.abs(v/RAD_PER[u]).toFixed(2);
+    $('#sParts').textContent=`Windage dial is made up of: wind ${f(pr.wind)}, spin drift ${f(pr.spin)}, Coriolis ${f(pr.cor)} (all as dial directions). `+
+      `Elevation includes aerodynamic jump of ${Math.abs(pr.aj/RAD_PER[u]).toFixed(2)} ${U} ${pr.aj>=0?'high':'low'}, and Coriolis. Wind: ${sol.wLabel||'none'}, ${Math.abs(sol.cross).toFixed(1)} mph ${sol.cross>=0?'from right':'from left'}.`;
+    const vf=here.v/FT;
+    $('#sVel').textContent=`${vf.toFixed(0)} fps · M${(here.v/sol.atm.c).toFixed(2)}`;
+    $('#sTof').textContent=here.t.toFixed(3)+' s';
+    $('#sEn').textContent=Math.round((+l.grains||0)*vf*vf/450400)+' ft·lb';
+    const warn=[];
+    if(here.v/sol.atm.c<1.2)warn.push(`The bullet is near or below the transonic zone at this distance (Mach ${(here.v/sol.atm.c).toFixed(2)}); expect more dispersion and less reliable predictions.`);
+    if(sol.Sg!=null&&sol.Sg<1.4)warn.push(`Stability Sg ${sol.Sg.toFixed(2)} is marginal; below 1.4 the BC can drop in practice.`);
+    $('#sWarn').hidden=!warn.length; $('#sWarn').textContent=warn.join(' ');
+  }
+  $('#sSg').textContent=sol.Sg!=null?sol.Sg.toFixed(2):'–';
+  $('#sMv').textContent=`${sol.L.mvFps.toFixed(0)} fps`;
+  const a=sol.atm;
+  $('#sCond').textContent=`${sol.haveWx?sol.atmLabel+' conditions':'Standard conditions (no weather data yet)'}: ${a.Tc.toFixed(1)} °C, ${a.PhPa.toFixed(0)} hPa station, ${a.RH.toFixed(0)}% RH, density ${a.rho.toFixed(4)} kg/m³ · shot angle ${(sol.angle*R2D).toFixed(2)}° · latitude ${S.fp.lat.toFixed(2)}°, firing ${geom().az.toFixed(0)}°.`;
+  let t=`<tr><th>Distance</th><th>Elev ${U}</th><th>Clicks</th><th>Wind now ${U}</th><th>10 mph full value ${U}</th><th>Vel fps</th><th>TOF s</th></tr>`;
+  sol.rows.forEach(r=>{ if(!r)return;
+    const e=r.elevRad/RAD_PER[u], w=r.windRad/RAD_PER[u], hl=Math.abs(r.yd-trueYd)<1e-6;
+    t+=`<tr class="${hl?'hl':''}"><td>${fromYd(r.yd,S.distUnit).toFixed(hl?1:0)} ${S.distUnit}${hl?' (true)':''}</td><td>${e.toFixed(2)}</td><td>${Math.round(e/ck)}</td><td>${w>=0?'R':'L'} ${Math.abs(w).toFixed(2)}</td><td>${(r.w10/RAD_PER[u]).toFixed(2)}</td><td>${(r.v/FT).toFixed(0)}</td><td>${r.t.toFixed(3)}</td></tr>`;
+  });
+  $('#solTbl').innerHTML=t;
+}
+function fillLoadEditor(){
+  const l=curLoad(); if(!l)return;
+  const m={lName:'name',lCal:'calibre',lBullet:'bullet',lGr:'grains',lDrag:'drag',lBc:'bc',lMv:'mvFps',lMvT:'mvTempC',lMvS:'mvSens',lZero:'zeroYd',lSh:'sightIn',lTw:'twistIn',lTwD:'twistDir',lLen:'lenIn',lDia:'diaIn',lSU:'scopeUnit',lClick:'click'};
+  for(const [id,k] of Object.entries(m))$('#'+id).value=l[k]??'';
+}
+function windNow(){
+  if(S.src==='calypso'){
+    const a=calAvg(); if(!a)return null;
+    return{spd:a.spd,dir:norm360(geom().az+a.rel),gust:a.gust,label:`Calypso (${CAL.win} s avg)`,adj:1};
+  }
+  if(S.src==='manual') return{spd:+S.manual.spd||0,dir:+S.manual.dir||0,gust:null,label:'Your reading',adj:1};
+  if(S.src==='metar'){
+    const m=S.metar; if(!m||m.error||m.wspd==null)return null;
+    const k=1.15078, adj=S.hAdj?H_FACTOR:1;
+    return{spd:m.wspd*k*adj,dir:m.wdir==='VRB'?null:+m.wdir,gust:m.wgst?m.wgst*k*adj:null,label:m.icaoId+' (10 m mast)',adj};
+  }
+  const adj=S.hAdj?H_FACTOR:1;
+  if(S.src==='consensus'){
+    const c=consensusAt(0); if(!c)return null;
+    return{spd:c.spd*adj,dir:c.dir,gust:c.gust!=null?c.gust*adj:null,label:`Consensus of ${c.n} models`,adj};
+  }
+  const c=S.wx&&S.wx.current; if(!c)return null;
+  return{spd:c.wind_speed_10m*adj,dir:c.wind_direction_10m,gust:c.wind_gusts_10m*adj,label:modelName(S.model),adj};
+}
+// Vector mean of the ticked models at hour index i (raw 10 m values)
+function consensusAt(i){
+  let u=0,v=0,g=0,gn=0,n=0;
+  for(const id of S.ticked){const d=S.cmp[id]; if(!d||!d.spd||d.spd[i]==null||d.dir[i]==null)continue;
+    const a=d.dir[i]*D2R; u+=d.spd[i]*Math.sin(a); v+=d.spd[i]*Math.cos(a); n++;
+    if(d.gust&&d.gust[i]!=null){g+=d.gust[i];gn++}}
+  if(!n)return null;
+  u/=n; v/=n;
+  return{spd:Math.hypot(u,v),dir:norm360(Math.atan2(u,v)*R2D),gust:gn?g/gn:null,n};
+}
+function cmpTimes(){for(const m of MODELS){const d=S.cmp[m.id];if(d&&d.time)return d.time}return null}
+function renderCmp(){
+  const times=cmpTimes(), wrap=$('#cmpWrap');
+  document.querySelectorAll('#cmpMode button').forEach(b=>b.classList.toggle('sel',b.dataset.mode===S.cmpMode));
+  if(!times){wrap.innerHTML='<p class="note">No model data yet.</p>';return}
+  const brg=geom().az, adj=S.hAdj?H_FACTOR:1, cross=S.cmpMode==='cross';
+  const shade=val=>{const t=Math.min(1,Math.abs(val)/15);return `background:color-mix(in srgb, var(--wind) ${Math.round(t*45)}%, transparent)`};
+  const arrow=dir=>`<svg width="12" height="12" viewBox="-6 -6 12 12" style="transform:rotate(${norm360(dir+180)}deg)" aria-hidden="true"><path d="M0,-5 L3.5,3 L0,1.5 L-3.5,3Z" fill="currentColor"/></svg>`;
+  const cell=(spd,dir,gust)=>{
+    if(spd==null||dir==null)return'<td class="na">–</td>';
+    const s=spd*adj, g=gust!=null?gust*adj:null;
+    if(cross){const c=resolve({spd:s,dir},brg).cross;
+      return `<td style="${shade(c)}"><div class="cell"><b>${Math.abs(c).toFixed(0)}</b><small>${Math.abs(c)<0.5?'':c>0?'R':'L'}</small></div></td>`;}
+    return `<td style="${shade(s)}"><div class="cell"><span>${arrow(dir)} <b>${s.toFixed(0)}</b></span><small>${g!=null?'G'+g.toFixed(0):''}</small></div></td>`;
+  };
+  let h='<table><tr><th></th><th>Model</th>'+times.map(t=>`<th>${t.slice(11,13)}</th>`).join('')+'</tr>';
+  for(const m of MODELS){ if(m.id==='best_match')continue;
+    const d=S.cmp[m.id]; if(!d)continue;
+    const tk=S.ticked.includes(m.id), has=d.spd;
+    h+=`<tr><td><input type="checkbox" data-tick="${m.id}" ${tk?'checked':''} ${has?'':'disabled'} aria-label="Include ${m.name} in consensus"></td>`;
+    h+=`<td class="mname"><button type="button" data-drive="${m.id}" class="${S.model===m.id&&S.src==='model'?'drv':''}" ${has?'':'disabled'}>${m.name}</button><small>${m.res}</small></td>`;
+    if(!has){h+=`<td colspan="${times.length}" class="na" style="text-align:left">${d.none?'No coverage here':'Unavailable'}</td></tr>`;continue}
+    h+=times.map((t,i)=>{const k=d.time.indexOf(t);return k<0?'<td class="na">–</td>':cell(d.spd[k],d.dir[k],d.gust?d.gust[k]:null)}).join('')+'</tr>';
+  }
+  h+=`<tr class="cons"><td></td><td class="mname">Consensus<small>${S.ticked.length} ticked</small></td>`+
+    times.map((t,i)=>{const c=consensusAt(i);return c?cell(c.spd,c.dir,c.gust):'<td class="na">–</td>'}).join('')+'</tr>';
+  // spread of crosswind across ticked models, per hour
+  h+=`<tr><td></td><td class="mname">Spread<small>max − min crosswind</small></td>`+times.map((t,i)=>{
+    const cs=S.ticked.map(id=>S.cmp[id]).filter(d=>d&&d.spd&&d.spd[i]!=null).map(d=>resolve({spd:d.spd[i]*adj,dir:d.dir[i]},brg).cross);
+    if(cs.length<2)return'<td class="na">–</td>';
+    const sp=Math.max(...cs)-Math.min(...cs);
+    return `<td style="color:${sp>=5?'var(--warn)':'var(--muted)'}">${sp.toFixed(0)}</td>`}).join('')+'</tr></table>';
+  wrap.innerHTML=h;
+  const cs0=S.ticked.map(id=>S.cmp[id]).filter(d=>d&&d.spd&&d.spd[0]!=null).map(d=>resolve({spd:d.spd[0]*adj,dir:d.dir[0]},brg).cross);
+  $('#cmpSpread').textContent=cs0.length>1?`Models disagree by ${(Math.max(...cs0)-Math.min(...cs0)).toFixed(0)} mph crosswind this hour`:'';
+  wrap.querySelectorAll('[data-tick]').forEach(cb=>cb.onchange=()=>{
+    S.ticked=cb.checked?[...new Set([...S.ticked,cb.dataset.tick])]:S.ticked.filter(x=>x!==cb.dataset.tick);
+    save();renderCmp();render();});
+  wrap.querySelectorAll('[data-drive]').forEach(b=>b.onclick=()=>{
+    S.model=b.dataset.drive;S.src='model';$('#model').value=S.model;save();fetchWx();renderCmp();});
+}
+/* ---------- Windy embed (loads only when its panel is open) ---------- */
+function loadWindy(){
+  const box=$('#windyBox'), fr=$('#windyFrame'); if(!box.open){fr.innerHTML='';return}
+  const {lat,lng}=S.fp, mid={lat:(S.fp.lat+S.tgt.lat)/2,lng:(S.fp.lng+S.tgt.lng)/2};
+  const q=new URLSearchParams({lat:mid.lat.toFixed(4),lon:mid.lng.toFixed(4),detailLat:lat.toFixed(4),detailLon:lng.toFixed(4),
+    zoom:10,level:'surface',overlay:'wind',product:S.windyProd,menu:'',message:'true',marker:'true',calendar:'now',pressure:'',
+    type:'map',location:'coordinates',detail:'',metricWind:'mph',metricTemp:'°C',radarRange:'-1'});
+  fr.innerHTML=`<iframe title="Windy wind map" loading="lazy" src="https://embed.windy.com/embed2.html?${q}"></iframe>`;
+}
+function resolve(w,brg){
+  const rel=norm180(w.dir-brg);              // wind-from relative to line of fire
+  const cross=w.spd*Math.sin(rel*D2R);        // + = from right (drifts bullet left)
+  const head=w.spd*Math.cos(rel*D2R);         // + = headwind
+  let clock=Math.round(norm360(rel)/30)%12; if(clock===0)clock=12;
+  return{rel,cross,head,clock,value:Math.abs(Math.sin(rel*D2R))};
+}
+
+/* ---------- Rendering ---------- */
+function render(){
+  const g=geom(), brg=g.az, td=trueDistance();
+  // Distance truing
+  const nomYd=toYd(S.nominal,S.distUnit), mapYd=g.m/M_PER_YD;
+  $('#vNom').textContent=`${S.nominal} ${S.distUnit}`;
+  $('#vMap').textContent=S.example?'example':fmtD(mapYd);
+  $('#tNom').classList.toggle('active',td.src==='Nominal');
+  $('#tMap').classList.toggle('active',td.src==='Map pins');
+  $('#tLrf').classList.toggle('active',td.src==='Rangefinder');
+  $('#distSourceLbl').textContent='Using: '+td.src;
+  const dYd=td.yd-nomYd, pct=dYd/nomYd*100;
+  let msg;
+  if(td.src==='Nominal') msg='Place the pins on your firing point and target frame, or enter a rangefinder reading, to true the distance. Everything below is sized at the nominal distance until then.';
+  else{
+    const ringErr=Math.abs(pct);
+    msg=`True distance ${fmtD(td.yd)} is ${dYd>=0?'+':''}${fromYd(dYd,S.distUnit).toFixed(1)} ${S.distUnit} (${pct>=0?'+':''}${pct.toFixed(1)}%) from the ${S.nominal} ${S.distUnit} card. Ring sizes, click values and plotted shots below use the true distance; working at the card distance would size them ${ringErr.toFixed(1)}% ${dYd>0?'too large':'too small'} in angle. Elevation and wind dope will also use this once the ballistic solver is added.`;
+    if(td.src==='Map pins'&&!(parseFloat(S.lrf)>0)) msg+=' Map pins are only as good as the imagery; a rangefinder reading on the frame takes priority.';
+  }
+  $('#distMsg').textContent=msg;
+
+  // Line of fire
+  $('#vBrg').textContent=brg.toFixed(1)+'°';
+  if(S.elev&&!S.example){
+    const [e1,e2]=S.elev, dz=e2-e1;
+    $('#vFPel').textContent=e1.toFixed(0)+' m';$('#vTel').textContent=e2.toFixed(0)+' m';
+    $('#vAng').textContent=(Math.atan2(dz,g.m)*R2D).toFixed(2)+'°';
+  }else{['#vFPel','#vTel','#vAng'].forEach(s=>$(s).textContent='–')}
+
+  // Wind
+  const w=windNow();
+  $('#manualRow').hidden=S.src!=='manual';
+  document.querySelectorAll('#srcSeg button').forEach(b=>b.classList.toggle('sel',b.dataset.src===S.src));
+  if(S.wx&&S.wx.current) $('#wxTime').textContent='model '+S.wx.current.time.slice(11)+' local';
+  if(w&&w.dir!=null){
+    const r=resolve(w,brg);
+    $('#vCross').textContent=Math.abs(r.cross).toFixed(1)+' mph';
+    $('#vCrossDir').textContent=Math.abs(r.cross)<0.3?'nil':(r.cross>0?'from right':'from left');
+    $('#vWindDesc').textContent=`${w.label}: from ${r.clock} o'clock, ${(r.value*100).toFixed(0)}% value${w.adj!==1?' · scaled to 2 m':''}`;
+    $('#vSpd').textContent=w.spd.toFixed(1)+' mph';
+    $('#vGust').textContent=w.gust!=null?w.gust.toFixed(1)+' mph':'–';
+    $('#vDir').textContent=w.dir.toFixed(0)+'°';
+    $('#vHead').textContent=(r.head>=0?'head ':'tail ')+Math.abs(r.head).toFixed(1);
+    drawDial(r,w); drawWindArrow(w);
+  }else{
+    $('#vCross').textContent='–';$('#vCrossDir').textContent='';
+    $('#vWindDesc').textContent=w&&w.dir==null?'Wind variable at the airfield.':'Waiting for wind data…';
+    drawDial(null,null);
+  }
+  drawSpark(brg);
+
+  // Atmosphere
+  document.querySelectorAll('#atmSeg button').forEach(b=>b.classList.toggle('sel',b.dataset.asrc===S.atmSrc));
+  $('#kesRow').hidden=$('#kesNote').hidden=S.atmSrc!=='kestrel';
+  const an=atmNow();
+  $('#atmLbl').textContent=an?an.label:'';
+  if(an){
+    const rho=airDensity(an.Tc,an.PhPa,an.RH);
+    $('#vT').textContent=an.Tc.toFixed(1)+' °C';
+    $('#vP').textContent=an.PhPa.toFixed(1)+' hPa';
+    $('#vRH').textContent=an.RH.toFixed(0)+' %';
+    $('#vRho').textContent=rho.toFixed(4)+' kg/m³';
+    $('#vDA').textContent=Math.round(densityAltFt(rho))+' ft';
+  }else{['#vT','#vP','#vRH','#vRho','#vDA'].forEach(k=>$(k).textContent='–')}
+
+  // METAR
+  const m=S.metar;
+  if(m&&!m.error){
+    $('#mtStn').textContent=`${m.icaoId}${m.name?' · '+m.name:''}`;
+    $('#mtWind').textContent=metarWind(m);
+    $('#mtDist').textContent=`${(m.d/1000).toFixed(0)} km ${compass(m.brgTo)}`;
+    $('#mtTime').textContent=m.reportTime?m.reportTime.slice(11,16)+'Z':'–';
+    $('#mtRaw').textContent=m.rawOb||'';
+  }else if(m&&m.error){
+    $('#mtStn').textContent='';['#mtWind','#mtDist','#mtTime'].forEach(k=>$(k).textContent='–');
+    $('#mtRaw').textContent=m.error==='relay'
+      ?'Airfield reports need a small relay before they can appear here. Open "Airfield data relay" below for the address box.'
+      :`The relay couldn't fetch airfield reports (${m.error}). Check the relay address, or try again in a few minutes.`;
+    $('#relayBox').open=true;
+  }
+
+  // Sun
+  const sp=sunPos(new Date(),S.fp.lat,S.fp.lng), srel=norm180(sp.az-brg);
+  $('#vSunAz').textContent=sp.az.toFixed(0)+'°';
+  $('#vSunEl').textContent=sp.el.toFixed(1)+'°';
+  $('#vSunRel').textContent=Math.abs(srel).toFixed(0)+'° '+(srel>=0?'right':'left');
+  $('#sunMsg').textContent=sp.el<0?'Sun below the horizon.':
+    Math.abs(srel)<45?'Shooting towards the sun: the target is backlit and the light on the frame will change quickly.':
+    Math.abs(srel)>135?'Sun behind the firing point: the face is front-lit.':
+    `Side light from the ${srel>0?'right':'left'}. Light level is logged with each plotted shot so its effect can be checked later.`;
+
+  renderSolution(td.yd);
+  renderLogs();
+  renderFace(td.yd);
+  renderValidation();
+  renderSettling();
+  renderRange();
+}
+
+function drawDial(r,w){
+  const svg=$('#dial'); let h='';
+  h+=`<circle r="50" fill="none" stroke="var(--line)" stroke-width="2"/>`;
+  for(let i=1;i<=12;i++){const a=i*30*D2R, x=Math.sin(a)*41, y=-Math.cos(a)*41;
+    h+=`<text x="${x.toFixed(1)}" y="${(y+3.5).toFixed(1)}" text-anchor="middle" font-size="9" font-family="var(--mono)" fill="var(--muted)">${i}</text>`;}
+  h+=`<line x1="0" y1="30" x2="0" y2="-30" stroke="var(--fg)" stroke-width="2"/><polygon points="0,-34 -4,-26 4,-26" fill="var(--fg)"/>`;
+  if(r){ // arrow showing wind blowing toward centre from its clock position
+    const a=r.rel*D2R, x=Math.sin(a), y=-Math.cos(a);
+    h+=`<line x1="${(x*54).toFixed(1)}" y1="${(y*54).toFixed(1)}" x2="${(x*14).toFixed(1)}" y2="${(y*14).toFixed(1)}" stroke="var(--wind)" stroke-width="4" stroke-linecap="round"/>`;
+    const tx=x*10,ty=y*10, px=-y*5, py=x*5;
+    h+=`<polygon points="${tx.toFixed(1)},${ty.toFixed(1)} ${(x*20+px).toFixed(1)},${(y*20+py).toFixed(1)} ${(x*20-px).toFixed(1)},${(y*20-py).toFixed(1)}" fill="var(--wind)"/>`;
+  }
+  svg.innerHTML=h;
+}
+function drawWindArrow(w){
+  const brgTo=norm360(w.dir+180);
+  const html=`<svg class="windarrow" width="70" height="70" viewBox="-35 -35 70 70" style="transform:rotate(${brgTo}deg)"><line x1="0" y1="26" x2="0" y2="-20" stroke="#62b2e8" stroke-width="5" stroke-linecap="round"/><polygon points="0,-30 -9,-14 9,-14" fill="#62b2e8"/></svg>`;
+  const pos=L.latLng(S.fp.lat+(S.tgt.lat-S.fp.lat)*.5,S.fp.lng+(S.tgt.lng-S.fp.lng)*.5);
+  const ic=L.divIcon({className:'',html,iconSize:[70,70],iconAnchor:[35,35]});
+  if(mWind){mWind.setLatLng(pos);mWind.setIcon(ic)}else mWind=L.marker(pos,{icon:ic,interactive:false}).addTo(map);
+}
+function drawSpark(brg){
+  const svg=$('#spark');
+  if(!S.wx||!S.wx.hourly){svg.innerHTML='';return}
+  const hr=S.wx.hourly, adj=S.hAdj?H_FACTOR:1;
+  const v=hr.time.map((t,i)=>resolve({spd:hr.wind_speed_10m[i]*adj,dir:hr.wind_direction_10m[i]},brg).cross);
+  const max=Math.max(5,...v.map(Math.abs)), W=320,H=70,P=4;
+  const x=i=>P+i*(W-2*P)/(v.length-1), y=val=>H/2-val/max*(H/2-P);
+  const nowIdx=hr.time.findIndex(t=>t>S.wx.current.time)-.5;
+  let h=`<line x1="0" x2="${W}" y1="${H/2}" y2="${H/2}" stroke="var(--line)"/>`;
+  h+=`<path d="M${x(0)},${H/2} ${v.map((val,i)=>`L${x(i).toFixed(1)},${y(val).toFixed(1)}`).join(' ')} L${x(v.length-1)},${H/2}Z" fill="var(--wind)" opacity=".15"/>`;
+  h+=`<polyline points="${v.map((val,i)=>`${x(i).toFixed(1)},${y(val).toFixed(1)}`).join(' ')}" fill="none" stroke="var(--wind)" stroke-width="2"/>`;
+  if(nowIdx>0)h+=`<line x1="${x(nowIdx)}" x2="${x(nowIdx)}" y1="0" y2="${H}" stroke="var(--accent)" stroke-dasharray="3 3"/><text x="${x(nowIdx)+4}" y="11" font-size="10" fill="var(--accent)" font-family="var(--mono)">now</text>`;
+  h+=`<text x="${W-P}" y="11" text-anchor="end" font-size="10" fill="var(--muted)" font-family="var(--mono)">±${max.toFixed(0)}</text>`;
+  svg.innerHTML=h;
+}
+
+/* ---------- Target face & shots ---------- */
+const facesFor=sys=>S.faces.filter(f=>f.system===sys);
+const face=()=>S.faces.find(f=>f.id===S.faceId&&f.system===S.sys)||facesFor(S.sys)[0]||S.faces[0];
+const VIEW={z:1,cx:0,cy:0};   // zoom factor and view centre in inches (face coords, y up)
+const MAJOR={moa:1,smoa:1,mil:0.5};
+function faceGeom(yd){
+  const f=face(), rings=ringsOf(f), ipu=inPerUnit(S.unit,yd);
+  const fullHalf=rings[rings.length-1][1]/2/ipu*1.12;          // in angular units
+  return{f,rings,ipu,fullHalf};
+}
+function clampView(fullHalfIn){
+  VIEW.z=Math.min(400,Math.max(1,VIEW.z));
+  const lim=fullHalfIn*(1-1/VIEW.z);
+  VIEW.cx=Math.max(-lim,Math.min(lim,VIEW.cx)); VIEW.cy=Math.max(-lim,Math.min(lim,VIEW.cy));
+}
+function renderFace(yd){
+  const {f,rings,ipu,fullHalf}=faceGeom(yd), U=UNITS[S.unit];
+  clampView(fullHalf*ipu);
+  const half=fullHalf/VIEW.z, cx=VIEW.cx/ipu, cy=-VIEW.cy/ipu;        // view in SVG units (y down)
+  const x0=cx-half, x1=cx+half, y0=cy-half, y1=cy+half;
+  const svg=$('#face'); svg.setAttribute('viewBox',`${x0} ${y0} ${2*half} ${2*half}`);
+  const sw=half/200;
+  let h=`<rect x="${x0}" y="${y0}" width="${2*half}" height="${2*half}" fill="var(--face-bg)"/>`;
+  // rings: centre two filled dark (aiming mark), rest outlined
+  for(let i=rings.length-1;i>=0;i--){
+    const r=rings[i][1]/2/ipu, dark=i<=1;
+    h+=`<circle r="${r}" fill="${dark?'var(--face-v)':'none'}" fill-opacity="${dark?(i===0?0.92:0.8):0}" stroke="${dark?'#fff':'var(--face-ring)'}" stroke-width="${sw*1.6}"/>`;
+  }
+  // grid: minor = scope click (¼ MOA by default), major = 1 MOA / 0.5 mil
+  const major=MAJOR[S.unit]; let minor=S.click;
+  while((2*half)/minor>120) minor*=2;                       // thin out only when far zoomed out
+  while((2*half)/minor<4) minor/=2;                         // subdivide when zoomed deep inside the bull
+  const lines=(a,b,step)=>{const out=[];for(let k=Math.ceil(a/step);k<=Math.floor(b/step);k++)out.push(k*step);return out};
+  const isMajor=v=>Math.abs(v/major-Math.round(v/major))<1e-6;
+  const grid=(col,base)=>{let g='';
+    for(const v of lines(x0,x1,minor)){const m=isMajor(v),z=Math.abs(v)<1e-9;
+      g+=`<line x1="${v}" x2="${v}" y1="${y0}" y2="${y1}" stroke="${col}" stroke-opacity="${(z?.8:m?.5:.24)*base}" stroke-width="${sw*(m?1.4:0.8)}"/>`;}
+    for(const v of lines(y0,y1,minor)){const m=isMajor(v),z=Math.abs(v)<1e-9;
+      g+=`<line y1="${v}" y2="${v}" x1="${x0}" x2="${x1}" stroke="${col}" stroke-opacity="${(z?.8:m?.5:.24)*base}" stroke-width="${sw*(m?1.4:0.8)}"/>`;}
+    return g};
+  const bullR=rings[Math.min(1,rings.length-1)][1]/2/ipu;
+  h+=grid('#7d8c80',1);
+  h+=`<clipPath id="bullClip"><circle r="${bullR}"/></clipPath><g clip-path="url(#bullClip)">${grid('#ffffff',0.75)}</g>`;
+  // shots at true bullet diameter, never smaller than a visible dot; numbered once zoomed in
+  const br=(S.cal/2)/ipu, minR=half/90;
+  S.shots.forEach((s,i)=>{
+    const ip=inPerUnit(S.unit,s.yd), x=s.xIn/ip, y=-s.yIn/ip, r=Math.max(br,minR);
+    const last=i===S.shots.length-1;
+    h+=`<circle cx="${x}" cy="${y}" r="${r}" fill="${last?'#ee6a3c':'#ffd23f'}" fill-opacity=".9" stroke="#111" stroke-width="${sw*1.2}"/>`;
+    if(r>half/30) h+=`<text x="${x}" y="${y}" font-size="${Math.min(r*0.9,half/12)}" text-anchor="middle" dominant-baseline="central" fill="#111" font-family="var(--mono)" font-weight="600">${i+1}</text>`;
+  });
+  if(S.shots.length>1){const mn=meanShot(); const ip=inPerUnit(S.unit,yd);
+    const mx=mn.x/ip, my=-mn.y/ip, k=half/25;
+    h+=`<path d="M${mx-k},${my}H${mx+k}M${mx},${my-k}V${my+k}" stroke="#1b6a9c" stroke-width="${sw*3}"/>`;}
+  const fmt=v=>{if(v>=1)return String(v); const n=Math.round(1/v); return Math.abs(1/n-v)<1e-9?`1/${n}`:String(+v.toFixed(3))};
+  h+=`<rect x="${x0}" y="${y1-half*0.11}" width="${2*half}" height="${half*0.11}" fill="var(--face-bg)" fill-opacity=".85"/>`;
+  h+=`<text x="${x0+half*0.04}" y="${y1-half*0.035}" font-size="${half/16}" fill="#2c352f" font-family="var(--mono)">grid ${fmt(minor)} ${U.label} · bold ${major} ${U.label} · ×${VIEW.z<10?VIEW.z.toFixed(1):Math.round(VIEW.z)} · ${fmtD(yd)}</text>`;
+  svg.innerHTML=h;
+
+  // ring table
+  let t=`<tr><th>Ring</th><th>Dia (in)</th><th>Radius ${U.label}</th><th>Radius clicks</th><th>At card dist.</th></tr>`;
+  const ipuNom=inPerUnit(S.unit,toYd(S.nominal,S.distUnit));
+  rings.forEach(([lab,d])=>{t+=`<tr><td>${lab}</td><td>${d}</td><td>${(d/2/ipu).toFixed(2)}</td><td>${(d/2/ipu/S.click).toFixed(1)}</td><td>${(d/2/ipuNom).toFixed(2)}</td></tr>`});
+  $('#ringTbl').innerHTML=t;
+
+  // shot table
+  $('#shotCount').textContent=S.shots.length?S.shots.length+' shots':'none yet';
+  const SEQ=roundSeq().info;
+  let st=`<tr><th>#</th><th>Round</th><th>Score</th><th>X ${U.label}</th><th>Y ${U.label}</th><th>Dist</th><th>Cross mph</th><th>Light</th></tr>`;
+  S.shots.slice().reverse().forEach((s,ri)=>{const i=S.shots.length-ri, ip=inPerUnit(S.unit,s.yd);
+    const sq=SEQ.get(i-1);
+    st+=`<tr><td>${i}</td><td>${sq?sq.idx+(sq.cold?' cold':''):'–'}</td><td>${scoreFor(Math.hypot(s.xIn,s.yIn))}</td><td>${(s.xIn/ip).toFixed(2)}</td><td>${(s.yIn/ip).toFixed(2)}</td><td>${fromYd(s.yd,S.distUnit).toFixed(0)}</td><td>${s.cross!=null?(s.cross>0?'R ':'L ')+Math.abs(s.cross).toFixed(1):'–'}</td><td>${s.light}</td></tr>`});
+  $('#shotTbl').innerHTML=S.shots.length?st:'';
+  if(S.shots.length){
+    const mn=meanShot(), ip=inPerUnit(S.unit,yd), mx=mn.x/ip, my=mn.y/ip;
+    $('#vMean').textContent=`${mx>=0?'R':'L'} ${Math.abs(mx).toFixed(2)}, ${my>=0?'H':'Lo'} ${Math.abs(my).toFixed(2)} ${U.label}`;
+    const cw=Math.round(Math.abs(mx)/S.click), ce=Math.round(Math.abs(my)/S.click);
+    $('#vCorr').textContent=`${cw} ${mx>0?'left':'right'}, ${ce} ${my>0?'down':'up'}`;
+    $('#vTotal').textContent=totalScore();
+    const n=S.shots.length; let es=0, mr=0;
+    for(let i=0;i<n;i++){mr+=Math.hypot(S.shots[i].xIn-mn.x,S.shots[i].yIn-mn.y);for(let j=i+1;j<n;j++)es=Math.max(es,Math.hypot(S.shots[i].xIn-S.shots[j].xIn,S.shots[i].yIn-S.shots[j].yIn))}
+    mr/=n;
+    $('#vES').textContent=n>1?`${(es/ip).toFixed(2)} ${U.label} · ${es.toFixed(2)} in`:'–';
+    $('#vMR').textContent=n>1?`${(mr/ip).toFixed(2)} ${U.label} · ${mr.toFixed(2)} in`:'–';
+  }else{['#vMean','#vCorr','#vTotal','#vES','#vMR'].forEach(k=>$(k).textContent='–')}
+}
+function meanShot(){const n=S.shots.length;return{x:S.shots.reduce((a,s)=>a+s.xIn,0)/n,y:S.shots.reduce((a,s)=>a+s.yIn,0)/n}}
+function scoreFor(rIn){
+  const f=face(), br=(+S.cal||0)/2;
+  for(const [lab,d] of ringsOf(f)) if(rIn-br<=d/2) return lab;  // line-cutter scores the higher ring
+  const sys=SYSTEMS[f.system]; return sys&&sys.labels?sys.miss:'–';
+}
+function totalScore(){
+  const f=face(), sys=SYSTEMS[f.system]; if(!sys||!sys.labels||!S.shots.length)return'–';
+  let pts=0,b=0;
+  S.shots.forEach(s=>{const l=scoreFor(Math.hypot(s.xIn,s.yIn));pts+=points(l,f.system);if(l===sys.bonus)b++});
+  return f.system==='uk'?`${pts}.${b}`:`${pts}-${b}X`;
+}
+function svgPoint(e){const svg=$('#face'),pt=svg.createSVGPoint();pt.x=e.clientX;pt.y=e.clientY;return pt.matrixTransform(svg.getScreenCTM().inverse())}
+function plotAt(e){
+  const p=svgPoint(e), td=trueDistance(), ipu=inPerUnit(S.unit,td.yd);
+  const xIn=p.x*ipu, yIn=-p.y*ipu, w=windNow();
+  const r=w&&w.dir!=null?resolve(w,geom().az):null;
+  S.shots.push({t:new Date().toISOString(),xIn,yIn,yd:td.yd,nomYd:toYd(S.nominal,S.distUnit),distSrc:td.src,
+    cross:r?r.cross:null,head:r?r.head:null,windSrc:w?w.label:null,light:S.light,src:'tap'});
+  save(); render();
+}
+// Zoom by factor k about a point given in inches (face coords, y up)
+function zoomAbout(k,pxIn,pyIn){
+  const z0=VIEW.z, z1=Math.min(400,Math.max(1,z0*k)), r=z0/z1;
+  VIEW.cx=pxIn+(VIEW.cx-pxIn)*r; VIEW.cy=pyIn+(VIEW.cy-pyIn)*r; VIEW.z=z1;
+  renderFace(trueDistance().yd);
+}
+const ptrs=new Map(); let gesture=null;
+const faceEl=$('#face');
+faceEl.addEventListener('pointerdown',e=>{
+  faceEl.setPointerCapture(e.pointerId); ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(ptrs.size===1) gesture={type:'tap',sx:e.clientX,sy:e.clientY,moved:false};
+  else if(ptrs.size===2){const [a,b]=[...ptrs.values()];gesture={type:'pinch',d:Math.hypot(a.x-b.x,a.y-b.y)}}
+});
+faceEl.addEventListener('pointermove',e=>{
+  if(!ptrs.has(e.pointerId)||!gesture)return;
+  const prev=ptrs.get(e.pointerId); ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  const yd=trueDistance().yd, ipu=inPerUnit(S.unit,yd);
+  if(gesture.type==='pinch'&&ptrs.size===2){
+    const [a,b]=[...ptrs.values()], d=Math.hypot(a.x-b.x,a.y-b.y);
+    const mid=svgPoint({clientX:(a.x+b.x)/2,clientY:(a.y+b.y)/2});
+    if(gesture.d>0)zoomAbout(d/gesture.d,mid.x*ipu,-mid.y*ipu); gesture.d=d; return;
+  }
+  if(gesture.type==='tap'&&Math.hypot(e.clientX-gesture.sx,e.clientY-gesture.sy)>6)gesture.moved=true;
+  if(gesture.moved&&VIEW.z>1){
+    const {fullHalf}=faceGeom(yd), inPerPx=(2*fullHalf/VIEW.z*ipu)/faceEl.clientWidth;
+    VIEW.cx-=(e.clientX-prev.x)*inPerPx; VIEW.cy+=(e.clientY-prev.y)*inPerPx; renderFace(yd);
+  }
+});
+const endPtr=e=>{
+  if(!ptrs.has(e.pointerId))return;
+  ptrs.delete(e.pointerId);
+  if(gesture&&gesture.type==='tap'&&!gesture.moved&&e.type==='pointerup')plotAt(e);
+  if(ptrs.size===0)gesture=null; else if(gesture&&gesture.type==='pinch')gesture={type:'pan',moved:true};
+};
+faceEl.addEventListener('pointerup',endPtr); faceEl.addEventListener('pointercancel',endPtr);
+faceEl.addEventListener('wheel',e=>{
+  e.preventDefault(); const p=svgPoint(e), ipu=inPerUnit(S.unit,trueDistance().yd);
+  zoomAbout(Math.exp(-e.deltaY*0.0015),p.x*ipu,-p.y*ipu);
+},{passive:false});
+$('#zIn').onclick=()=>zoomAbout(2,VIEW.cx,VIEW.cy);
+$('#zOut').onclick=()=>zoomAbout(0.5,VIEW.cx,VIEW.cy);
+$('#zFit').onclick=()=>{VIEW.z=1;VIEW.cx=0;VIEW.cy=0;renderFace(trueDistance().yd)};
+$('#zBull').onclick=()=>{const {rings,fullHalf,ipu}=faceGeom(trueDistance().yd);
+  VIEW.z=(fullHalf*ipu)/(rings[Math.min(1,rings.length-1)][1]/2*1.15);VIEW.cx=0;VIEW.cy=0;renderFace(trueDistance().yd)};
+$('#zGroup').onclick=()=>{
+  if(!S.shots.length)return;
+  const xs=S.shots.map(s=>s.xIn), ys=S.shots.map(s=>s.yIn), {fullHalf,ipu}=faceGeom(trueDistance().yd);
+  const span=Math.max(Math.max(...xs)-Math.min(...xs),Math.max(...ys)-Math.min(...ys),(+S.cal||0.3)*4);
+  VIEW.cx=(Math.max(...xs)+Math.min(...xs))/2; VIEW.cy=(Math.max(...ys)+Math.min(...ys))/2;
+  VIEW.z=(fullHalf*ipu)/(span*0.75); renderFace(trueDistance().yd);
+};
+$('#undoShot').onclick=()=>{S.shots.pop();save();render()};
+let clearArmed=false;
+$('#clearShots').onclick=()=>{
+  if(!clearArmed){clearArmed=true;$('#clearConfirm').hidden=false;setTimeout(()=>{clearArmed=false;$('#clearConfirm').hidden=true},4000);return}
+  S.shots=[];S.barrel.foulers=[];clearArmed=false;$('#clearConfirm').hidden=true;save();render();
+};
+$('#csv').onclick=()=>{
+  const hdr='time,source,session,score,x_in,y_in,x_moa,y_moa,true_dist_yd,nominal_dist_yd,dist_source,velocity_fps,crosswind_mph,headwind_mph,wind_source,light,log_time,temp_c,station_hpa,rh_pct,atm_source,pred_elev_moa,dialled_elev_moa,pred_wind_moa,dialled_wind_moa,load,mv_fps,garmin_avg_fps,garmin_sd,round_of_session,gap_min,cold_bore,barrel_state,rounds_since_clean';
+  const SQ=roundSeq().info;
+  const M=v=>v==null?'':(v/RAD_PER.moa).toFixed(3), q=v=>v==null?'':`"${String(v).replace(/"/g,'""')}"`;
+  const rows=S.shots.map(s=>{const ip=inPerUnit('moa',s.yd), g=logFor(s.t);
+    const cross=s.cross??(g?g.cross:null), head=s.head??(g?g.head:null);
+    return[s.t,s.src||'tap',q(s.session||''),scoreFor(Math.hypot(s.xIn,s.yIn)),s.xIn.toFixed(3),s.yIn.toFixed(3),(s.xIn/ip).toFixed(3),(s.yIn/ip).toFixed(3),s.yd.toFixed(1),s.nomYd!=null?s.nomYd.toFixed(1):'',q(s.distSrc),s.vFps!=null?s.vFps.toFixed(1):'',
+      cross!=null?cross.toFixed(2):'',head!=null?head.toFixed(2):'',q(s.windSrc||(g?g.windSrc:'')),q(s.light||''),
+      g?g.t:'',g&&g.Tc!=null?g.Tc.toFixed(1):'',g&&g.PhPa!=null?g.PhPa.toFixed(1):'',g&&g.RH!=null?g.RH.toFixed(0):'',g?g.atmSrc:'',
+      g?M(g.predE):'',g?M(g.dialE):'',g?M(g.predW):'',g?M(g.dialW):'',q(g?g.load:''),g&&g.mvFps?g.mvFps.toFixed(0):'',
+      g&&g.chrono?g.chrono.avg.toFixed(1):'',g&&g.chrono&&g.chrono.sd!=null?g.chrono.sd.toFixed(1):'',
+      ...(()=>{const k=SQ.get(S.shots.indexOf(s));return k?[k.idx,k.gap!=null?k.gap.toFixed(1):'',k.cold?'yes':'no',S.barrel.state,k.barrelRound??'']:['','','','','']})()].join(',')});
+  const blob=new Blob([hdr+'\n'+rows.join('\n')],{type:'text/csv'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='range-desk-shots.csv';a.click();
+};
+
+/* ---------- Controls ---------- */
+function fillNominal(){$('#nominal').innerHTML=NOMINALS[S.distUnit].map(v=>`<option ${v==S.nominal?'selected':''}>${v}</option>`).join('')}
+function fillClicks(){$('#click').innerHTML=UNITS[S.unit].clicks.map(([l,v])=>`<option value="${v}" ${v==S.click?'selected':''}>${l}</option>`).join('')}
+function fillFaces(){
+  const f=face(); S.faceId=f.id;
+  $('#sysSel').value=S.sys;
+  $('#faceSel').innerHTML=facesFor(S.sys).map(x=>`<option value="${x.id}" ${x.id===f.id?'selected':''}>${x.name}</option>`).join('');
+  $('#faceName').value=f.name; $('#faceRings').value=f.dias.join('\n');
+  const sys=SYSTEMS[S.sys]; $('#labelHint').textContent=sys.labels?sys.labels.join(', ')+' from the centre out':'labelled by size';
+}
+$('#sysSel').onchange=e=>{S.sys=e.target.value;fillFaces();save();render()};
+$('#relayUrl').value=S.relay;
+$('#relaySave').onclick=()=>{
+  let v=$('#relayUrl').value.trim(); if(v&&!/^https:\/\//.test(v))v='https://'+v.replace(/^http:\/\//,'');
+  S.relay=v.replace(/\/+$/,''); $('#relayUrl').value=S.relay; save(); fetchMetar();
+};
+$('#distUnit').value=S.distUnit;$('#unit').value=S.unit;$('#model').value=S.model;$('#hAdj').checked=S.hAdj;
+$('#lrf').value=S.lrf;$('#cal').value=S.cal;$('#light').value=S.light;$('#mSpd').value=S.manual.spd;$('#mDir').value=S.manual.dir;
+fillNominal();fillClicks();fillFaces();
+$('#distUnit').onchange=e=>{S.distUnit=e.target.value;S.nominal=NOMINALS[S.distUnit].reduce((a,b)=>Math.abs(b-S.nominal)<Math.abs(a-S.nominal)?b:a);fillNominal();save();render()};
+$('#nominal').onchange=e=>{S.nominal=+e.target.value;save();render()};
+$('#lrf').oninput=e=>{S.lrf=e.target.value;save();render()};
+$('#unit').onchange=e=>{S.unit=e.target.value;S.click=UNITS[S.unit].clicks[0][1];fillClicks();save();render()};
+$('#click').onchange=e=>{S.click=+e.target.value;save();render()};
+$('#cal').oninput=e=>{S.cal=+e.target.value||0;save();render()};
+$('#light').onchange=e=>{S.light=e.target.value;save()};
+$('#faceSel').onchange=e=>{S.faceId=e.target.value;fillFaces();save();render()};
+$('#model').onchange=e=>{S.model=e.target.value;S.src='model';save();fetchWx();renderCmp()};
+$('#hAdj').onchange=e=>{S.hAdj=e.target.checked;save();render();renderCmp()};
+$('#mSpd').oninput=e=>{S.manual.spd=e.target.value;save();render()};
+$('#mDir').oninput=e=>{S.manual.dir=e.target.value;save();render()};
+$('#stnSel').onchange=e=>{S.stn=e.target.value;save();pickStation();fillStations();render()};
+$('#model').innerHTML=MODELS.map(m=>`<option value="${m.id}">${m.name} (${m.res})</option>`).join('');
+$('#model').value=MODELS.some(m=>m.id===S.model)?S.model:'best_match'; S.model=$('#model').value;
+const LOAD_FIELDS={lName:'name',lCal:'calibre',lBullet:'bullet',lGr:'grains',lDrag:'drag',lBc:'bc',lMv:'mvFps',lMvT:'mvTempC',lMvS:'mvSens',lZero:'zeroYd',lSh:'sightIn',lTw:'twistIn',lTwD:'twistDir',lLen:'lenIn',lDia:'diaIn',lSU:'scopeUnit',lClick:'click'};
+const TEXT_FIELDS=['name','calibre','bullet','drag','twistDir','scopeUnit'];
+for(const [id,k] of Object.entries(LOAD_FIELDS)){
+  $('#'+id).addEventListener(id==='lDrag'||id==='lTwD'||id==='lSU'?'change':'input',e=>{
+    const l=curLoad(), v=e.target.value.trim();
+    l[k]=TEXT_FIELDS.includes(k)?v:(v===''?'':parseFloat(v));
+    save(); render();
+  });
+}
+$('#loadSel').onchange=e=>{S.loadId=e.target.value;fillLoadEditor();save();render()};
+$('#loadNew').onclick=()=>{const id='ld'+Date.now();S.loads.push({...DEFAULT_LOADS[0],id,name:'New load'});S.loadId=id;fillLoadEditor();save();render();$('#loadEdit').open=true};
+$('#loadDup').onclick=()=>{const id='ld'+Date.now(),l=curLoad();S.loads.push({...l,id,name:(l.name||'Load')+' copy'});S.loadId=id;fillLoadEditor();save();render()};
+let delArmed=false;
+$('#loadDel').onclick=()=>{
+  if(S.loads.length<2)return;
+  if(!delArmed){delArmed=true;$('#loadDelConfirm').hidden=false;setTimeout(()=>{delArmed=false;$('#loadDelConfirm').hidden=true},4000);return}
+  S.loads=S.loads.filter(x=>x.id!==S.loadId);S.loadId=S.loads[0].id;delArmed=false;$('#loadDelConfirm').hidden=true;fillLoadEditor();save();render();
+};
+for(const [id,k] of [['optSpin','optSpin'],['optAJ','optAJ'],['optCor','optCor']]){$('#'+id).checked=S[k];$('#'+id).onchange=e=>{S[k]=e.target.checked;save();render()}}
+fillLoadEditor();
+document.querySelectorAll('#atmSeg button').forEach(b=>b.onclick=()=>{S.atmSrc=b.dataset.asrc;save();render()});
+$('#kT').value=S.kestrel.T;$('#kP').value=S.kestrel.P;$('#kRH').value=S.kestrel.RH;
+[['kT','T'],['kP','P'],['kRH','RH']].forEach(([id,k])=>$('#'+id).oninput=e=>{S.kestrel[k]=e.target.value.trim();save();render()});
+$('#dE').value=S.dial.e;$('#dW').value=S.dial.w;$('#dWd').value=S.dial.wd;
+$('#dE').oninput=e=>{S.dial.e=e.target.value.trim();save()};
+$('#dW').oninput=e=>{S.dial.w=e.target.value.trim();save()};
+$('#dWd').onchange=e=>{S.dial.wd=e.target.value;save()};
+$('#dCopy').onclick=()=>{
+  const p=S.lastSol; if(!p)return; const u=p.unit, ck=p.click;
+  const e=Math.round(p.elevRad/RAD_PER[u]/ck)*ck, w=Math.round(p.windRad/RAD_PER[u]/ck)*ck;
+  S.dial={e:e.toFixed(3),w:Math.abs(w).toFixed(3),wd:w>=0?'R':'L'};
+  $('#dE').value=S.dial.e;$('#dW').value=S.dial.w;$('#dWd').value=S.dial.wd;save();
+};
+$('#logNow').onclick=()=>{
+  const p=S.lastSol, an=atmNow(), w=windNow(), r=w&&w.dir!=null?resolve(w,geom().az):null, td=trueDistance();
+  const u=(curLoad()&&curLoad().scopeUnit)||'moa';
+  const dE=parseFloat(S.dial.e), dW=parseFloat(S.dial.w);
+  S.logs.push({t:new Date().toISOString(),yd:td.yd,distSrc:td.src,Tc:an?an.Tc:null,PhPa:an?an.PhPa:null,RH:an?an.RH:null,atmSrc:an?an.src:'none',
+    windSrc:w?w.label:null,spd:w?w.spd:null,dir:w?w.dir:null,cross:r?r.cross:null,head:r?r.head:null,
+    predE:p?p.elevRad:null,predW:p?p.windRad:null,dialE:isFinite(dE)?dE*RAD_PER[u]:null,dialW:isFinite(dW)?(S.dial.wd==='L'?-1:1)*dW*RAD_PER[u]:null,
+    load:p?p.load:'',mvFps:p?p.mvFps:null});
+  save(); render();
+};
+$('#logUndo').onclick=()=>{S.logs.pop();save();render()};
+$('#smFile').onchange=async e=>{
+  const file=e.target.files[0]; if(!file)return;
+  try{
+    const sessions=parseShotMarker(await file.text()); S.smParsed=sessions;
+    if(!sessions.length){$('#smPick').hidden=true;$('#smMsg').textContent="No shots found in that file. Check it's a ShotMarker CSV export; if it is, send it to Claude so the importer can be adjusted.";return}
+    $('#smSess').innerHTML=`<option value="all">All sessions (${sessions.reduce((a,s)=>a+s.shots.length,0)} shots)</option>`+sessions.map((s,i)=>`<option value="${i}">${s.date} · ${s.name} · ${s.dist??'?'}${s.dunit??''} · ${s.shots.length} shots</option>`).join('');
+    $('#smPick').hidden=false; $('#smMsg').textContent=`Found ${sessions.length} session${sessions.length>1?'s':''}.`;
+  }catch(err){$('#smMsg').textContent='Could not read that file: '+err.message}
+};
+$('#smImport').onclick=()=>{
+  const all=S.smParsed||[], v=$('#smSess').value, pick=v==='all'?all:[all[+v]];
+  const td=trueDistance(); let n=0, noTime=0;
+  for(const ses of pick){
+    const smYd=ses.dist!=null?(ses.dunit==='m'?ses.dist/M_PER_YD:ses.dunit==='mm'?ses.dist/1000/M_PER_YD:ses.dunit==='ft'||ses.dunit==='f'?ses.dist/3:ses.dist):null;
+    const useApp=td.src!=='Nominal'||smYd==null;
+    for(const sh of ses.shots){
+      const d=smDate(ses.date,sh.time); if(!sh.time||!d)noTime++;
+      S.shots.push({t:(d||new Date()).toISOString(),xIn:sh.xIn,yIn:sh.yIn,yd:useApp?td.yd:smYd,nomYd:smYd??toYd(S.nominal,S.distUnit),
+        distSrc:useApp?td.src:'ShotMarker setting',cross:null,head:null,windSrc:null,light:'',src:'ShotMarker',session:ses.name,vFps:sh.vFps,smScore:sh.score});
+      n++;
+    }
+  }
+  S.shots.sort((a,b)=>Date.parse(a.t)-Date.parse(b.t));
+  save(); render();
+  $('#smMsg').textContent=`Imported ${n} shots.`+(noTime?` ${noTime} had no readable time, so they won't match a string log.`:'');
+};
+$('#refreshNow').onclick=()=>{refreshAll();scheduleRefresh()};
+document.querySelectorAll('#cmpMode button').forEach(b=>b.onclick=()=>{S.cmpMode=b.dataset.mode;save();renderCmp()});
+$('#windyProd').value=S.windyProd;
+$('#windyProd').onchange=e=>{S.windyProd=e.target.value;save();loadWindy()};
+$('#windyBox').addEventListener('toggle',loadWindy);
+document.querySelectorAll('#srcSeg button').forEach(b=>b.onclick=()=>{S.src=b.dataset.src;save();render();renderCmp()});
+$('#faceSave').onclick=()=>{
+  const dias=$('#faceRings').value.split('\n').map(l=>parseFloat(l.trim().split(/\s+/).pop())).filter(v=>v>0).sort((a,b)=>a-b);
+  if(!dias.length)return;
+  const f=face(); f.name=$('#faceName').value.trim()||f.name; f.dias=dias; fillFaces(); save(); render();
+};
+$('#faceNew').onclick=()=>{const id='f'+Date.now();S.faces.push({id,system:S.sys,name:'New face',dias:[2,4,8]});S.faceId=id;fillFaces();save();render()};
+
+/* ---------- Start ---------- */
+
+/* ---------- Photo reading through the relay (Claude reads the instrument screen) ---------- */
+const CONV={
+  C:v=>v, F:v=>(v-32)*5/9,
+  hPa:v=>v, mbar:v=>v, inHg:v=>v*33.8639, mmHg:v=>v*1.33322, kPa:v=>v*10,
+  mph:v=>v, 'km/h':v=>v*0.621371, 'm/s':v=>v*2.23694, kt:v=>v*1.15078
+};
+let photoKind=null;
+function showSheet(title,html,proposals){
+  S.photo={proposals:proposals||[]};
+  $('#psTitle').textContent=title; $('#psBody').innerHTML=html;
+  $('#psApply').hidden=!(proposals&&proposals.length);
+  $('#photoSheet').hidden=false;
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-photo]'); if(!b)return;
+  if(!S.relay||!S.appKey){showSheet('Photo reading not set up','<p class="ps-warn">Add the relay address and the photo reading key in Full view, under Airfield report, Airfield data relay. The relay also needs your Claude API key, as described in the setup steps.</p>');return}
+  photoKind=b.dataset.photo; $('#photoIn').value=''; $('#photoIn').click();
+});
+async function shrinkImage(file){
+  const url=URL.createObjectURL(file);
+  try{
+    const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error('That file could not be opened as an image.'));i.src=url});
+    const k=Math.min(1,1568/Math.max(img.naturalWidth,img.naturalHeight));
+    const c=document.createElement('canvas'); c.width=Math.round(img.naturalWidth*k); c.height=Math.round(img.naturalHeight*k);
+    c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+    return c.toDataURL('image/jpeg',0.85).split(',')[1];
+  }finally{URL.revokeObjectURL(url)}
+}
+$('#photoIn').onchange=async e=>{
+  const file=e.target.files[0]; if(!file)return;
+  showSheet('Reading photo…','<p class="rm-note">Sending the photo to Claude through your relay. This usually takes a few seconds.</p>');
+  try{
+    const image=await shrinkImage(file);
+    const r=await fetch(S.relay.replace(/\/+$/,'')+'/read',{method:'POST',headers:{'Content-Type':'application/json','X-Range-Key':S.appKey},body:JSON.stringify({kind:photoKind,image,media_type:'image/jpeg'})});
+    const j=await r.json().catch(()=>({error:`Relay answered ${r.status}`}));
+    if(!r.ok||j.error)throw new Error(j.error||`Relay answered ${r.status}`);
+    presentReading(photoKind,j.values||{});
+  }catch(err){showSheet("Couldn't read the photo",`<p class="ps-warn">${(err.message||String(err)).replace(/</g,'&lt;')}</p><p class="rm-note">Check the relay has been updated to version 2 and the key matches, or enter the values by hand.</p>`)}
+};
+const esc=t=>String(t??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function presentReading(kind,v){
+  const P=[], warn=[];
+  const row=(i,label,val,on)=>`<label class="ps-row"><input type="checkbox" data-pi="${i}" ${on?'checked':''}><span>${esc(label)}</span><b>${esc(val)}</b></label>`;
+  if(kind==='atmos'){
+    if(v.temperature&&isFinite(v.temperature.value)&&CONV[v.temperature.unit]){const c=CONV[v.temperature.unit](+v.temperature.value);
+      P.push({label:'Temperature',val:c.toFixed(1)+' °C',on:true,apply:()=>{S.kestrel.T=c.toFixed(1);S.atmSrc='kestrel'}})}
+    if(v.station_pressure&&isFinite(v.station_pressure.value)&&CONV[v.station_pressure.unit]){const h=CONV[v.station_pressure.unit](+v.station_pressure.value);
+      P.push({label:'Station pressure',val:h.toFixed(1)+' hPa',on:true,apply:()=>{S.kestrel.P=h.toFixed(1);S.atmSrc='kestrel'}})}
+    else if(v.barometric_pressure&&isFinite(v.barometric_pressure.value)){warn.push(`Only barometric pressure is visible (${v.barometric_pressure.value} ${v.barometric_pressure.unit}). The solver needs station pressure: switch the meter's pressure display to Station and take the photo again, or enter it by hand.`)}
+    if(isFinite(v.humidity_pct)&&v.humidity_pct!==null){const h=+v.humidity_pct;P.push({label:'Humidity',val:h.toFixed(0)+' %',on:true,apply:()=>{S.kestrel.RH=h.toFixed(0);S.atmSrc='kestrel'}})}
+    if(v.wind_speed&&isFinite(v.wind_speed.value)&&CONV[v.wind_speed.unit]){const m=CONV[v.wind_speed.unit](+v.wind_speed.value);
+      P.push({label:'Wind speed',val:m.toFixed(1)+' mph',on:true,apply:()=>{S.manual.spd=m.toFixed(1);S.src='manual'}})}
+    if(v.wind_direction_deg!=null&&isFinite(v.wind_direction_deg)){const d=norm360(+v.wind_direction_deg), clk=Math.round(norm360(d-geom().az)/30)%12||12;
+      P.push({label:'Wind from',val:`${d.toFixed(0)}° (${clk} o'clock)`,on:true,apply:()=>{S.manual.dir=String(Math.round(d));S.src='manual'}})}
+  }else if(kind==='range'){
+    if(v.distance&&isFinite(v.distance.value)){
+      const yd=v.distance.unit==='m'?v.distance.value/M_PER_YD:+v.distance.value, shown=fromYd(yd,S.distUnit);
+      const amr=v.mode==='angle_modified';
+      if(amr)warn.push('This reading looks angle-modified (AMR). The app needs the line-of-sight distance; switch the rangefinder to line of sight and range again.');
+      else if(v.mode!=='line_of_sight')warn.push("The photo doesn't show whether this is line of sight or angle-modified. Check before applying.");
+      P.push({label:'Rangefinder distance',val:`${shown.toFixed(1)} ${S.distUnit}`,on:!amr,apply:()=>{S.lrf=shown.toFixed(1)}});
+    }
+    if(v.angle_deg!=null&&isFinite(v.angle_deg))warn.push(`The rangefinder shows ${v.angle_deg}° of angle; the app takes the angle from the map heights, so compare the two.`);
+  }else if(kind==='chrono'){
+    const f=v.unit==='m/s'?3.28084:1, shots=(v.shots||[]).map(x=>+x.velocity*f).filter(isFinite);
+    let avg=v.average!=null&&isFinite(v.average)?+v.average*f:(shots.length?shots.reduce((a,b)=>a+b,0)/shots.length:null);
+    const sd=v.sd!=null&&isFinite(v.sd)?+v.sd*f:null, es=v.es!=null&&isFinite(v.es)?+v.es*f:null;
+    if(avg!=null){
+      const g=S.logs[S.logs.length-1];
+      const rec={avg,sd,es,n:shots.length||null,shots,t:new Date().toISOString()};
+      if(g)P.push({label:`Attach to string logged ${new Date(g.t).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',hour12:false})}`,val:`${avg.toFixed(0)} fps${sd!=null?' · SD '+sd.toFixed(1):''}${es!=null?' · ES '+es.toFixed(0):''}`,on:true,apply:()=>{g.chrono=rec}});
+      else warn.push('No string has been logged yet, so this average has nothing to attach to. Log the string first.');
+      P.push({label:'Also set the load muzzle velocity',val:`${avg.toFixed(0)} fps`,on:false,apply:()=>{const l=curLoad();l.mvFps=Math.round(avg);fillLoadEditor()}});
+    }
+  }
+  if(v.notes)warn.push('Claude noted: '+v.notes);
+  const html=(P.length?P.map((p,i)=>row(i,p.label,p.val,p.on)).join(''):'<p class="ps-warn">No usable values were found in the photo.</p>')+warn.map(w=>`<p class="ps-warn">${esc(w)}</p>`).join('')+
+    `<p class="rm-note">${v.device?esc(v.device)+'. ':''}Check each value against the screen before applying.</p>`;
+  showSheet(kind==='atmos'?'Weather meter reading':kind==='range'?'Rangefinder reading':'Chronograph reading',html,P);
+}
+$('#psDiscard').onclick=()=>{$('#photoSheet').hidden=true;S.photo=null};
+$('#psApply').onclick=()=>{
+  const P=(S.photo&&S.photo.proposals)||[];
+  document.querySelectorAll('#psBody [data-pi]').forEach(cb=>{if(cb.checked&&P[+cb.dataset.pi])P[+cb.dataset.pi].apply()});
+  $('#photoSheet').hidden=true; S.photo=null; save(); if(!$('#rm').hidden)rmFill(); syncMain(); render();
+};
+$('#appKey').value=S.appKey;
+$('#appKey').oninput=e=>{S.appKey=e.target.value.trim();save();$('#appKeyMsg').textContent=S.appKey?'Saved on this device.':''};
+
+/* ---------- Barrel: round sequence, cold bore, settling offsets, history forecast ---------- */
+function roundSeq(){
+  const ev=[...S.barrel.foulers.map(t=>({t,type:'fouler'})),...S.shots.map((s,i)=>({t:s.t,type:'shot',i}))].sort((a,b)=>Date.parse(a.t)-Date.parse(b.t));
+  const info=new Map(); let prev=null, n=0;
+  const before=parseInt(S.barrel.roundsBefore,10);
+  for(const e of ev){
+    n++; const gap=prev==null?null:(Date.parse(e.t)-prev)/60000;
+    const cold=gap==null||gap>(+S.coldMin||10);
+    if(e.type==='shot')info.set(e.i,{idx:n,gap,cold,barrelRound:isFinite(before)?before+n:null});
+    prev=Date.parse(e.t);
+  }
+  return{info,total:n};
+}
+// Shot impact in MOA, corrected for what was dialled, so shots from different strings compare
+function corrected(s){
+  const g=logFor(s.t), ip=inPerUnit('moa',s.yd);
+  const dE=g&&g.dialE!=null?g.dialE/RAD_PER.moa:0, dW=g&&g.dialW!=null?g.dialW/RAD_PER.moa:0;
+  return{x:s.xIn/ip-dW, y:s.yIn/ip-dE};
+}
+function settling(){
+  const K=Math.max(1,parseInt(S.settleK,10)||7), {info}=roundSeq();
+  const pts=S.shots.map((s,i)=>({s,i,inf:info.get(i),c:corrected(s)})).filter(p=>p.inf);
+  const settled=pts.filter(p=>p.inf.idx>K);
+  if(settled.length<3)return{K,pts,ok:false,settledN:settled.length};
+  const mx=settled.reduce((a,p)=>a+p.c.x,0)/settled.length, my=settled.reduce((a,p)=>a+p.c.y,0)/settled.length;
+  const sdy=Math.sqrt(settled.reduce((a,p)=>a+(p.c.y-my)**2,0)/(settled.length-1));
+  const sdx=Math.sqrt(settled.reduce((a,p)=>a+(p.c.x-mx)**2,0)/(settled.length-1));
+  pts.forEach(p=>{p.dx=p.c.x-mx;p.dy=p.c.y-my});
+  return{K,pts,ok:true,settledN:settled.length,sdy,sdx};
+}
+function renderSettling(){
+  if(document.activeElement!==$('#settleK'))$('#settleK').value=S.settleK;
+  if(document.activeElement!==$('#coldMin'))$('#coldMin').value=S.coldMin;
+  const st=settling(), svg=$('#settleChart');
+  $('#settleState').textContent=`· ${S.barrel.state==='clean'?'cleaned before today':'fouled from last session'}${S.barrel.roundsBefore!==''?`, ${S.barrel.roundsBefore} rounds since clean`:''}${S.barrel.foulers.length?`, ${S.barrel.foulers.length} off-target foulers`:''}`;
+  if(!st.ok){$('#settleMsg').textContent=st.pts.length?`Needs at least 3 rounds after round ${st.K} to set the settled group (${st.settledN} so far).`:'Plot or import a session\'s shots, including foulers on target, to see how the first rounds compare with the settled group.';svg.innerHTML='';drawForecast();return}
+  const early=st.pts.filter(p=>p.inf.idx<=st.K);
+  const ey=early.length?early.reduce((a,p)=>a+p.dy,0)/early.length:0, ex=early.length?early.reduce((a,p)=>a+p.dx,0)/early.length:0;
+  const cold=st.pts.filter(p=>p.inf.cold);
+  const f=v=>`${v>=0?'+':'−'}${Math.abs(v).toFixed(2)}`;
+  $('#settleMsg').textContent=early.length?`Rounds 1–${st.K} on target (${early.length}) averaged ${Math.abs(ey).toFixed(2)} MOA ${ey>=0?'high':'low'} and ${Math.abs(ex).toFixed(2)} MOA ${ex>=0?'right':'left'} of the settled group (${st.settledN} rounds, vertical SD ${st.sdy.toFixed(2)} MOA).`+
+    (cold.length?` Cold-bore rounds: ${cold.map(p=>`#${p.inf.idx} ${f(p.dy)} vertical`).join(', ')}.`:''):`No early rounds on target yet; the settled group has ${st.settledN} rounds.`;
+  // chart: vertical (accent) and horizontal (wind) offset per round
+  const W=360,H=170,pl=34,pr=10,pt=10,pb=26, maxIdx=Math.max(st.K+3,...st.pts.map(p=>p.inf.idx));
+  const lim=Math.max(0.5,...st.pts.map(p=>Math.max(Math.abs(p.dy),Math.abs(p.dx))))*1.15;
+  const X=i=>pl+(i-0.5)*(W-pl-pr)/maxIdx, Y=v=>pt+(H-pt-pb)/2-v/lim*(H-pt-pb)/2;
+  let h=`<rect x="${pl}" y="${Y(st.sdy)}" width="${W-pl-pr}" height="${Y(-st.sdy)-Y(st.sdy)}" fill="var(--wind)" opacity=".10"/>`;
+  h+=`<line x1="${pl}" x2="${W-pr}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--muted)" stroke-width="1"/>`;
+  h+=`<line x1="${X(st.K+0.5)}" x2="${X(st.K+0.5)}" y1="${pt}" y2="${H-pb}" stroke="var(--muted)" stroke-dasharray="3 3"/>`;
+  for(const v of [lim*0.8,-lim*0.8])h+=`<text x="${pl-4}" y="${Y(v)+3}" text-anchor="end" font-size="9" fill="var(--muted)" font-family="var(--mono)">${v>0?'+':'−'}${Math.abs(v).toFixed(1)}</text>`;
+  for(let i=1;i<=maxIdx;i++)if(maxIdx<=20||i%2===1)h+=`<text x="${X(i)}" y="${H-pb+12}" text-anchor="middle" font-size="9" fill="var(--muted)" font-family="var(--mono)">${i}</text>`;
+  h+=`<text x="${(pl+W-pr)/2}" y="${H-3}" text-anchor="middle" font-size="9" fill="var(--muted)">round of the session · band = settled vertical ±1 SD</text>`;
+  for(const p of st.pts){
+    h+=`<circle cx="${X(p.inf.idx)-2}" cy="${Y(p.dy)}" r="${p.inf.cold?4.5:3.2}" fill="var(--accent)" ${p.inf.cold?'stroke="var(--fg)" stroke-width="1.2"':''}><title>Round ${p.inf.idx}: vertical ${f(p.dy)} MOA</title></circle>`;
+    h+=`<rect x="${X(p.inf.idx)+0.5}" y="${Y(p.dx)-2.5}" width="5" height="5" fill="var(--wind)"><title>Round ${p.inf.idx}: horizontal ${f(p.dx)} MOA</title></rect>`;
+  }
+  h+=`<circle cx="${pl+8}" cy="${pt+6}" r="3.2" fill="var(--accent)"/><text x="${pl+14}" y="${pt+9}" font-size="9" fill="var(--fg)">vertical</text><rect x="${pl+58}" y="${pt+3.5}" width="5" height="5" fill="var(--wind)"/><text x="${pl+66}" y="${pt+9}" font-size="9" fill="var(--fg)">horizontal (MOA from settled centre; ringed = cold bore)</text>`;
+  svg.innerHTML=h;
+  drawForecast();
+}
+function drawForecast(){
+  const H=S.history; $('#histCount').textContent=H.length?`(${H.length} saved session${H.length>1?'s':''})`:'(none saved yet)';
+  if(!H.length){$('#foreTbl').innerHTML='';return}
+  const K=Math.max(...H.map(h=>h.K));
+  const agg=(state,idx)=>{const v=[];for(const h of H.filter(h=>h.state===state))for(const r of h.rounds)if(r.idx===idx)v.push(r);
+    if(!v.length)return'<td class="na">–</td><td class="na">–</td>';
+    const dy=v.reduce((a,r)=>a+r.dy,0)/v.length, dx=v.reduce((a,r)=>a+r.dx,0)/v.length;
+    return `<td>${dy>=0?'↑':'↓'} ${Math.abs(dy).toFixed(2)} ${dx>=0?'R':'L'} ${Math.abs(dx).toFixed(2)}</td><td>${v.length}</td>`};
+  let t='<tr><th>Round</th><th>Clean barrel, MOA</th><th>n</th><th>Fouled barrel, MOA</th><th>n</th></tr>';
+  for(let i=1;i<=K;i++)t+=`<tr><td>${i}</td>${agg('clean',i)}${agg('fouled',i)}</tr>`;
+  const coldAgg=()=>{const v=[];for(const h of H)for(const r of h.rounds)if(r.cold)v.push(r);if(!v.length)return'–';
+    const dy=v.reduce((a,r)=>a+r.dy,0)/v.length;return `${dy>=0?'↑':'↓'} ${Math.abs(dy).toFixed(2)} MOA vertical (${v.length} round${v.length===1?'':'s'})`};
+  t+=`<tr><td colspan="5" style="text-align:left">Any cold-bore round: ${coldAgg()}</td></tr>`;
+  $('#foreTbl').innerHTML=t;
+}
+$('#settleK').oninput=e=>{const v=parseInt(e.target.value,10);if(v>0){S.settleK=v;save();render()}};
+$('#coldMin').oninput=e=>{const v=parseFloat(e.target.value);if(v>0){S.coldMin=v;save();render()}};
+$('#saveSession').onclick=()=>{
+  const st=settling();
+  if(!st.ok){$('#saveMsg').textContent='Nothing to save yet: the session needs at least 3 rounds after the settled point.';return}
+  const l=curLoad();
+  S.history.push({t:new Date().toISOString(),load:l?l.name:'',state:S.barrel.state,roundsBefore:S.barrel.roundsBefore,foulersOff:S.barrel.foulers.length,K:st.K,coldMin:S.coldMin,
+    sdy:st.sdy,sdx:st.sdx,rounds:st.pts.map(p=>({idx:p.inf.idx,cold:p.inf.cold,dx:+p.dx.toFixed(3),dy:+p.dy.toFixed(3),v:p.s.vFps??null}))});
+  save(); render();
+  $('#saveMsg').textContent=`Saved. The forecast now draws on ${S.history.length} session${S.history.length>1?'s':''}. Clear the string before the next session so its rounds start again at 1.`;
+};
+let histArmed=false;
+$('#clearHistory').onclick=()=>{
+  if(!histArmed){histArmed=true;$('#saveMsg').textContent='Tap Clear history again to delete all saved sessions.';setTimeout(()=>{histArmed=false},4000);return}
+  S.history=[];histArmed=false;save();render();$('#saveMsg').textContent='Barrel history cleared.';
+};
+/* ---------- Calypso Ultrasonic over Web Bluetooth (Calypso developer manual 1.8:
+   data service 0x180D, notify characteristic 0x2A39; speed uint16 LE /100 m/s, direction uint16 LE degrees
+   relative to the orientation mark, battery x10 %, temperature -100 °C) ---------- */
+const CAL={dev:null,ch:null,samples:[],batt:null,status:'Not connected. Point the orientation mark on the Calypso at the target.',win:10,live:null};
+let calRenderTimer=null;
+function calAvg(){
+  const now=Date.now(), w=CAL.samples.filter(s=>now-s.t<=CAL.win*1000); if(!w.length)return null;
+  let u=0,v=0,g=0; for(const s of w){u+=s.spd*Math.sin(s.rel*D2R);v+=s.spd*Math.cos(s.rel*D2R);g=Math.max(g,s.spd)}
+  u/=w.length;v/=w.length; return{spd:Math.hypot(u,v),rel:norm360(Math.atan2(u,v)*R2D),gust:g,n:w.length};
+}
+function calOnData(e){
+  const d=e.target.value; if(d.byteLength<4)return;
+  const spd=d.getUint16(0,true)/100/MPH, rel=d.getUint16(2,true)%360;
+  if(d.byteLength>=5)CAL.batt=d.getUint8(4)*10;
+  CAL.live={spd,rel}; CAL.samples.push({t:Date.now(),spd,rel});
+  const cut=Date.now()-60000; while(CAL.samples.length&&CAL.samples[0].t<cut)CAL.samples.shift();
+  if(!calRenderTimer)calRenderTimer=setTimeout(()=>{calRenderTimer=null;render()},1000);
+}
+async function calConnect(){
+  if(CAL.dev&&CAL.dev.gatt.connected){CAL.dev.gatt.disconnect();return}
+  if(!navigator.bluetooth){CAL.status='Bluetooth from a web page needs Chrome on Android (not iPhone or iPad), opened from the hosted address.';render();return}
+  try{
+    CAL.status='Choose the Calypso in the list…';render();
+    const dev=await navigator.bluetooth.requestDevice({filters:[{services:[0x180d]},{namePrefix:'ULTRA'},{namePrefix:'Calypso'},{namePrefix:'CALYPSO'}],optionalServices:[0x180d,0x180a,0x180f,0x181a]});
+    CAL.dev=dev; dev.addEventListener('gattserverdisconnected',()=>{CAL.status='Disconnected. Tap Connect to reconnect.';CAL.ch=null;render()});
+    CAL.status='Connecting…';render();
+    const srv=await dev.gatt.connect();
+    let svc,ch;
+    try{svc=await srv.getPrimaryService(0x180d); ch=await svc.getCharacteristic(0x2a39)}
+    catch(e){dev.gatt.disconnect();CAL.status=`${dev.name||'This meter'} connected but doesn't offer the standard Calypso wind data. AB or Kestrel-linked versions may use a different format. Use Kestrel / mine for now and tell Claude the model number.`;render();return}
+    ch.addEventListener('characteristicvaluechanged',calOnData); await ch.startNotifications(); CAL.ch=ch;
+    CAL.status=`Connected to ${dev.name||'Calypso'}. Keep the orientation mark pointing at the target.`;
+    S.src='calypso'; save(); render();
+  }catch(err){
+    CAL.status=err&&err.name==='NotFoundError'?'No device chosen.':`Couldn't connect: ${err.message||err}. Check the Calypso is on and not connected to its own app.`;render();
+  }
+}
+/* ---------- Range mode: large-control page for the firing point ---------- */
+let wakeLock=null;
+async function keepAwake(on){
+  try{ if(on&&'wakeLock' in navigator&&!wakeLock){wakeLock=await navigator.wakeLock.request('screen');wakeLock.addEventListener('release',()=>{wakeLock=null})}
+       if(!on&&wakeLock){await wakeLock.release();wakeLock=null} }catch(e){}
+}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&S.rmOpen)keepAwake(true)});
+function rmFill(){
+  $('#rmLrf').value=S.lrf; $('#rmT').value=S.kestrel.T; $('#rmP').value=S.kestrel.P; $('#rmRH').value=S.kestrel.RH;
+  $('#rmSpd').value=S.manual.spd; $('#rmDE').value=S.dial.e; $('#rmLight').value=S.light; $('#calWin').value=CAL.win;
+  $('#rmRounds').value=S.barrel.roundsBefore;
+}
+function syncMain(){
+  $('#lrf').value=S.lrf; $('#kT').value=S.kestrel.T; $('#kP').value=S.kestrel.P; $('#kRH').value=S.kestrel.RH;
+  $('#mSpd').value=S.manual.spd; $('#mDir').value=S.manual.dir; $('#dE').value=S.dial.e; $('#dW').value=S.dial.w; $('#dWd').value=S.dial.wd;
+  $('#light').value=S.light; fillNominal();
+}
+function setRM(open){S.rmOpen=open;save();$('#rm').hidden=!open;keepAwake(open);if(open){rmFill();render()}else{syncMain();render()}}
+const dialSigned=()=>{const w=parseFloat(S.dial.w);return isFinite(w)?(S.dial.wd==='L'?-w:w):0};
+function renderRange(){
+  if($('#rm').hidden)return;
+  const l=curLoad(), u=(l&&l.scopeUnit)||'moa', U=UNIT_LBL[u], ck=(l&&+l.click)||0.125, td=trueDistance(), brg=geom().az;
+  document.querySelectorAll('.sUnit').forEach(e=>e.textContent=U);
+  $('#rmClock').textContent=`${new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',hour12:false})} · ${fmtD(td.yd)} · ${td.src}`;
+  const p=S.lastSol;
+  if(p){
+    const e=p.elevRad/RAD_PER[u], w=p.windRad/RAD_PER[u], eC=Math.round(e/ck), wC=Math.round(w/ck);
+    $('#rmElev').textContent=`${e>=0?'↑':'↓'} ${Math.abs(eC*ck).toFixed(3)}`; $('#rmElevC').textContent=`${Math.abs(eC)} clicks ${e>=0?'up':'down'} · ${U}`;
+    $('#rmWind').textContent=wC===0?'0':`${w>0?'R':'L'} ${Math.abs(wC*ck).toFixed(3)}`; $('#rmWindC').textContent=wC===0?'hold centre':`${Math.abs(wC)} clicks ${w>0?'right':'left'} · ${U}`;
+  }
+  const an=atmNow(), wn=windNow(), r=wn&&wn.dir!=null?resolve(wn,brg):null;
+  $('#rmSolNote').textContent=`${l?l.name:''} · ${an?`${an.label} ${an.Tc.toFixed(1)} °C, ${an.PhPa.toFixed(1)} hPa, ${an.RH.toFixed(0)}%`:'no atmosphere yet'} · ${wn?`${wn.label}: ${Math.abs(r?r.cross:0).toFixed(1)} mph ${r&&r.cross<0?'from left':'from right'}`:'no wind yet'}`;
+  // distance
+  $('#rmDU').textContent=S.distUnit;
+  $('#rmNom').innerHTML=NOMINALS[S.distUnit].map(v=>`<button type="button" data-nom="${v}" class="${v==S.nominal?'sel':''}">${v}</button>`).join('');
+  const nomYd=toYd(S.nominal,S.distUnit), dY=td.yd-nomYd;
+  $('#rmDistMsg').textContent=td.src==='Nominal'?`Using the card distance, ${S.nominal} ${S.distUnit}. Enter the rangefinder reading to true it.`:
+    `True ${fmtD(td.yd)} (${td.src}), ${dY>=0?'+':'−'}${Math.abs(fromYd(dY,S.distUnit)).toFixed(1)} ${S.distUnit} from the card.`;
+  // atmosphere
+  document.querySelectorAll('#rmAtmSeg button').forEach(b=>b.classList.toggle('sel',b.dataset.asrc===S.atmSrc));
+  $('#rmKes').hidden=S.atmSrc!=='kestrel';
+  $('#rmAtmMsg').textContent=S.atmSrc==='kestrel'?(an&&an.src==='kestrel'?'Using your meter. Station pressure, not barometric.':'Enter temperature and station pressure to use your meter; the model is used until then.'):(an?`Model: ${an.Tc.toFixed(1)} °C, ${an.PhPa.toFixed(1)} hPa, ${an.RH.toFixed(0)}%.`:'Waiting for model data.');
+  // wind
+  document.querySelectorAll('#rmSrc button').forEach(b=>b.classList.toggle('sel',b.dataset.src===S.src));
+  $('#rmManual').hidden=S.src!=='manual'; $('#rmCal').hidden=S.src!=='calypso';
+  const rel=norm360((+S.manual.dir||0)-brg), clk=Math.round(rel/30)%12||12;
+  $('#rmClockPick').innerHTML=[12,1,2,3,4,5,6,7,8,9,10,11].map(c=>`<button type="button" data-clk="${c}" class="${c===clk?'sel':''}">${c}</button>`).join('');
+  $('#rmDirMsg').textContent=`From ${clk} o'clock = ${Math.round(+S.manual.dir||0)}° true (line of fire ${brg.toFixed(0)}°).`;
+  $('#calBtn').textContent=CAL.dev&&CAL.dev.gatt&&CAL.dev.gatt.connected?'Disconnect':'Connect Calypso';
+  $('#calStatus').textContent=CAL.status+(CAL.batt!=null?` Battery ${CAL.batt}%.`:'');
+  const clkOf=r=>Math.round(norm360(r)/30)%12||12;
+  $('#calLive').textContent=CAL.live?`${CAL.live.spd.toFixed(1)} mph · ${clkOf(CAL.live.rel)} o'clock`:'–';
+  const a=calAvg(); $('#calAvg').textContent=a?`${a.spd.toFixed(1)} mph · ${clkOf(a.rel)} o'clock`:'–';
+  $('#rmWindMsg').textContent=r?`Crosswind ${Math.abs(r.cross).toFixed(1)} mph ${r.cross>=0?'from right':'from left'}, ${r.head>=0?'head':'tail'} ${Math.abs(r.head).toFixed(1)} mph.`:'No wind value yet.';
+  // dial
+  const ws=dialSigned(); $('#rmDW').textContent=ws===0?'0':`${ws>0?'R':'L'} ${Math.abs(ws).toFixed(3)}`;
+  document.querySelectorAll('#rmBarrel button').forEach(x=>x.classList.toggle('sel',x.dataset.bstate===S.barrel.state));
+  const seq=roundSeq(), lastF=S.barrel.foulers[S.barrel.foulers.length-1];
+  $('#rmBarrelMsg').textContent=`${S.barrel.foulers.length} off-target fouler${S.barrel.foulers.length===1?'':'s'}${lastF?`, last at ${new Date(lastF).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',hour12:false})}`:''}. ${seq.total} round${seq.total===1?'':'s'} fired this session; the next is round ${seq.total+1}.`;
+  const lg=S.logs[S.logs.length-1];
+  $('#rmChrono').textContent=lg&&lg.chrono?`Garmin for the ${new Date(lg.t).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',hour12:false})} string: ${lg.chrono.avg.toFixed(0)} fps${lg.chrono.sd!=null?', SD '+lg.chrono.sd.toFixed(1):''}${lg.chrono.es!=null?', ES '+lg.chrono.es.toFixed(0):''}.`:'';
+  const g=S.logs[S.logs.length-1];
+  $('#rmLogMsg').textContent=g?`Last log ${new Date(g.t).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',hour12:false})}: ${fromYd(g.yd,S.distUnit).toFixed(1)} ${S.distUnit}, ${g.Tc!=null?g.Tc.toFixed(1)+' °C':''} ${g.PhPa!=null?g.PhPa.toFixed(1)+' hPa':''}, dialled ${g.dialE!=null?(g.dialE/RAD_PER[u]).toFixed(3):'–'} up.`:'No strings logged yet today.';
+}
+$('#rmBarrel').addEventListener('click',e=>{const b=e.target.closest('[data-bstate]');if(!b)return;S.barrel.state=b.dataset.bstate;save();render()});
+$('#rmRounds').oninput=e=>{S.barrel.roundsBefore=e.target.value.trim();save();render()};
+$('#rmFoul').onclick=()=>{S.barrel.foulers.push(new Date().toISOString());save();render()};
+$('#rmFoulUndo').onclick=()=>{S.barrel.foulers.pop();save();render()};
+$('#btnRM').onclick=()=>setRM(true);
+$('#rmExit').onclick=()=>setRM(false);
+$('#rmNom').addEventListener('click',e=>{const b=e.target.closest('[data-nom]');if(!b)return;S.nominal=+b.dataset.nom;save();render()});
+$('#rm').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b)return;
+  const l=curLoad(), ck=(l&&+l.click)||0.125;
+  if(b.dataset.lrf){const v=parseFloat(S.lrf)||toYd(S.nominal,S.distUnit);S.lrf=String(+(v+ +b.dataset.lrf).toFixed(1));$('#rmLrf').value=S.lrf}
+  else if(b.dataset.spd){S.manual.spd=String(Math.max(0,(parseFloat(S.manual.spd)||0)+ +b.dataset.spd));$('#rmSpd').value=S.manual.spd;S.src='manual'}
+  else if(b.dataset.clk){S.manual.dir=String(Math.round(norm360(geom().az+(+b.dataset.clk%12)*30)));S.src='manual'}
+  else if(b.dataset.de){S.dial.e=String(+(((parseFloat(S.dial.e)||0)+ +b.dataset.de*ck)).toFixed(3));$('#rmDE').value=S.dial.e}
+  else if(b.dataset.dw){const w=dialSigned()+ +b.dataset.dw*ck;S.dial.w=Math.abs(w).toFixed(3);S.dial.wd=w<0?'L':'R'}
+  else if(b.dataset.src){S.src=b.dataset.src}
+  else if(b.dataset.asrc){S.atmSrc=b.dataset.asrc}
+  else return;
+  save(); render();
+});
+$('#rmLrf').oninput=e=>{S.lrf=e.target.value.trim();save();render()};
+[['rmT','T'],['rmP','P'],['rmRH','RH']].forEach(([id,k])=>$('#'+id).oninput=e=>{S.kestrel[k]=e.target.value.trim();save();render()});
+$('#rmSpd').oninput=e=>{S.manual.spd=e.target.value.trim();S.src='manual';save();render()};
+$('#rmDE').oninput=e=>{S.dial.e=e.target.value.trim();save();render()};
+$('#rmLight').onchange=e=>{S.light=e.target.value;save()};
+$('#calWin').onchange=e=>{CAL.win=+e.target.value;render()};
+$('#calBtn').onclick=calConnect;
+$('#rmCopy').onclick=()=>{$('#dCopy').click();$('#rmDE').value=S.dial.e;render()};
+$('#rmLog').onclick=()=>{$('#logNow').click();const b=$('#rmLog');b.textContent='Logged ✓';setTimeout(()=>b.textContent='Log conditions for this string',1500)};
+setInterval(()=>{if(S.src==='calypso')render()},2000);
+
+render(); fetchElev(); refreshAll();
+if(S.rmOpen)setRM(true);
+scheduleRefresh();
+setInterval(render,60*1000);
+</script>
+</body>
+</html>
