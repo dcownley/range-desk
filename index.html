@@ -29,6 +29,11 @@
 [hidden]{display:none!important}
 .chip:empty{display:none}
 html,body{height:100%;margin:0}
+body{display:flex;flex-direction:column;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+@supports (height:100dvh){body{height:100dvh}}
+header{flex:none}
+/* Safari on iPad zooms the page when a box under 16px is tapped */
+@media (pointer:coarse){input,select,textarea{font-size:16px!important}}
 body{background:var(--bg);color:var(--fg);font:15px/1.45 var(--body)}
 header{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;
   padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
@@ -45,10 +50,11 @@ button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 button.on{outline:2px solid var(--accent);outline-offset:1px}
 :focus-visible{outline:2px solid var(--wind);outline-offset:2px}
 .search input{flex:1}
-main{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(340px,1fr);height:calc(100% - 58px)}
+main{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(340px,1fr);flex:1 1 auto;min-height:0}
+#mapbox{min-height:0}
 #map{min-height:420px;height:100%}
 .panel{overflow-y:auto;padding:14px max(16px,env(safe-area-inset-right,0px)) 40px 16px;display:flex;flex-direction:column;gap:14px}
-@media (max-width:860px){main{grid-template-columns:1fr;height:auto}#map{height:55vh}.panel{overflow:visible;padding-left:max(16px,env(safe-area-inset-left,0px))}}
+@media (max-width:860px){body{display:block;height:auto}main{grid-template-columns:minmax(0,1fr);height:auto}#map{height:55vh}.panel{overflow:visible;padding-left:max(16px,env(safe-area-inset-left,0px))}}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px 14px;display:flex;flex-direction:column;gap:10px;min-width:0}
 .card h2{font:600 15px/1 var(--display);letter-spacing:.09em;text-transform:uppercase;margin:0;color:var(--muted);display:flex;justify-content:space-between;align-items:center;gap:8px}
 .card h2 small{font:400 12px var(--body);letter-spacing:0;text-transform:none}
@@ -65,7 +71,7 @@ main{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(340px,1fr);height
 .chip.warn{color:var(--warn)} .chip.good{color:var(--good)} .chip.acc{color:var(--accent)}
 .wind-strip{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center}
 .dial{width:112px;height:112px}
-.seg{display:inline-flex;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.seg{display:inline-flex;flex-wrap:wrap;max-width:100%;border:1px solid var(--line);border-radius:4px;overflow:hidden}
 .seg button{border:0;border-radius:0;border-right:1px solid var(--line);padding:5px 9px}
 .seg button:last-child{border-right:0}
 .seg button.sel{background:var(--fg);color:var(--panel)}
@@ -142,6 +148,22 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
 .ps-in button{min-height:52px;font-size:17px;border-radius:6px}
 .rm-photo{border-style:dashed!important}
 #settleChart{width:100%;height:auto;max-height:240px}
+#help{position:fixed;inset:0;z-index:3500;background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(24px + env(safe-area-inset-bottom,0px))}
+.help-body{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:18px;padding-block:14px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));font-size:16px;line-height:1.55}
+.help-body h2{font:600 19px/1.2 var(--display);letter-spacing:.06em;text-transform:uppercase;margin:0 0 6px;color:var(--fg)}
+.help-body ol,.help-body ul{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:6px}
+.help-body section{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px;scroll-margin-top:70px}
+.help-body table{font-family:var(--body);font-size:14px}
+.help-body td,.help-body th{white-space:normal;text-align:left;vertical-align:top}
+.help-nav{display:flex;flex-wrap:wrap;gap:8px}
+.help-nav a{color:var(--fg);border:1px solid var(--line);border-radius:999px;padding:6px 12px;text-decoration:none;font-size:14px;background:var(--panel)}
+.help-note{color:var(--muted);font-size:14px;margin:8px 0 0}
+.ci-result{border:1px solid var(--line);border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;font-size:15px}
+.ci-result b{font:700 20px var(--mono)}
+.ci-result table{font-size:14px}
+.ci-warn{color:var(--warn);margin:0}
+.ci-ok{color:var(--good);margin:0}
 .logbox{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:10px}
 .loadgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
 .loadgrid label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;min-width:0}
@@ -171,6 +193,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
     <button id="btnFP" type="button">Place firing point</button>
     <button id="btnT" type="button">Place target</button>
     <button id="btnRM" type="button" class="primary">Range mode</button>
+    <button id="btnHelp" type="button">Help</button>
   </div>
 </header>
 <main>
@@ -218,6 +241,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
         <div><span>Muzzle velocity used</span><b id="sMv">–</b></div>
       </div>
       <p class="note" id="sCond"></p>
+      <p class="note" id="sTrue" hidden></p>
       <p class="err" id="sWarn" hidden></p>
       <div class="scroll"><table id="solTbl"></table></div>
       <div class="logbox">
@@ -416,11 +440,12 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
       <div class="row">
         <label>Light now
           <select id="light">
-            <option>Overcast</option><option>Bright overcast</option><option selected>Full sun</option><option>Changing</option>
+            <option>Overcast</option><option>Bright overcast</option><option>Full sun</option><option>Low sun</option><option>Haze</option><option>Fog / mist</option><option>Changing</option>
           </select>
         </label>
       </div>
       <p class="note" id="sunMsg"></p>
+      <p class="note" id="mirageNow"></p>
     </section>
 
     <section class="card">
@@ -437,6 +462,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
           <select id="click"></select>
         </label>
         <label>Calibre (in)<input id="cal" inputmode="decimal" size="5" value="0.308"></label>
+        <label class="note" style="display:flex;flex-direction:row;gap:6px;align-items:center;text-transform:none;letter-spacing:0;font-size:13px"><input type="checkbox" id="whiteV"> White V-bull (UK domestic)</label>
       </div>
       <div class="facewrap">
         <svg id="face" viewBox="-10 -10 20 20" role="img" aria-label="Target face. Tap to plot an impact, pinch or scroll to zoom, drag to move"></svg>
@@ -453,7 +479,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
       <details>
         <summary>Edit target faces</summary>
         <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
-          <p class="note">One ring diameter in inches per line, innermost first. The scoring system above labels them (<span id="labelHint"></span>). Ring sizes seeded here are placeholders; check them against your current rulebook.</p>
+          <p class="note">One ring diameter in inches per line, innermost first. The scoring system above labels them (<span id="labelHint"></span>). UK faces come from the ICFRA F-Class Technical Rules 2023 (Rev-2), Annex F/B; US faces from the 2026 NRA F-Class Rulebook, rules 4.4 to 4.7. Both are chosen automatically for the card distance, and editing one makes your own copy.</p>
           <input id="faceName" aria-label="Face name">
           <textarea id="faceRings" rows="7" aria-label="Ring diameters in inches"></textarea>
           <div class="row"><button type="button" id="faceSave">Save face</button><button type="button" id="faceNew">New face</button></div>
@@ -515,6 +541,90 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
   </div>
 </main>
 
+
+<div id="help" hidden role="dialog" aria-label="Help">
+  <div class="rm-bar">
+    <b>Help</b>
+    <span class="rm-sub">Range Desk prototype</span>
+    <button type="button" id="helpClose">Close</button>
+  </div>
+  <div class="help-body">
+    <nav class="help-nav">
+      <a href="#h-start">Getting started</a><a href="#h-range">At the range</a><a href="#h-true">Truing</a><a href="#h-barrel">Barrel</a><a href="#h-fix">When something goes wrong</a><a href="#h-update">Updating</a>
+    </nav>
+
+    <section id="h-start">
+      <h2>Getting started on a new device</h2>
+      <ol>
+        <li>Open the app address in the browser (Chrome on Android, Safari on iPad) and add it to the home screen. Don't open the downloaded index.html file itself: the file previewer doesn't run the app.</li>
+        <li>In Full view, open <b>Airfield report</b>, then <b>Airfield data relay</b>. Enter the relay address and tap <b>Save</b>.</li>
+        <li>Enter your passphrase as the <b>Photo reading key</b>.</li>
+        <li>Place the <b>firing point</b> and <b>target</b> pins on your range, check the load under <b>Edit load</b>, and enter the correct ring sizes under <b>Edit target faces</b>.</li>
+      </ol>
+      <p class="help-note">Settings, logs and shots are saved on each device and each app address separately. Use <b>Export CSV</b> to keep a record.</p>
+    </section>
+
+    <section id="h-range">
+      <h2>At the range: Range mode</h2>
+      <ul>
+        <li><b>Distance:</b> tap the card distance, then enter the rangefinder's line-of-sight reading (not AMR). Everything is solved at the true distance.</li>
+        <li><b>Atmosphere:</b> choose Kestrel / Weatherdot and enter temperature, <i>station</i> pressure and humidity, or use the photo button.</li>
+        <li><b>Wind:</b> Kestrel / mine (speed and clock position), Calypso (live, Chrome on Android only), or the model, consensus or airfield.</li>
+        <li><b>Dial and log:</b> tap <b>Copy solution</b>, dial it, correct the figures if you dialled anything different, then <b>Log conditions for this string</b> before shooting it.</li>
+        <li><b>Photo buttons:</b> photograph the Kestrel, the rangefinder or BDX app, or the Garmin. Check each value against the screen before applying.</li>
+        <li>After shooting, import the ShotMarker CSV under <b>Plotted shots</b>. Shots are matched to your string logs by time.</li>
+      </ul>
+    </section>
+
+    <section id="h-true">
+      <h2>Correct from impact and truing</h2>
+      <p>When the group lands high or low, enter how many clicks it actually needed in <b>Correct from impact</b> (Range mode), or tap <b>Use the plotted group</b>. The app works out the muzzle velocity that explains the miss and carries it to every distance, so a 3-click miss at 900 yd becomes about 1.6 clicks at 600 and 3.6 at 1,000, not a flat 3.</p>
+      <ul>
+        <li><b>Apply for this session</b> uses the trued velocity for today's solutions without changing your load.</li>
+        <li><b>Save to load</b> makes it permanent. It needs a second tap to confirm, and <b>Undo last save</b> puts the old value back.</li>
+        <li>Base corrections on group centres, not single shots. Several corrections agreeing give a smaller ± figure.</li>
+        <li>If the Garmin's measured velocity disagrees with the trued value, part of the miss is probably drag (BC), not velocity. Don't save until that's understood.</li>
+        <li>Beyond about 1,000 yd a miss is more likely drag than velocity; the app warns you.</li>
+      </ul>
+    </section>
+
+    <section id="h-barrel">
+      <h2>Barrel settling</h2>
+      <ul>
+        <li>In Range mode's <b>Barrel</b> card, choose cleaned or fouled and enter rounds since the last clean.</li>
+        <li>Fire foulers onto the ShotMarker target at the logged dial if allowed; count foulers fired elsewhere with <b>Off-target fouler fired</b>.</li>
+        <li>A round fired more than 10 minutes after the previous one counts as cold bore (you can change this).</li>
+        <li>After the session, tap <b>Save session to barrel history</b>. The forecast table grows with every session.</li>
+      </ul>
+    </section>
+
+    <section id="h-fix">
+      <h2>When something goes wrong</h2>
+      <div class="scroll"><table>
+        <tr><th>Message or symptom</th><th>What to do</th></tr>
+        <tr><td>Everything shows dashes and the map is blank</td><td>You've opened the file in a previewer. Open the app's web address in the browser instead.</td></tr>
+        <tr><td>Photo reading not set up</td><td>Enter the relay address and photo reading key on this device.</td></tr>
+        <tr><td>Photo reading key does not match the relay</td><td>Retype the passphrase exactly as set in Cloudflare (APP_KEY).</td></tr>
+        <tr><td>Relay is missing its ANTHROPIC_API_KEY or APP_KEY secret</td><td>Check both secret names in Cloudflare.</td></tr>
+        <tr><td>Credit balance is too low</td><td>Add credit or raise the Range Desk workspace limit at platform.claude.com.</td></tr>
+        <tr><td>Only barometric pressure is visible</td><td>Switch the Kestrel's pressure display to Station and take the photo again.</td></tr>
+        <tr><td>Calypso won't connect</td><td>Unpair it from the Kestrel, close Anemotracker, and use Chrome on Android at the app's web address. Otherwise use Kestrel / mine.</td></tr>
+        <tr><td>ShotMarker import finds no shots</td><td>Send the file to Claude so the importer can be adjusted.</td></tr>
+        <tr><td>Old version still showing</td><td>Close the app fully and reopen it, or pull down to refresh.</td></tr>
+      </table></div>
+    </section>
+
+    <section id="h-update">
+      <h2>Updating the app</h2>
+      <ol>
+        <li>Download the new index.html (check the name is exactly index.html).</li>
+        <li>On github.com, open the range-desk repository: <b>Add file</b>, <b>Upload files</b>, drag it in, <b>Commit changes</b>.</li>
+        <li>After a minute or two, close and reopen the app.</li>
+      </ol>
+      <p class="help-note">The full setup, the relay instructions and the source documents are in the Reference tab of the Range Desk Development Plan.</p>
+    </section>
+  </div>
+</div>
 <input type="file" id="photoIn" accept="image/*" hidden>
 <div id="photoSheet" hidden role="dialog" aria-label="Photo reading">
   <div class="ps-in">
@@ -530,6 +640,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
   <div class="rm-bar">
     <b>Range mode</b>
     <span class="rm-sub" id="rmClock"></span>
+    <button type="button" id="rmHelp">Help</button>
     <button type="button" id="rmExit">Full view</button>
   </div>
   <div class="rm-body">
@@ -568,6 +679,32 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
       </div>
       <p class="rm-note" id="rmAtmMsg"></p>
       <button type="button" class="rm-photo" data-photo="atmos">Read Kestrel / Weatherdot photo</button>
+    </section>
+
+    <section class="rm-card" id="rmMirage">
+      <h3>Mirage and light</h3>
+      <div class="rm-lab"><span>Mirage flow</span></div>
+      <div class="rm-seg" data-mg="dir">
+        <button type="button" data-v="none">None</button>
+        <button type="button" data-v="boil">Boiling</button>
+        <button type="button" data-v="left">Running left</button>
+        <button type="button" data-v="right">Running right</button>
+      </div>
+      <div class="rm-lab"><span>Strength</span></div>
+      <div class="rm-seg" data-mg="str">
+        <button type="button" data-v="light">Light</button>
+        <button type="button" data-v="medium">Medium</button>
+        <button type="button" data-v="flat">Flat / fast</button>
+      </div>
+      <div class="rm-lab"><span>Scope focused</span></div>
+      <div class="rm-seg" data-mg="focus">
+        <button type="button" data-v="mid">Mid-range</button>
+        <button type="button" data-v="target">At the target</button>
+      </div>
+      <div class="rm-lab"><span>Light</span></div>
+      <div class="rm-seg" data-mg="light"><button type="button" data-v="Overcast">Overcast</button><button type="button" data-v="Bright overcast">Bright overcast</button><button type="button" data-v="Full sun">Full sun</button><button type="button" data-v="Low sun">Low sun</button><button type="button" data-v="Haze">Haze</button><button type="button" data-v="Fog / mist">Fog / mist</button><button type="button" data-v="Changing">Changing</button></div>
+      <p class="rm-note" id="rmMirageMsg"></p>
+      <p class="rm-note">Running right means the mirage flows towards the right, so the wind is from the left. Each change is time-stamped, so every shot carries the mirage and light at the moment it was fired.</p>
     </section>
 
     <section class="rm-card">
@@ -618,12 +755,37 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
       </div>
       <div class="rm-step" style="grid-template-columns:1fr 1fr">
         <button type="button" id="rmCopy">Copy solution</button>
-        <select id="rmLight" aria-label="Light"><option>Overcast</option><option>Bright overcast</option><option>Full sun</option><option>Changing</option></select>
+        <select id="rmLight" aria-label="Light"><option>Overcast</option><option>Bright overcast</option><option>Full sun</option><option>Low sun</option><option>Haze</option><option>Fog / mist</option><option>Changing</option></select>
       </div>
       <button type="button" class="primary rm-big" id="rmLog">Log conditions for this string</button>
       <p class="rm-note" id="rmLogMsg"></p>
       <button type="button" class="rm-photo" data-photo="chrono">Read Garmin photo (after the string)</button>
       <p class="rm-note" id="rmChrono"></p>
+    </section>
+
+    <section class="rm-card" id="rmCorr">
+      <h3>Correct from impact</h3>
+      <p class="rm-note" id="ciCtx"></p>
+      <div class="rm-lab"><span>The group needed, compared with what was dialled</span></div>
+      <div class="rm-step">
+        <button type="button" data-ci="-1">Down 1 click</button>
+        <output id="ciClicks">0</output>
+        <button type="button" data-ci="1">Up 1 click</button>
+      </div>
+      <div class="rm-step" style="grid-template-columns:1fr 1fr">
+        <button type="button" id="ciAdd" class="primary">Add correction</button>
+        <button type="button" id="ciGroup">Use the plotted group</button>
+      </div>
+      <div id="ciResult" class="ci-result" hidden></div>
+      <div class="rm-step" style="grid-template-columns:1fr 1fr" id="ciActs" hidden>
+        <button type="button" id="ciApply">Apply for this session</button>
+        <button type="button" id="ciSave">Save to load</button>
+      </div>
+      <div class="rm-step" style="grid-template-columns:1fr 1fr">
+        <button type="button" id="ciClear">Clear today's corrections</button>
+        <button type="button" id="ciUndo">Undo last save</button>
+      </div>
+      <p class="rm-note" id="ciMsg"></p>
     </section>
 
     <section class="rm-card">
@@ -719,11 +881,32 @@ const SYSTEMS={
   us:{labels:['X','10','9','8','7','6','5'],bonus:'X',bonusPts:10,miss:'M'},
   grid:{labels:null}
 };
+// ICFRA International F-Class targets: ICFRA F-Class Technical Rules 2023 (Rev-2), Annex F/B.
+// Ring diameters in mm to the outer edge of the scoring line; the black aiming mark covers the rings;
+// a shot elsewhere on the frame is a Hit (1).
+const MM=v=>+(v/25.4).toFixed(4);
+const ICFRA=(id,name,mm,black,frame,dist)=>({id,system:'uk',name,dias:mm.map(MM),blackIn:MM(black),frameIn:MM(frame),mm,dist,
+  src:'ICFRA F-Class Technical Rules 2023 Rev-2, Annex F/B'});
+const S43=a=>a.map(v=>+(v*4/3).toFixed(1));
+const ICFRA_FACES=[
+  ICFRA('icfra-300y','ICFRA F-Class 300 yd',[32,65,130,260,390],560,1200,{yd:[300]}),
+  ICFRA('icfra-400y','ICFRA F-Class 400 yd (300 yd × 4/3)',S43([32,65,130,260,390]),560*4/3,1200,{yd:[400]}),
+  ICFRA('icfra-500y','ICFRA F-Class 500 yd',[65,130,260,600,915],915,1800,{yd:[500]}),
+  ICFRA('icfra-600y','ICFRA F-Class 600 yd',[72,145,290,600,915],915,1800,{yd:[600]}),
+  ICFRA('icfra-700y','ICFRA F-Class 700 yd (600 m target)',[80,160,320,660,1000],1000,1800,{yd:[700]}),
+  ICFRA('icfra-lr','ICFRA F-Class long range (800–1000 yd, 700 m+)',[128,254,508,815,1118],1118,1800,{yd:[800,900,1000],m:[700,800,900,1000]}),
+  ICFRA('icfra-300m','ICFRA F-Class 300 m',[35,70,140,280,420],600,1200,{m:[300]}),
+  ICFRA('icfra-400m','ICFRA F-Class 400 m (300 m × 4/3)',S43([35,70,140,280,420]),600*4/3,1200,{m:[400]}),
+  ICFRA('icfra-500m','ICFRA F-Class 500 m',[72,145,290,660,1000],1000,1800,{m:[500]}),
+  ICFRA('icfra-600m','ICFRA F-Class 600 m',[80,160,320,660,1000],1000,1800,{m:[600]})
+];
 const DEFAULT_FACES=[
-  {id:'uk-lr',system:'uk',name:'UK F-Class long range (placeholder sizes)',dias:[5,10,20,30,44,60]},
-  {id:'uk-mr',system:'uk',name:'UK F-Class mid range (placeholder sizes)',dias:[2,4,7,11,17,26]},
-  {id:'us-lr',system:'us',name:'US F-Class 1000 yd (placeholder sizes)',dias:[5,10,20,30,40,50,60]},
-  {id:'us-mr',system:'us',name:'US F-Class 600 yd (placeholder sizes)',dias:[1,3,6,9,12,18,24]},
+  ...ICFRA_FACES,
+  // US NRA F-Class target centres: 2026 NRA F-Class Rulebook (revised January 2026), rules 4.4-4.7. Inches.
+  {id:'nra-mr63fc',system:'us',name:'NRA MR-63FC 300 yd',dias:[1.42,2.85,5.85,8.85,11.85,17.85,23.85],blackIn:17.85,dist:{yd:[300]},src:'2026 NRA F-Class Rulebook, rule 4.4'},
+  {id:'nra-mr65fc',system:'us',name:'NRA MR-65FC 500 yd',dias:[2.5,5,10,15,20,25,30],blackIn:30,dist:{yd:[500]},src:'2026 NRA F-Class Rulebook, rule 4.5'},
+  {id:'nra-mr1fc',system:'us',name:'NRA MR-1FC 600 yd',dias:[3,6,12,18,24,36,48],blackIn:36,dist:{yd:[600]},src:'2026 NRA F-Class Rulebook, rule 4.6'},
+  {id:'nra-lrfc',system:'us',name:'NRA LRFC 800–1000 yd',dias:[5,10,20,30,44,60],blackIn:44,frameIn:72,hitLabel:'5',dist:{yd:[800,900,1000]},src:'2026 NRA F-Class Rulebook, rule 4.7'},
   {id:'grid',system:'grid',name:'Plain 1 in grid (load development)',dias:[1,2,4,8]}
 ];
 // Older saved faces stored [label, diameter] pairs; convert them once.
@@ -731,6 +914,9 @@ const LEGACY={f1:'5,10,20,30,44,60',f2:'2,4,7,11,17,26',f3:'1,2,4,8'};
 function migrateFaces(list){
   // drop untouched copies of the first prototype's faces; the new defaults replace them
   list=list.filter(f=>!(f.rings&&LEGACY[f.id]===f.rings.map(r=>+r[1]).join(',')));
+  // drop the old UK placeholder faces unless they were edited; ICFRA faces always come fresh from the rulebook
+  const PH={'uk-lr':'5,10,20,30,44,60','uk-mr':'2,4,7,11,17,26','us-lr':'5,10,20,30,40,50,60','us-mr':'1,3,6,9,12,18,24'};
+  list=list.filter(f=>!(PH[f.id]&&f.dias&&f.dias.join(',')===PH[f.id])&&!/^(icfra|nra)-/.test(f.id||''));
   return list.map(f=>{
     if(f.dias)return f;
     const labs=f.rings.map(r=>String(r[0]));
@@ -771,7 +957,7 @@ const G7=[[0,0.1198],[0.05,0.1197],[0.1,0.1196],[0.15,0.1194],[0.2,0.1193],[0.25
 const G1=[[0,0.2629],[0.05,0.2558],[0.1,0.2487],[0.15,0.2413],[0.2,0.2344],[0.25,0.2278],[0.3,0.2214],[0.35,0.2155],[0.4,0.2104],[0.45,0.2061],[0.5,0.2032],[0.55,0.202],[0.6,0.2034],[0.7,0.2165],[0.725,0.223],[0.75,0.2313],[0.775,0.2417],[0.8,0.2546],[0.825,0.2706],[0.85,0.2901],[0.875,0.3136],[0.9,0.3415],[0.925,0.3734],[0.95,0.4084],[0.975,0.4448],[1,0.4805],[1.025,0.5136],[1.05,0.5427],[1.075,0.5677],[1.1,0.5883],[1.125,0.6053],[1.15,0.6191],[1.2,0.6393],[1.25,0.6518],[1.3,0.6589],[1.35,0.6621],[1.4,0.6625],[1.45,0.6607],[1.5,0.6573],[1.55,0.6528],[1.6,0.6474],[1.65,0.6413],[1.7,0.6347],[1.75,0.628],[1.8,0.621],[1.85,0.6141],[1.9,0.6072],[1.95,0.6003],[2,0.5934],[2.05,0.5867],[2.1,0.5804],[2.15,0.5743],[2.2,0.5685],[2.25,0.563],[2.3,0.5577],[2.35,0.5527],[2.4,0.5481],[2.45,0.5438],[2.5,0.5397],[2.6,0.5325],[2.7,0.5264],[2.8,0.5211],[2.9,0.5168],[3,0.5133],[3.1,0.5105],[3.2,0.5084],[3.3,0.5067],[3.4,0.5054],[3.5,0.504],[3.6,0.503],[3.7,0.5022],[3.8,0.5016],[3.9,0.501],[4,0.5006],[4.2,0.4998],[4.4,0.4995],[4.6,0.4992],[4.8,0.499],[5,0.4988]];
 const DEFAULT_LOADS=[{id:'kw-7-65prc',name:'KW Precision 7/6.5 PRC G238',calibre:'7/6.5 PRC',bullet:'Berger 7 mm 180 gr',grains:180,
   drag:'G7',bc:0.349,mvFps:2900,mvTempC:15,mvSens:0,zeroYd:109,sightIn:2.0,twistIn:8.5,twistDir:'R',lenIn:1.527,diaIn:0.284,scopeUnit:'moa',click:0.125}];
-const NOMINALS={yd:[300,500,600,700,800,900,1000,1100,1200],m:[300,500,600,800,900,1000]};
+const NOMINALS={yd:[300,400,500,600,700,800,900,1000,1100,1200],m:[300,400,500,600,700,800,900,1000]};
 
 /* ---------- State ---------- */
 const S={
@@ -784,11 +970,12 @@ const S={
   unit:store.get('unit','moa'),
   click:store.get('click',0.25),
   faces:(()=>{const f=migrateFaces(store.get('faces',DEFAULT_FACES));DEFAULT_FACES.forEach(d=>{if(!f.some(x=>x.id===d.id))f.push({...d,dias:[...d.dias]})});return f})(),
-  faceId:store.get('faceId','uk-lr'),
+  faceId:store.get('faceId','icfra-lr'),
   sys:store.get('sys','uk'),
   relay:store.get('relay',''), appKey:store.get('appKey',''),
   barrel:store.get('barrel',{state:'fouled',roundsBefore:'',foulers:[]}), settleK:store.get('settleK',7), coldMin:store.get('coldMin',10),
-  history:store.get('history',[]), photo:null,
+  history:store.get('history',[]), photo:null, whiteV:store.get('whiteV',true),
+  truing:store.get('truing',{session:null,saves:[]}), corr:store.get('corr',{clicks:0}),
   ticked:store.get('ticked',['ukmo_uk_deterministic_2km','icon_d2','meteofrance_arome_france_hd','ecmwf_ifs025','gfs_seamless']),
   loads:store.get('loads',DEFAULT_LOADS), loadId:store.get('loadId','kw-7-65prc'),
   rmOpen:store.get('rmOpen',false),
@@ -804,10 +991,11 @@ const S={
   cal:store.get('cal',0.308),
   shots:store.get('shots',[]),
   light:store.get('light','Full sun'),
+  mirage:store.get('mirage',{dir:'none',str:'',focus:'mid'}), obs:store.get('obs',[]),
   stn:store.get('stn','auto'), metars:[],
   mode:null, wx:null, metar:null, elev:null
 };
-const save=()=>{for(const k of ['fp','tgt','example','distUnit','nominal','lrf','unit','click','faces','faceId','src','model','hAdj','manual','cal','shots','light','stn','sys','relay','ticked','cmpMode','windyProd','loads','loadId','optSpin','optAJ','optCor','atmSrc','kestrel','logs','dial','rmOpen','appKey','barrel','settleK','coldMin','history'])store.set(k,S[k])};
+const save=()=>{for(const k of ['fp','tgt','example','distUnit','nominal','lrf','unit','click','faces','faceId','src','model','hAdj','manual','cal','shots','light','stn','sys','relay','ticked','cmpMode','windyProd','loads','loadId','optSpin','optAJ','optCor','atmSrc','kestrel','logs','dial','rmOpen','appKey','barrel','settleK','coldMin','history','truing','corr','mirage','obs','whiteV'])store.set(k,S[k])};
 
 /* ---------- Distance resolution: rangefinder > map pins > nominal ---------- */
 function geom(){ return vincenty(S.fp.lat,S.fp.lng,S.tgt.lat,S.tgt.lng); }
@@ -1116,8 +1304,13 @@ function boreFor(l){
   return boreCache[key];
 }
 function loadValid(l){return ['bc','mvFps','zeroYd','sightIn'].every(k=>+l[k]>0)}
-function computeSolution(trueYd){
-  const l=curLoad(); if(!l||!loadValid(l))return null;
+function sessionMv(l){const t=S.truing.session;return t&&t.on&&t.loadId===l.id&&t.entries.length?combinedMv(t.entries).mv:null}
+function computeSolution(trueYd,opt){
+  opt=opt||{};
+  const l0=curLoad(); if(!l0||!loadValid(l0))return null;
+  const sMv=opt.mvRef!=null?null:sessionMv(l0);
+  const mvRef=opt.mvRef!=null?opt.mvRef:(sMv!=null?sMv:null);
+  const l=mvRef!=null?{...l0,mvFps:mvRef}:l0;
   const an=atmNow(), c=an;
   const atm=an?atmosphere(an.Tc,an.PhPa,an.RH):atmosphere(15,1013.25,50);
   const L=solverLoad(l,atm.Tc), bore=boreFor(l);
@@ -1125,11 +1318,11 @@ function computeSolution(trueYd){
   let angle=0; if(S.elev&&!S.example)angle=Math.atan2(S.elev[1]-S.elev[0],g.m);
   const w=windNow(); const r=w&&w.dir!=null?resolve(w,brg):{cross:0,head:0};
   const base={angle,lat:S.fp.lat,az:brg,coriolis:S.optCor};
-  const rows=[...new Set([...NOMINALS[S.distUnit].map(v=>toYd(v,S.distUnit)),trueYd])].sort((a,b)=>a-b);
+  const rows=opt.rowsYd?[...opt.rowsYd]:[...new Set([...NOMINALS[S.distUnit].map(v=>toYd(v,S.distUnit)),trueYd])].sort((a,b)=>a-b);
   const rM=rows.map(y=>y*M_PER_YD);
   const live=flyPath(L,atm,{...base,wx:-r.head*MPH,wz:-r.cross*MPH},rM,bore);
-  const calm=flyPath(L,atm,{...base},rM,bore);
-  const ten=flyPath(L,atm,{...base,wz:-10*MPH},rM,bore);
+  const calm=opt.fast?live:flyPath(L,atm,{...base},rM,bore);
+  const ten=opt.fast?live:flyPath(L,atm,{...base,wz:-10*MPH},rM,bore);
   const Sg=(+l.twistIn>0&&+l.lenIn>0&&+l.diaIn>0&&+l.grains>0)?millerSg(L,atm):null;
   const tdir=l.twistDir==='L'?-1:1;
   const ajMoaPerMph=Sg?0.01*Sg-0.0024*((+l.lenIn)/(+l.diaIn))+0.032:0;
@@ -1144,7 +1337,7 @@ function computeSolution(trueYd){
       parts:{wind:-(p.z-q.z)/x, spin:-sd/x, aj:ajRad, cor:-q.z/x},
       w10:Math.abs(t10.z-q.z)/x};
   });
-  return{rows:out,atm,L,Sg,cross:r.cross,head:r.head,wLabel:w?w.label:null,angle,haveWx:!!c,atmLabel:an?an.label:'Standard',l};
+  return{rows:out,atm,L,Sg,cross:r.cross,head:r.head,wLabel:w?w.label:null,angle,haveWx:!!c,atmLabel:an?an.label:'Standard',l,sessionMv:sMv};
 }
 const fmtAng=(rad,u,dp)=>(rad/RAD_PER[u]).toFixed(dp??(u==='mil'?2:3));
 function renderSolution(trueYd){
@@ -1175,7 +1368,9 @@ function renderSolution(trueYd){
     $('#sWarn').hidden=!warn.length; $('#sWarn').textContent=warn.join(' ');
   }
   $('#sSg').textContent=sol.Sg!=null?sol.Sg.toFixed(2):'–';
-  $('#sMv').textContent=`${sol.L.mvFps.toFixed(0)} fps`;
+  $('#sMv').textContent=`${sol.L.mvFps.toFixed(0)} fps${sol.sessionMv!=null?' (trued)':''}`;
+  $('#sTrue').hidden=sol.sessionMv==null;
+  if(sol.sessionMv!=null)$('#sTrue').textContent=`Session truing is on: solutions use a trued muzzle velocity of ${Math.round(sol.sessionMv)} fps (load ${l.mvFps} fps, both at ${l.mvTempC} °C). Turn it off or save it in Range mode, Correct from impact.`;
   const a=sol.atm;
   $('#sCond').textContent=`${sol.haveWx?sol.atmLabel+' conditions':'Standard conditions (no weather data yet)'}: ${a.Tc.toFixed(1)} °C, ${a.PhPa.toFixed(0)} hPa station, ${a.RH.toFixed(0)}% RH, density ${a.rho.toFixed(4)} kg/m³ · shot angle ${(sol.angle*R2D).toFixed(2)}° · latitude ${S.fp.lat.toFixed(2)}°, firing ${geom().az.toFixed(0)}°.`;
   let t=`<tr><th>Distance</th><th>Elev ${U}</th><th>Clicks</th><th>Wind now ${U}</th><th>10 mph full value ${U}</th><th>Vel fps</th><th>TOF s</th></tr>`;
@@ -1277,6 +1472,17 @@ function resolve(w,brg){
   return{rel,cross,head,clock,value:Math.abs(Math.sin(rel*D2R))};
 }
 
+/* Safari: swap var(--x) in SVG attributes for the actual colour or font */
+function fixSvgVars(root){
+  const cs=getComputedStyle(document.documentElement), cache={};
+  (root||document).querySelectorAll('svg [fill*="var("],svg [stroke*="var("],svg [font-family*="var("]').forEach(el=>{
+    for(const at of ['fill','stroke','font-family']){
+      const v=el.getAttribute(at); if(!v||v.indexOf('var(')<0)continue;
+      el.setAttribute(at,v.replace(/var\((--[\w-]+)\)/g,(m,n)=>cache[n]??(cache[n]=cs.getPropertyValue(n).trim()||m)));
+    }
+  });
+}
+try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>render())}catch(e){}
 /* ---------- Rendering ---------- */
 function render(){
   const g=geom(), brg=g.az, td=trueDistance();
@@ -1374,6 +1580,9 @@ function render(){
   renderValidation();
   renderSettling();
   renderRange();
+  renderTruing();
+  renderMirage();
+  fixSvgVars();
 }
 
 function drawDial(r,w){
@@ -1420,7 +1629,8 @@ const VIEW={z:1,cx:0,cy:0};   // zoom factor and view centre in inches (face coo
 const MAJOR={moa:1,smoa:1,mil:0.5};
 function faceGeom(yd){
   const f=face(), rings=ringsOf(f), ipu=inPerUnit(S.unit,yd);
-  const fullHalf=rings[rings.length-1][1]/2/ipu*1.12;          // in angular units
+  const outerIn=Math.max(rings[rings.length-1][1],f.blackIn||0,f.frameIn||0);
+  const fullHalf=outerIn/2/ipu*(f.frameIn?1.04:1.12);          // in angular units
   return{f,rings,ipu,fullHalf};
 }
 function clampView(fullHalfIn){
@@ -1436,10 +1646,21 @@ function renderFace(yd){
   const svg=$('#face'); svg.setAttribute('viewBox',`${x0} ${y0} ${2*half} ${2*half}`);
   const sw=half/200;
   let h=`<rect x="${x0}" y="${y0}" width="${2*half}" height="${2*half}" fill="var(--face-bg)"/>`;
+  if(f.frameIn){const fh=f.frameIn/2/ipu;
+    h+=`<rect x="${-fh}" y="${-fh}" width="${2*fh}" height="${2*fh}" fill="none" stroke="var(--face-ring)" stroke-width="${sw*2}" stroke-dasharray="${sw*8} ${sw*5}"/>`;}
+  if(f.blackIn){
+    // ICFRA: black aiming mark with the scoring rings drawn as white lines inside it
+    const bR=f.blackIn/2/ipu;
+    h+=`<circle r="${bR}" fill="var(--face-v)" fill-opacity=".94"/>`;
+    if(f.system==='uk'&&S.whiteV) h+=`<circle r="${rings[0][1]/2/ipu}" fill="var(--face-bg)"/>`;   // UK domestic: white V-bull
+    for(let i=rings.length-1;i>=0;i--){const r=rings[i][1]/2/ipu, inside=rings[i][1]<=f.blackIn+1e-6;
+      h+=`<circle r="${r}" fill="none" stroke="${inside?'#fff':'var(--face-ring)'}" stroke-opacity="${inside?.85:1}" stroke-width="${sw*(i===0?1.8:1.4)}"/>`;}
+  }else{
   // rings: centre two filled dark (aiming mark), rest outlined
   for(let i=rings.length-1;i>=0;i--){
     const r=rings[i][1]/2/ipu, dark=i<=1;
     h+=`<circle r="${r}" fill="${dark?'var(--face-v)':'none'}" fill-opacity="${dark?(i===0?0.92:0.8):0}" stroke="${dark?'#fff':'var(--face-ring)'}" stroke-width="${sw*1.6}"/>`;
+  }
   }
   // grid: minor = scope click (¼ MOA by default), major = 1 MOA / 0.5 mil
   const major=MAJOR[S.unit]; let minor=S.click;
@@ -1453,7 +1674,7 @@ function renderFace(yd){
     for(const v of lines(y0,y1,minor)){const m=isMajor(v),z=Math.abs(v)<1e-9;
       g+=`<line y1="${v}" y2="${v}" x1="${x0}" x2="${x1}" stroke="${col}" stroke-opacity="${(z?.8:m?.5:.24)*base}" stroke-width="${sw*(m?1.4:0.8)}"/>`;}
     return g};
-  const bullR=rings[Math.min(1,rings.length-1)][1]/2/ipu;
+  const bullR=f.blackIn?f.blackIn/2/ipu:rings[Math.min(1,rings.length-1)][1]/2/ipu;
   h+=grid('#7d8c80',1);
   h+=`<clipPath id="bullClip"><circle r="${bullR}"/></clipPath><g clip-path="url(#bullClip)">${grid('#ffffff',0.75)}</g>`;
   // shots at true bullet diameter, never smaller than a visible dot; numbered once zoomed in
@@ -1470,12 +1691,12 @@ function renderFace(yd){
   const fmt=v=>{if(v>=1)return String(v); const n=Math.round(1/v); return Math.abs(1/n-v)<1e-9?`1/${n}`:String(+v.toFixed(3))};
   h+=`<rect x="${x0}" y="${y1-half*0.11}" width="${2*half}" height="${half*0.11}" fill="var(--face-bg)" fill-opacity=".85"/>`;
   h+=`<text x="${x0+half*0.04}" y="${y1-half*0.035}" font-size="${half/16}" fill="#2c352f" font-family="var(--mono)">grid ${fmt(minor)} ${U.label} · bold ${major} ${U.label} · ×${VIEW.z<10?VIEW.z.toFixed(1):Math.round(VIEW.z)} · ${fmtD(yd)}</text>`;
-  svg.innerHTML=h;
+  svg.innerHTML=h; fixSvgVars(svg.parentNode);
 
   // ring table
-  let t=`<tr><th>Ring</th><th>Dia (in)</th><th>Radius ${U.label}</th><th>Radius clicks</th><th>At card dist.</th></tr>`;
+  let t=`<tr><th>Ring</th>${f.mm?'<th>Dia (mm)</th>':''}<th>Dia (in)</th><th>Radius ${U.label}</th><th>Radius clicks</th><th>At card dist.</th></tr>`;
   const ipuNom=inPerUnit(S.unit,toYd(S.nominal,S.distUnit));
-  rings.forEach(([lab,d])=>{t+=`<tr><td>${lab}</td><td>${d}</td><td>${(d/2/ipu).toFixed(2)}</td><td>${(d/2/ipu/S.click).toFixed(1)}</td><td>${(d/2/ipuNom).toFixed(2)}</td></tr>`});
+  rings.forEach(([lab,d],i)=>{t+=`<tr><td>${lab}</td>${f.mm?`<td>${f.mm[i]}</td>`:''}<td>${d.toFixed(2)}</td><td>${(d/2/ipu).toFixed(2)}</td><td>${(d/2/ipu/S.click).toFixed(1)}</td><td>${(d/2/ipuNom).toFixed(2)}</td></tr>`});
   $('#ringTbl').innerHTML=t;
 
   // shot table
@@ -1484,7 +1705,7 @@ function renderFace(yd){
   let st=`<tr><th>#</th><th>Round</th><th>Score</th><th>X ${U.label}</th><th>Y ${U.label}</th><th>Dist</th><th>Cross mph</th><th>Light</th></tr>`;
   S.shots.slice().reverse().forEach((s,ri)=>{const i=S.shots.length-ri, ip=inPerUnit(S.unit,s.yd);
     const sq=SEQ.get(i-1);
-    st+=`<tr><td>${i}</td><td>${sq?sq.idx+(sq.cold?' cold':''):'–'}</td><td>${scoreFor(Math.hypot(s.xIn,s.yIn))}</td><td>${(s.xIn/ip).toFixed(2)}</td><td>${(s.yIn/ip).toFixed(2)}</td><td>${fromYd(s.yd,S.distUnit).toFixed(0)}</td><td>${s.cross!=null?(s.cross>0?'R ':'L ')+Math.abs(s.cross).toFixed(1):'–'}</td><td>${s.light}</td></tr>`});
+    st+=`<tr><td>${i}</td><td>${sq?sq.idx+(sq.cold?' cold':''):'–'}</td><td>${scoreShot(s)}</td><td>${(s.xIn/ip).toFixed(2)}</td><td>${(s.yIn/ip).toFixed(2)}</td><td>${fromYd(s.yd,S.distUnit).toFixed(0)}</td><td>${s.cross!=null?(s.cross>0?'R ':'L ')+Math.abs(s.cross).toFixed(1):'–'}</td><td>${(obsAt(s.t)||{}).light||s.light||''}</td></tr>`});
   $('#shotTbl').innerHTML=S.shots.length?st:'';
   if(S.shots.length){
     const mn=meanShot(), ip=inPerUnit(S.unit,yd), mx=mn.x/ip, my=mn.y/ip;
@@ -1500,6 +1721,11 @@ function renderFace(yd){
   }else{['#vMean','#vCorr','#vTotal','#vES','#vMR'].forEach(k=>$(k).textContent='–')}
 }
 function meanShot(){const n=S.shots.length;return{x:S.shots.reduce((a,s)=>a+s.xIn,0)/n,y:S.shots.reduce((a,s)=>a+s.yIn,0)/n}}
+function scoreShot(s){
+  const f=face(), lab=scoreFor(Math.hypot(s.xIn,s.yIn)), sys=SYSTEMS[f.system];
+  if(f.frameIn&&sys&&lab===sys.miss){const h=f.frameIn/2+(+S.cal||0)/2; if(Math.abs(s.xIn)<=h&&Math.abs(s.yIn)<=h)return f.hitLabel||'1'}
+  return lab;
+}
 function scoreFor(rIn){
   const f=face(), br=(+S.cal||0)/2;
   for(const [lab,d] of ringsOf(f)) if(rIn-br<=d/2) return lab;  // line-cutter scores the higher ring
@@ -1508,7 +1734,7 @@ function scoreFor(rIn){
 function totalScore(){
   const f=face(), sys=SYSTEMS[f.system]; if(!sys||!sys.labels||!S.shots.length)return'–';
   let pts=0,b=0;
-  S.shots.forEach(s=>{const l=scoreFor(Math.hypot(s.xIn,s.yIn));pts+=points(l,f.system);if(l===sys.bonus)b++});
+  S.shots.forEach(s=>{const l=scoreShot(s);pts+=points(l,f.system);if(l===sys.bonus)b++});
   return f.system==='uk'?`${pts}.${b}`:`${pts}-${b}X`;
 }
 function svgPoint(e){const svg=$('#face'),pt=svg.createSVGPoint();pt.x=e.clientX;pt.y=e.clientY;return pt.matrixTransform(svg.getScreenCTM().inverse())}
@@ -1575,20 +1801,22 @@ $('#undoShot').onclick=()=>{S.shots.pop();save();render()};
 let clearArmed=false;
 $('#clearShots').onclick=()=>{
   if(!clearArmed){clearArmed=true;$('#clearConfirm').hidden=false;setTimeout(()=>{clearArmed=false;$('#clearConfirm').hidden=true},4000);return}
-  S.shots=[];S.barrel.foulers=[];clearArmed=false;$('#clearConfirm').hidden=true;save();render();
+  S.shots=[];S.barrel.foulers=[];S.obs=[];clearArmed=false;$('#clearConfirm').hidden=true;save();render();
 };
 $('#csv').onclick=()=>{
-  const hdr='time,source,session,score,x_in,y_in,x_moa,y_moa,true_dist_yd,nominal_dist_yd,dist_source,velocity_fps,crosswind_mph,headwind_mph,wind_source,light,log_time,temp_c,station_hpa,rh_pct,atm_source,pred_elev_moa,dialled_elev_moa,pred_wind_moa,dialled_wind_moa,load,mv_fps,garmin_avg_fps,garmin_sd,round_of_session,gap_min,cold_bore,barrel_state,rounds_since_clean';
+  const hdr='time,source,session,score,x_in,y_in,x_moa,y_moa,true_dist_yd,nominal_dist_yd,dist_source,velocity_fps,crosswind_mph,headwind_mph,wind_source,light,log_time,temp_c,station_hpa,rh_pct,atm_source,pred_elev_moa,dialled_elev_moa,pred_wind_moa,dialled_wind_moa,load,mv_fps,garmin_avg_fps,garmin_sd,round_of_session,gap_min,cold_bore,barrel_state,rounds_since_clean,mirage_flow,mirage_strength,mirage_focus,light_at_shot';
   const SQ=roundSeq().info;
   const M=v=>v==null?'':(v/RAD_PER.moa).toFixed(3), q=v=>v==null?'':`"${String(v).replace(/"/g,'""')}"`;
   const rows=S.shots.map(s=>{const ip=inPerUnit('moa',s.yd), g=logFor(s.t);
     const cross=s.cross??(g?g.cross:null), head=s.head??(g?g.head:null);
-    return[s.t,s.src||'tap',q(s.session||''),scoreFor(Math.hypot(s.xIn,s.yIn)),s.xIn.toFixed(3),s.yIn.toFixed(3),(s.xIn/ip).toFixed(3),(s.yIn/ip).toFixed(3),s.yd.toFixed(1),s.nomYd!=null?s.nomYd.toFixed(1):'',q(s.distSrc),s.vFps!=null?s.vFps.toFixed(1):'',
+    return[s.t,s.src||'tap',q(s.session||''),scoreShot(s),s.xIn.toFixed(3),s.yIn.toFixed(3),(s.xIn/ip).toFixed(3),(s.yIn/ip).toFixed(3),s.yd.toFixed(1),s.nomYd!=null?s.nomYd.toFixed(1):'',q(s.distSrc),s.vFps!=null?s.vFps.toFixed(1):'',
       cross!=null?cross.toFixed(2):'',head!=null?head.toFixed(2):'',q(s.windSrc||(g?g.windSrc:'')),q(s.light||''),
       g?g.t:'',g&&g.Tc!=null?g.Tc.toFixed(1):'',g&&g.PhPa!=null?g.PhPa.toFixed(1):'',g&&g.RH!=null?g.RH.toFixed(0):'',g?g.atmSrc:'',
       g?M(g.predE):'',g?M(g.dialE):'',g?M(g.predW):'',g?M(g.dialW):'',q(g?g.load:''),g&&g.mvFps?g.mvFps.toFixed(0):'',
       g&&g.chrono?g.chrono.avg.toFixed(1):'',g&&g.chrono&&g.chrono.sd!=null?g.chrono.sd.toFixed(1):'',
-      ...(()=>{const k=SQ.get(S.shots.indexOf(s));return k?[k.idx,k.gap!=null?k.gap.toFixed(1):'',k.cold?'yes':'no',S.barrel.state,k.barrelRound??'']:['','','','','']})()].join(',')});
+      ...(()=>{const k=SQ.get(S.shots.indexOf(s));return k?[k.idx,k.gap!=null?k.gap.toFixed(1):'',k.cold?'yes':'no',S.barrel.state,k.barrelRound??'']:['','','','','']})(),
+      ...(()=>{const o=obsAt(s.t), m=o?{dir:o.mDir,str:o.mStr,focus:o.mFocus,light:o.light}:(g&&g.mirage?{...g.mirage,light:g.light}:null);
+        return m?[m.dir||'',m.str||'',m.focus||'',q(m.light||s.light||'')]:['','','',q(s.light||'')]})()].join(',')});
   const blob=new Blob([hdr+'\n'+rows.join('\n')],{type:'text/csv'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='range-desk-shots.csv';a.click();
 };
@@ -1603,7 +1831,8 @@ function fillFaces(){
   $('#faceName').value=f.name; $('#faceRings').value=f.dias.join('\n');
   const sys=SYSTEMS[S.sys]; $('#labelHint').textContent=sys.labels?sys.labels.join(', ')+' from the centre out':'labelled by size';
 }
-$('#sysSel').onchange=e=>{S.sys=e.target.value;fillFaces();save();render()};
+$('#sysSel').onchange=e=>{S.sys=e.target.value;fillFaces();autoFace();save();render()};
+$('#whiteV').checked=S.whiteV; $('#whiteV').onchange=e=>{S.whiteV=e.target.checked;save();render()};
 $('#relayUrl').value=S.relay;
 $('#relaySave').onclick=()=>{
   let v=$('#relayUrl').value.trim(); if(v&&!/^https:\/\//.test(v))v='https://'+v.replace(/^http:\/\//,'');
@@ -1611,14 +1840,19 @@ $('#relaySave').onclick=()=>{
 };
 $('#distUnit').value=S.distUnit;$('#unit').value=S.unit;$('#model').value=S.model;$('#hAdj').checked=S.hAdj;
 $('#lrf').value=S.lrf;$('#cal').value=S.cal;$('#light').value=S.light;$('#mSpd').value=S.manual.spd;$('#mDir').value=S.manual.dir;
-fillNominal();fillClicks();fillFaces();
-$('#distUnit').onchange=e=>{S.distUnit=e.target.value;S.nominal=NOMINALS[S.distUnit].reduce((a,b)=>Math.abs(b-S.nominal)<Math.abs(a-S.nominal)?b:a);fillNominal();save();render()};
-$('#nominal').onchange=e=>{S.nominal=+e.target.value;save();render()};
+fillNominal();fillClicks();fillFaces();autoFace();
+$('#distUnit').onchange=e=>{S.distUnit=e.target.value;S.nominal=NOMINALS[S.distUnit].reduce((a,b)=>Math.abs(b-S.nominal)<Math.abs(a-S.nominal)?b:a);fillNominal();autoFace();save();render()};
+function autoFace(){
+  if(S.sys==='grid')return;
+  const hit=S.faces.find(f=>f.system===S.sys&&f.dist&&(f.dist[S.distUnit]||[]).includes(+S.nominal));
+  if(hit&&hit.id!==S.faceId){S.faceId=hit.id;fillFaces()}
+}
+$('#nominal').onchange=e=>{S.nominal=+e.target.value;autoFace();save();render()};
 $('#lrf').oninput=e=>{S.lrf=e.target.value;save();render()};
 $('#unit').onchange=e=>{S.unit=e.target.value;S.click=UNITS[S.unit].clicks[0][1];fillClicks();save();render()};
 $('#click').onchange=e=>{S.click=+e.target.value;save();render()};
 $('#cal').oninput=e=>{S.cal=+e.target.value||0;save();render()};
-$('#light').onchange=e=>{S.light=e.target.value;save()};
+$('#light').onchange=e=>{S.light=e.target.value;noteObs();save();render()};
 $('#faceSel').onchange=e=>{S.faceId=e.target.value;fillFaces();save();render()};
 $('#model').onchange=e=>{S.model=e.target.value;S.src='model';save();fetchWx();renderCmp()};
 $('#hAdj').onchange=e=>{S.hAdj=e.target.checked;save();render();renderCmp()};
@@ -1667,7 +1901,7 @@ $('#logNow').onclick=()=>{
   S.logs.push({t:new Date().toISOString(),yd:td.yd,distSrc:td.src,Tc:an?an.Tc:null,PhPa:an?an.PhPa:null,RH:an?an.RH:null,atmSrc:an?an.src:'none',
     windSrc:w?w.label:null,spd:w?w.spd:null,dir:w?w.dir:null,cross:r?r.cross:null,head:r?r.head:null,
     predE:p?p.elevRad:null,predW:p?p.windRad:null,dialE:isFinite(dE)?dE*RAD_PER[u]:null,dialW:isFinite(dW)?(S.dial.wd==='L'?-1:1)*dW*RAD_PER[u]:null,
-    load:p?p.load:'',mvFps:p?p.mvFps:null});
+    load:p?p.load:'',mvFps:p?p.mvFps:null,light:S.light,mirage:{...S.mirage}});
   save(); render();
 };
 $('#logUndo').onclick=()=>{S.logs.pop();save();render()};
@@ -1706,7 +1940,12 @@ document.querySelectorAll('#srcSeg button').forEach(b=>b.onclick=()=>{S.src=b.da
 $('#faceSave').onclick=()=>{
   const dias=$('#faceRings').value.split('\n').map(l=>parseFloat(l.trim().split(/\s+/).pop())).filter(v=>v>0).sort((a,b)=>a-b);
   if(!dias.length)return;
-  const f=face(); f.name=$('#faceName').value.trim()||f.name; f.dias=dias; fillFaces(); save(); render();
+  let f=face();
+  if(/^(icfra|nra)-/.test(f.id||'')){ // rulebook faces stay as published; an edit makes your own copy
+    const id='f'+Date.now(); f={...f,id,name:($('#faceName').value.trim()&&$('#faceName').value.trim()!==f.name?$('#faceName').value.trim():f.name+' (my copy)'),mm:null,src:null,dist:null};
+    S.faces.push(f); S.faceId=id;
+  }else f.name=$('#faceName').value.trim()||f.name;
+  f.dias=dias; fillFaces(); save(); render();
 };
 $('#faceNew').onclick=()=>{const id='f'+Date.now();S.faces.push({id,system:S.sys,name:'New face',dias:[2,4,8]});S.faceId=id;fillFaces();save();render()};
 
@@ -1892,6 +2131,142 @@ $('#clearHistory').onclick=()=>{
   if(!histArmed){histArmed=true;$('#saveMsg').textContent='Tap Clear history again to delete all saved sessions.';setTimeout(()=>{histArmed=false},4000);return}
   S.history=[];histArmed=false;save();render();$('#saveMsg').textContent='Barrel history cleared.';
 };
+
+/* ---------- Correct from impact and muzzle velocity truing ----------
+   Each correction gives the elevation the group actually needed at the true distance.
+   The app finds the muzzle velocity (at the load's reference temperature) that makes the solver
+   predict exactly that, under the conditions when the correction was made. */
+function mvForElevation(yd,neededRad){
+  const l=curLoad(); let lo=Math.max(1500,+l.mvFps-500), hi=+l.mvFps+500;
+  const f=mv=>{const s=computeSolution(yd,{mvRef:mv,rowsYd:[yd],fast:true});return s&&s.rows[0]?s.rows[0].elevRad:null};
+  const flo=f(lo), fhi=f(hi); if(flo==null||fhi==null||neededRad>flo||neededRad<fhi)return null;
+  for(let i=0;i<32;i++){const m=(lo+hi)/2, v=f(m); if(v>neededRad)lo=m; else hi=m}
+  return(lo+hi)/2;
+}
+function combinedMv(entries){
+  let w=0,sum=0; for(const e of entries){const k=e.src==='group'?Math.max(1,e.n||1):1;w+=k;sum+=k*e.mvRef}
+  const mv=sum/w; let unc=null;
+  if(entries.length>1){const m=entries.reduce((a,e)=>a+e.mvRef,0)/entries.length;
+    unc=Math.sqrt(entries.reduce((a,e)=>a+(e.mvRef-m)**2,0)/(entries.length-1))/Math.sqrt(entries.length)}
+  return{mv,unc,n:entries.length,shots:entries.reduce((a,e)=>a+(e.src==='group'?(e.n||0):0),0)};
+}
+function dialNowRad(){const l=curLoad(), u=(l&&l.scopeUnit)||'moa', d=parseFloat(S.dial.e);return isFinite(d)?d*RAD_PER[u]:(S.lastSol?S.lastSol.elevRad:null)}
+function addCorrection(neededRad,src,n){
+  const l=curLoad(), td=trueDistance(), u=l.scopeUnit||'moa';
+  const base=computeSolution(td.yd,{mvRef:+l.mvFps,rowsYd:[td.yd],fast:true});
+  const mv=mvForElevation(td.yd,neededRad);
+  if(mv==null){$('#ciMsg').textContent='That correction is outside what a muzzle velocity change can explain (more than 500 fps). Check the distance, the dial and the click direction.';return}
+  const an=atmNow(), r=base&&base.rows[0];
+  if(!S.truing.session||S.truing.session.loadId!==l.id)S.truing.session={loadId:l.id,on:true,entries:[],started:new Date().toISOString()};
+  S.truing.session.entries.push({t:new Date().toISOString(),yd:td.yd,distSrc:td.src,neededRad,baseRad:r?r.elevRad:null,mach:r?r.v/base.atm.c:null,
+    mvRef:mv,src,n:n||null,Tc:an?an.Tc:null,PhPa:an?an.PhPa:null});
+  S.truing.session.on=true; S.corr.clicks=0; save(); render();
+  $('#ciMsg').textContent=`Correction added. Session truing is on.`;
+}
+function renderTruing(){
+  if($('#rm').hidden)return;
+  const l=curLoad(); if(!l)return;
+  const u=l.scopeUnit||'moa', U=UNIT_LBL[u], ck=+l.click||0.125, td=trueDistance();
+  const dial=dialNowRad(), p=S.lastSol;
+  const dialTxt=dial!=null?`${(dial/RAD_PER[u]/ck).toFixed(0)} clicks (${(dial/RAD_PER[u]).toFixed(3)} ${U})`:'nothing yet';
+  $('#ciCtx').textContent=`At ${fmtD(td.yd)}: solver ${p?Math.round(p.elevRad/RAD_PER[u]/ck)+' clicks':'–'}, dialled ${dialTxt}. If the group was centred low, it needed more: tap Up.`;
+  const c=+S.corr.clicks||0;
+  $('#ciClicks').textContent=c===0?'0':`${c>0?'Up':'Down'} ${Math.abs(c)}`;
+  // plotted group available?
+  const g=S.logs[S.logs.length-1]; const gs=g?S.shots.filter(s=>logFor(s.t)===g):[];
+  $('#ciGroup').disabled=!(g&&g.dialE!=null&&gs.length>=3);
+  $('#ciGroup').textContent=gs.length>=3?`Use the plotted group (${gs.length} shots)`:'Use the plotted group (needs 3+ shots)';
+  const t=S.truing.session&&S.truing.session.loadId===l.id?S.truing.session:null;
+  const box=$('#ciResult');
+  if(!t||!t.entries.length){box.hidden=true;$('#ciActs').hidden=true;}
+  else{
+    const cm=combinedMv(t.entries), d=cm.mv-(+l.mvFps);
+    const rows=[300,600,800,900,1000,1100].map(v=>toYd(v,'yd')).filter(y=>y<=1200);
+    const a=computeSolution(td.yd,{mvRef:+l.mvFps,rowsYd:rows,fast:true}), b=computeSolution(td.yd,{mvRef:cm.mv,rowsYd:rows,fast:true});
+    let tbl='<table><tr><th>Distance</th><th>Change from the solver</th></tr>';
+    if(a&&b)rows.forEach((y,i)=>{if(a.rows[i]&&b.rows[i]){const dc=(b.rows[i].elevRad-a.rows[i].elevRad)/RAD_PER[u]/ck;
+      tbl+=`<tr><td>${fromYd(y,S.distUnit).toFixed(0)} ${S.distUnit}</td><td>${dc>=0?'+':'−'}${Math.abs(dc).toFixed(1)} clicks</td></tr>`}});
+    tbl+='</table>';
+    const warn=[];
+    const deep=t.entries.filter(e=>e.mach!=null&&e.mach<1.3);
+    if(deep.length)warn.push(`${deep.length===t.entries.length?'This correction was':'Some corrections were'} made where the bullet is close to transonic (below Mach 1.3). A miss there is more likely drag (BC) than velocity, so treat this MV with caution.`);
+    if(t.entries.length===1)warn.push(t.entries[0].src==='group'?'One group so far. A second string agreeing would confirm it.':'One correction from a call, not a plotted group. Confirm it with a plotted group before saving.');
+    const ch=[...S.logs].reverse().find(x=>x.chrono&&Date.parse(t.started)-Date.parse(x.t)<12*3600*1000);
+    let gtxt='';
+    if(ch){const T=ch.Tc??(atmNow()||{}).Tc??+l.mvTempC, gRef=ch.chrono.avg-(+l.mvSens||0)*(T-(+l.mvTempC||15)), diff=cm.mv-gRef;
+      gtxt=Math.abs(diff)<=12?`<p class="ci-ok">Garmin measured ${Math.round(ch.chrono.avg)} fps, which agrees with the trued value (difference ${Math.round(diff)} fps). Velocity explains the miss.</p>`
+        :`<p class="ci-warn">Garmin measured ${Math.round(ch.chrono.avg)} fps, ${Math.abs(Math.round(diff))} fps ${diff>0?'below':'above'} the trued value. Part of the miss is probably drag (BC) or something else, so don't save this yet.</p>`;}
+    box.innerHTML=`<div>Trued muzzle velocity <b>${Math.round(cm.mv)} fps</b> ${cm.unc!=null?`± ${Math.max(1,Math.round(cm.unc))} `:''}(${d>=0?'+':'−'}${Math.abs(Math.round(d))} on the load's ${l.mvFps} fps, at ${l.mvTempC} °C)</div>
+      <div class="rm-note">From ${cm.n} correction${cm.n>1?'s':''}${cm.shots?`, ${cm.shots} plotted shots`:''}. Session truing is ${t.on?'<b style="font-size:inherit">on</b>':'off'}.</div>
+      ${tbl}${gtxt}${warn.map(w=>`<p class="ci-warn">${w}</p>`).join('')}
+      <div class="rm-note">${t.entries.map(e=>`${new Date(e.t).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',hour12:false})} · ${fromYd(e.yd,S.distUnit).toFixed(0)} ${S.distUnit} · ${e.src==='group'?e.n+' shots':'call'} · ${Math.round(e.mvRef)} fps`).join('<br>')}</div>`;
+    box.hidden=false; $('#ciActs').hidden=false;
+    $('#ciApply').textContent=t.on?'Turn session truing off':'Apply for this session';
+  }
+  const last=S.truing.saves.filter(x=>x.loadId===l.id).slice(-1)[0];
+  $('#ciUndo').disabled=!last; $('#ciUndo').textContent=last?`Undo last save (${last.before} fps)`:'Undo last save';
+}
+$('#rmCorr').addEventListener('click',e=>{const b=e.target.closest('[data-ci]');if(!b)return;S.corr.clicks=(+S.corr.clicks||0)+ +b.dataset.ci;save();renderTruing()});
+$('#ciAdd').onclick=()=>{
+  const l=curLoad(), u=l.scopeUnit||'moa', ck=+l.click||0.125, dial=dialNowRad(), c=+S.corr.clicks||0;
+  if(dial==null){$('#ciMsg').textContent='Enter what you dialled first (Dial and log), or tap Copy solution.';return}
+  if(c===0){$('#ciMsg').textContent='Set how many clicks the group needed with Up or Down first. If it was centred, there is nothing to correct.';return}
+  addCorrection(dial+c*ck*RAD_PER[u],'call',null);
+};
+$('#ciGroup').onclick=()=>{
+  const g=S.logs[S.logs.length-1]; if(!g||g.dialE==null)return;
+  const gs=S.shots.filter(s=>logFor(s.t)===g); if(gs.length<3)return;
+  const my=gs.reduce((a,s)=>a+ANG_IN(s.yIn,s.yd),0)/gs.length;
+  addCorrection(g.dialE-my,'group',gs.length);
+};
+$('#ciApply').onclick=()=>{const t=S.truing.session;if(!t)return;t.on=!t.on;save();render()};
+let ciSaveArmed=false;
+$('#ciSave').onclick=()=>{
+  const t=S.truing.session, l=curLoad(); if(!t||!t.entries.length||t.loadId!==l.id)return;
+  const mv=Math.round(combinedMv(t.entries).mv);
+  if(!ciSaveArmed){ciSaveArmed=true;$('#ciMsg').textContent=`Tap Save to load again to change ${l.name} from ${l.mvFps} to ${mv} fps.`;setTimeout(()=>{ciSaveArmed=false},5000);return}
+  ciSaveArmed=false;
+  S.truing.saves.push({t:new Date().toISOString(),loadId:l.id,before:+l.mvFps,after:mv,entries:t.entries});
+  l.mvFps=mv; S.truing.session=null; fillLoadEditor(); save(); render();
+  $('#ciMsg').textContent=`Saved: ${l.name} now uses ${mv} fps. Undo last save puts the old value back.`;
+};
+$('#ciUndo').onclick=()=>{
+  const l=curLoad(), i=S.truing.saves.map(x=>x.loadId).lastIndexOf(l.id); if(i<0)return;
+  const sv=S.truing.saves.splice(i,1)[0]; l.mvFps=sv.before; fillLoadEditor(); save(); render();
+  $('#ciMsg').textContent=`Undone: ${l.name} is back to ${sv.before} fps.`;
+};
+let ciClearArmed=false;
+$('#ciClear').onclick=()=>{
+  if(!ciClearArmed){ciClearArmed=true;$('#ciMsg').textContent="Tap Clear today's corrections again to remove them.";setTimeout(()=>{ciClearArmed=false},4000);return}
+  ciClearArmed=false;S.truing.session=null;S.corr.clicks=0;save();render();$('#ciMsg').textContent='Corrections cleared.';
+};
+/* Help */
+function setHelp(open){$('#help').hidden=!open; if(open)$('#help').scrollTop=0}
+$('#btnHelp').onclick=()=>setHelp(true); $('#rmHelp').onclick=()=>setHelp(true); $('#helpClose').onclick=()=>setHelp(false);
+document.querySelectorAll('.help-nav a').forEach(a=>a.onclick=e=>{e.preventDefault();const t=$(a.getAttribute('href'));if(t)t.scrollIntoView({behavior:'smooth',block:'start'})});
+
+/* ---------- Mirage and light timeline ---------- */
+const MG_DIR={none:'none',boil:'boiling',left:'running left (wind from right)',right:'running right (wind from left)'};
+const MG_STR={light:'light',medium:'medium',flat:'flat / fast'};
+function noteObs(){S.obs.push({t:new Date().toISOString(),light:S.light,mDir:S.mirage.dir,mStr:S.mirage.str,mFocus:S.mirage.focus});if(S.obs.length>500)S.obs.shift()}
+function obsAt(tIso){const t=Date.parse(tIso);let best=null;for(const o of S.obs){if(Date.parse(o.t)<=t)best=o;else break}return best}
+const mirageText=m=>!m||m.dir==='none'?'no mirage':`${m.str?MG_STR[m.str]+' ':''}${MG_DIR[m.dir]}${m.focus?`, focused ${m.focus==='mid'?'mid-range':'at the target'}`:''}`;
+$('#rmMirage').addEventListener('click',e=>{
+  const b=e.target.closest('[data-v]'), grp=e.target.closest('[data-mg]'); if(!b||!grp)return;
+  const k=grp.dataset.mg, v=b.dataset.v;
+  if(k==='light'){S.light=v;$('#rmLight').value=v;$('#light').value=v}
+  else{S.mirage[k]=v; if(k==='dir'&&v==='none')S.mirage.str=''; if(k==='str'&&S.mirage.dir==='none')S.mirage.dir='boil'}
+  noteObs(); save(); render();
+});
+function renderMirage(){
+  $('#mirageNow').textContent=`Mirage: ${mirageText(S.mirage)}. Light: ${S.light}.`;
+  if($('#rm').hidden)return;
+  document.querySelectorAll('#rmMirage [data-mg]').forEach(g=>{const k=g.dataset.mg, cur=k==='light'?S.light:S.mirage[k];
+    g.querySelectorAll('button').forEach(b=>b.classList.toggle('sel',b.dataset.v===cur))});
+  const last=S.obs[S.obs.length-1];
+  $('#rmMirageMsg').textContent=`Now: ${mirageText(S.mirage)}; light ${S.light}${last?`. Last change ${new Date(last.t).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',hour12:false})}`:''}.`+
+    (S.light==='Fog / mist'?' Fog suppresses mirage; expect it to appear quickly as the fog lifts, and log a new string when it does.':'');
+}
 /* ---------- Calypso Ultrasonic over Web Bluetooth (Calypso developer manual 1.8:
    data service 0x180D, notify characteristic 0x2A39; speed uint16 LE /100 m/s, direction uint16 LE degrees
    relative to the orientation mark, battery x10 %, temperature -100 °C) ---------- */
@@ -1960,7 +2335,8 @@ function renderRange(){
     $('#rmWind').textContent=wC===0?'0':`${w>0?'R':'L'} ${Math.abs(wC*ck).toFixed(3)}`; $('#rmWindC').textContent=wC===0?'hold centre':`${Math.abs(wC)} clicks ${w>0?'right':'left'} · ${U}`;
   }
   const an=atmNow(), wn=windNow(), r=wn&&wn.dir!=null?resolve(wn,brg):null;
-  $('#rmSolNote').textContent=`${l?l.name:''} · ${an?`${an.label} ${an.Tc.toFixed(1)} °C, ${an.PhPa.toFixed(1)} hPa, ${an.RH.toFixed(0)}%`:'no atmosphere yet'} · ${wn?`${wn.label}: ${Math.abs(r?r.cross:0).toFixed(1)} mph ${r&&r.cross<0?'from left':'from right'}`:'no wind yet'}`;
+  const smv=l?sessionMv(l):null;
+  $('#rmSolNote').textContent=`${l?l.name:''}${smv!=null?` · trued MV ${Math.round(smv)} fps`:''} · ${an?`${an.label} ${an.Tc.toFixed(1)} °C, ${an.PhPa.toFixed(1)} hPa, ${an.RH.toFixed(0)}%`:'no atmosphere yet'} · ${wn?`${wn.label}: ${Math.abs(r?r.cross:0).toFixed(1)} mph ${r&&r.cross<0?'from left':'from right'}`:'no wind yet'}`;
   // distance
   $('#rmDU').textContent=S.distUnit;
   $('#rmNom').innerHTML=NOMINALS[S.distUnit].map(v=>`<button type="button" data-nom="${v}" class="${v==S.nominal?'sel':''}">${v}</button>`).join('');
@@ -1999,7 +2375,7 @@ $('#rmFoul').onclick=()=>{S.barrel.foulers.push(new Date().toISOString());save()
 $('#rmFoulUndo').onclick=()=>{S.barrel.foulers.pop();save();render()};
 $('#btnRM').onclick=()=>setRM(true);
 $('#rmExit').onclick=()=>setRM(false);
-$('#rmNom').addEventListener('click',e=>{const b=e.target.closest('[data-nom]');if(!b)return;S.nominal=+b.dataset.nom;save();render()});
+$('#rmNom').addEventListener('click',e=>{const b=e.target.closest('[data-nom]');if(!b)return;S.nominal=+b.dataset.nom;autoFace();save();render()});
 $('#rm').addEventListener('click',e=>{
   const b=e.target.closest('button'); if(!b)return;
   const l=curLoad(), ck=(l&&+l.click)||0.125;
@@ -2017,7 +2393,7 @@ $('#rmLrf').oninput=e=>{S.lrf=e.target.value.trim();save();render()};
 [['rmT','T'],['rmP','P'],['rmRH','RH']].forEach(([id,k])=>$('#'+id).oninput=e=>{S.kestrel[k]=e.target.value.trim();save();render()});
 $('#rmSpd').oninput=e=>{S.manual.spd=e.target.value.trim();S.src='manual';save();render()};
 $('#rmDE').oninput=e=>{S.dial.e=e.target.value.trim();save();render()};
-$('#rmLight').onchange=e=>{S.light=e.target.value;save()};
+$('#rmLight').onchange=e=>{S.light=e.target.value;noteObs();save();render()};
 $('#calWin').onchange=e=>{CAL.win=+e.target.value;render()};
 $('#calBtn').onclick=calConnect;
 $('#rmCopy').onclick=()=>{$('#dCopy').click();$('#rmDE').value=S.dial.e;render()};
