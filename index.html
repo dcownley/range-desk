@@ -2543,14 +2543,16 @@ async function calConnect(){
   if(CAL.dev&&CAL.dev.gatt.connected){CAL.dev.gatt.disconnect();return}
   if(!navigator.bluetooth){CAL.status='Bluetooth from a web page needs Chrome on Android (not iPhone or iPad), opened from the hosted address.';render();return}
   try{
-    CAL.status='Choose the Calypso in the list…';render();
-    const dev=await navigator.bluetooth.requestDevice({filters:[{services:[0x180d]},{namePrefix:'ULTRA'},{namePrefix:'Calypso'},{namePrefix:'CALYPSO'}],optionalServices:[0x180d,0x180a,0x180f,0x181a]});
+    CAL.status='Choose the Calypso in the list. Every nearby device is shown; it may be named ULTRASONIC, Calypso, or a serial number.';render();
+    // Show every nearby device: the Kestrel-linked and Mini versions don't always advertise the Calypso name or service
+    const dev=await navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:[0x180d,0x180a,0x180f,0x181a,'6e400001-b5a3-f393-e0a9-e50e24dcca9e']});
     CAL.dev=dev; dev.addEventListener('gattserverdisconnected',()=>{CAL.status='Disconnected. Tap Connect to reconnect.';CAL.ch=null;render()});
     CAL.status='Connecting…';render();
     const srv=await dev.gatt.connect();
     let svc,ch;
     try{svc=await srv.getPrimaryService(0x180d); ch=await svc.getCharacteristic(0x2a39)}
-    catch(e){dev.gatt.disconnect();CAL.status=`${dev.name||'This meter'} connected but doesn't offer the standard Calypso wind data. AB or Kestrel-linked versions may use a different format. Use Kestrel / mine for now and tell Claude the model number.`;render();return}
+    catch(e){let list='';try{list=(await srv.getPrimaryServices()).map(x=>{const m=String(x.uuid).match(/^0000([0-9a-f]{4})-/);return m?m[1]:x.uuid}).join(', ')}catch(_){}
+      dev.gatt.disconnect();CAL.status=`${dev.name||'This device'} connected but doesn't offer the standard Calypso wind data${list?` (services seen: ${list})`:''}. If it was the right device, open the Bluetooth Explorer page and record it for Claude; meanwhile use Kestrel / mine.`;render();return}
     ch.addEventListener('characteristicvaluechanged',calOnData); await ch.startNotifications(); CAL.ch=ch;
     CAL.status=`Connected to ${dev.name||'Calypso'}. Keep the orientation mark pointing at the target.`;
     S.src='calypso'; save(); render();
