@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bluetooth Explorer</title>
+<style>
+:root{--bg:#f4f5f2;--fg:#1b201c;--muted:#5a645c;--line:#cfd5cc;--accent:#c23f1b;--panel:#fff;--good:#2f7a3d}
+@media (prefers-color-scheme:dark){:root{--bg:#111513;--fg:#e4e9e2;--muted:#97a299;--line:#2b332e;--accent:#ee6a3c;--panel:#191e1b;--good:#5fbf6e}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,Segoe UI,Roboto,Arial,sans-serif}
+main{max-width:860px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:12px}
+h1{font-size:22px;margin:4px 0 0}
+h2{font-size:17px;margin:0 0 6px}
+p{margin:6px 0}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+button{font:600 17px system-ui,sans-serif;padding:12px 16px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--fg);min-height:48px}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:end}
+label{display:flex;flex-direction:column;font-size:14px;color:var(--muted);gap:4px}
+input{font:16px system-ui,sans-serif;padding:10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg);width:8em}
+input.wide{width:100%}
+.muted{color:var(--muted);font-size:14px}
+#status{font-weight:600}
+table{border-collapse:collapse;width:100%;font-size:13px}
+td,th{border-bottom:1px solid var(--line);padding:4px 6px;text-align:left;vertical-align:top}
+code,.mono{font:13px ui-monospace,Menlo,Consolas,monospace;word-break:break-all}
+.scroll{overflow-x:auto;max-height:50vh;overflow-y:auto}
+.note-row td{background:color-mix(in srgb,var(--good) 15%,transparent)}
+</style></head><body><main>
+<h1>Bluetooth Explorer</h1>
+<p>Records the raw data a Bluetooth instrument sends, so its format can be worked out. Use it for the Calypso Weatherdot, or for a Calypso wind meter that Range Desk can't read. It only reads; it changes nothing on the instrument.</p>
+
+<div class="box">
+  <h2>1. Connect</h2>
+  <ol style="margin:0 0 8px;padding-left:20px">
+    <li>Close Anemotracker and any other app using the instrument, so it is free.</li>
+    <li>Tap <b>Connect</b> and pick the instrument from the list.</li>
+  </ol>
+  <label>Extra service IDs (optional, comma separated; from the nRF Connect app)<input id="extra" class="wide" placeholder="e.g. 0000fff0-0000-1000-8000-00805f9b34fb"></label>
+  <div class="row" style="margin-top:8px">
+    <button class="primary" id="connect" type="button">Connect</button>
+    <button id="readAll" type="button" disabled>Read everything again</button>
+    <button id="disc" type="button" disabled>Disconnect</button>
+  </div>
+  <p id="status" class="muted">Not connected.</p>
+  <div id="svcs" class="mono muted"></div>
+</div>
+
+<div class="box">
+  <h2>2. Note what the app or screen shows</h2>
+  <p class="muted">Every minute or so, and whenever the reading changes (breathe on it, hold it in your hand, move it into the sun), type what Anemotracker shows and tap Note. The notes are what make the decoding possible.</p>
+  <div class="row">
+    <label>Temp °C<input id="nT" inputmode="decimal"></label>
+    <label>Pressure hPa<input id="nP" inputmode="decimal"></label>
+    <label>Humidity %<input id="nH" inputmode="decimal"></label>
+    <label>Wind mph<input id="nW" inputmode="decimal"></label>
+    <button id="note" type="button">Note</button>
+  </div>
+</div>
+
+<div class="box">
+  <h2>3. Send it to Claude</h2>
+  <p class="muted">After 5 to 10 minutes with a few notes, save the file and send it in the chat.</p>
+  <div class="row">
+    <button class="primary" id="save" type="button">Save recording</button>
+    <button id="copy" type="button">Copy as text</button>
+    <button id="clear" type="button">Clear</button>
+  </div>
+  <p id="msg" class="muted"></p>
+</div>
+
+<div class="box">
+  <h2>Recording <span id="count" class="muted"></span></h2>
+  <div class="scroll"><table id="log"><tr><th>Time</th><th>Source</th><th>Bytes (hex)</th><th>Possible values</th></tr></table></div>
+</div>
+</main>
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+// Services to ask for: standard environmental sensing, device info, battery, Calypso wind, Nordic UART and common vendor ones
+const SERVICES=[0x181a,0x180a,0x180f,0x180d,0x1809,0x181c,0xfff0,0xffe0,0xffb0,0xfee0,0xfe95,
+  '6e400001-b5a3-f393-e0a9-e50e24dcca9e','0000fff0-0000-1000-8000-00805f9b34fb','49535343-fe7d-4ae5-8fa9-9fafd205e455'];
+const NAMES={'2a6e':'Temperature (standard)','2a6d':'Pressure (standard)','2a6f':'Humidity (standard)','2a19':'Battery level','2a29':'Manufacturer','2a24':'Model number','2a26':'Firmware','2a27':'Hardware','2a25':'Serial','2a39':'Calypso wind data','2a37':'Calypso wind (alt)','2a1c':'Temperature measurement'};
+const REC={started:new Date().toISOString(),device:null,services:[],rows:[]};
+let dev=null, chars=[];
+const short=u=>{const m=String(u).match(/^0000([0-9a-f]{4})-0000-1000-8000-00805f9b34fb$/i);return m?m[1].toLowerCase():String(u)};
+const hex=dv=>[...new Uint8Array(dv.buffer,dv.byteOffset,dv.byteLength)].map(b=>b.toString(16).padStart(2,'0')).join(' ');
+function guesses(dv){
+  const n=dv.byteLength, out=[];
+  if(n<=24&&[...new Uint8Array(dv.buffer,dv.byteOffset,n)].every(b=>b>=32&&b<127))out.push('text "'+new TextDecoder().decode(dv)+'"');
+  for(let o=0;o+2<=n;o+=2){const u=dv.getUint16(o,true), s=dv.getInt16(o,true);out.push(`@${o} u16 ${u} (/10 ${(u/10).toFixed(1)}, /100 ${(u/100).toFixed(2)})${s<0?` s16 ${s}`:''}`)}
+  for(let o=0;o+4<=n;o+=4){const u=dv.getUint32(o,true), f=dv.getFloat32(o,true);out.push(`@${o} u32 ${u}${isFinite(f)&&Math.abs(f)>1e-3&&Math.abs(f)<1e6?` f32 ${f.toPrecision(6)}`:''}`)}
+  return out.join(' · ');
+}
+function addRow(r){
+  REC.rows.push(r);
+  const tr=document.createElement('tr'); if(r.note)tr.className='note-row';
+  const t=new Date(r.t).toLocaleTimeString([], {hour12:false});
+  tr.innerHTML=r.note?`<td>${t}</td><td><b>Your note</b></td><td colspan="2">${Object.entries(r.note).map(([k,v])=>k+' '+v).join(', ')}</td>`
+    :`<td>${t}</td><td class="mono">${r.name||r.char}</td><td class="mono">${r.hex}</td><td class="mono muted">${r.guess}</td>`;
+  const tb=$('#log'); tb.insertBefore(tr,tb.rows[1]||null);
+  $('#count').textContent=`${REC.rows.length} entries`;
+}
+function onValue(c,dv){addRow({t:new Date().toISOString(),svc:short(c.service.uuid),char:short(c.uuid),name:NAMES[short(c.uuid)]||null,hex:hex(dv),guess:guesses(dv)})}
+async function readAll(){for(const c of chars){if(!c.properties.read)continue;try{onValue(c,await c.readValue())}catch(e){}}}
+$('#connect').onclick=async()=>{
+  if(!navigator.bluetooth){$('#status').textContent='This browser has no Bluetooth access. Use Chrome on Android, opened from the web address.';return}
+  const extra=$('#extra').value.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean).map(s=>/^[0-9a-f]{4}$/.test(s)?parseInt(s,16):s);
+  try{
+    $('#status').textContent='Choose the instrument in the list…';
+    dev=await navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:[...SERVICES,...extra]});
+    REC.device=dev.name||'(no name)';
+    dev.addEventListener('gattserverdisconnected',()=>{$('#status').textContent='Disconnected.';$('#readAll').disabled=$('#disc').disabled=true});
+    $('#status').textContent='Connecting to '+REC.device+'…';
+    const srv=await dev.gatt.connect();
+    const svcs=await srv.getPrimaryServices(); chars=[]; const lines=[];
+    for(const s of svcs){
+      let cs=[]; try{cs=await s.getCharacteristics()}catch(e){}
+      const info={svc:short(s.uuid),chars:cs.map(c=>({uuid:short(c.uuid),name:NAMES[short(c.uuid)]||null,read:c.properties.read,notify:c.properties.notify||c.properties.indicate}))};
+      REC.services.push(info); chars.push(...cs);
+      lines.push(`Service ${info.svc}: `+info.chars.map(c=>`${c.name||c.uuid} [${[c.read?'read':'',c.notify?'notify':''].filter(Boolean).join(', ')}]`).join('; '));
+    }
+    $('#svcs').innerHTML=lines.length?lines.map(l=>'<div>'+l+'</div>').join(''):'No services visible. Install the free nRF Connect app, connect to the instrument there, screenshot its service list, and send it to Claude.';
+    for(const c of chars){if(c.properties.notify||c.properties.indicate){try{c.addEventListener('characteristicvaluechanged',e=>onValue(c,e.target.value));await c.startNotifications()}catch(e){}}}
+    await readAll();
+    $('#status').textContent=`Connected to ${REC.device}. Recording. ${svcs.length} service${svcs.length===1?'':'s'} visible.`;
+    $('#readAll').disabled=$('#disc').disabled=false;
+  }catch(e){$('#status').textContent=e&&e.name==='NotFoundError'?'No instrument chosen.':'Could not connect: '+(e.message||e)}
+};
+$('#readAll').onclick=readAll;
+$('#disc').onclick=()=>{if(dev&&dev.gatt.connected)dev.gatt.disconnect()};
+setInterval(()=>{if(dev&&dev.gatt.connected)readAll()},15000);   // re-read every 15 s for instruments that don't push updates
+$('#note').onclick=()=>{
+  const n={};[['nT','temp_c'],['nP','pressure_hpa'],['nH','humidity_pct'],['nW','wind_mph']].forEach(([id,k])=>{const v=$('#'+id).value.trim();if(v)n[k]=v});
+  if(!Object.keys(n).length){$('#msg').textContent='Type at least one value first.';return}
+  addRow({t:new Date().toISOString(),note:n}); $('#msg').textContent='Noted.';
+};
+const text=()=>JSON.stringify({...REC,saved:new Date().toISOString(),userAgent:navigator.userAgent},null,1);
+$('#save').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text()],{type:'application/json'}));a.download=`bt-recording-${(REC.device||'device').replace(/\W+/g,'-')}-${new Date().toISOString().slice(0,16).replace(/[:T]/g,'-')}.json`;document.body.appendChild(a);a.click();a.remove();$('#msg').textContent='Saved to Downloads.'};
+$('#copy').onclick=async()=>{try{await navigator.clipboard.writeText(text());$('#msg').textContent='Copied.'}catch(e){$('#msg').textContent='Copy blocked; use Save recording.'}};
+$('#clear').onclick=()=>{REC.rows=[];const tb=$('#log');while(tb.rows.length>1)tb.deleteRow(1);$('#count').textContent='';$('#msg').textContent='Cleared.'};
+</script></body></html>

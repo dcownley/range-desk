@@ -824,6 +824,10 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
         </div>
         <p class="rm-note" id="calStatus">Not connected. Point the orientation mark on the Calypso at the target.</p>
         <div class="rm-solgrid"><div><span>Live</span><b id="calLive">–</b></div><div><span>Average</span><b id="calAvg">–</b></div></div>
+        <div id="wdotBox" hidden>
+          <label class="rm-lab">Wind meter speed setting (match it to the Calypso app)<select id="wdotScale"></select></label>
+          <p class="rm-note" id="wdotRaw"></p>
+        </div>
       </div>
       <p class="rm-note" id="rmWindMsg"></p>
     </section>
@@ -1090,14 +1094,14 @@ const S={
   light:store.get('light','Full sun'),
   mirage:store.get('mirage',{dir:'none',str:'',focus:'mid'}), obs:store.get('obs',[]),
   stn:store.get('stn','auto'), metars:[],
-  str:store.get('str',null), kestrelT:store.get('kestrelT',null), manualT:store.get('manualT',null), hc:store.get('hc',false), windTrue:store.get('windTrue',{}),
+  str:store.get('str',null), wdotScale:store.get('wdotScale','ms100'), kestrelT:store.get('kestrelT',null), manualT:store.get('manualT',null), hc:store.get('hc',false), windTrue:store.get('windTrue',{}),
   mode:null, wx:null, metar:null, elev:null
 };
 let sigK=JSON.stringify(S.kestrel), sigM=JSON.stringify(S.manual);
 const save=()=>{
   const k=JSON.stringify(S.kestrel), m=JSON.stringify(S.manual);          // time-stamp meter readings when they change
   if(k!==sigK){sigK=k;S.kestrelT=Date.now()} if(m!==sigM){sigM=m;S.manualT=Date.now()}
-  for(const k of ['str','kestrelT','manualT','hc','windTrue','fp','tgt','example','distUnit','nominal','lrf','unit','click','faces','faceId','src','model','hAdj','manual','cal','shots','light','stn','sys','relay','ticked','cmpMode','windyProd','loads','loadId','optSpin','optAJ','optCor','atmSrc','kestrel','logs','dial','rmOpen','appKey','barrel','settleK','coldMin','history','truing','corr','mirage','obs','whiteV'])store.set(k,S[k])};
+  for(const k of ['wdotScale','str','kestrelT','manualT','hc','windTrue','fp','tgt','example','distUnit','nominal','lrf','unit','click','faces','faceId','src','model','hAdj','manual','cal','shots','light','stn','sys','relay','ticked','cmpMode','windyProd','loads','loadId','optSpin','optAJ','optCor','atmSrc','kestrel','logs','dial','rmOpen','appKey','barrel','settleK','coldMin','history','truing','corr','mirage','obs','whiteV'])store.set(k,S[k])};
 
 /* ---------- Distance resolution: rangefinder > map pins > nominal ---------- */
 function geom(){ return vincenty(S.fp.lat,S.fp.lng,S.tgt.lat,S.tgt.lng); }
@@ -2576,14 +2580,39 @@ function calAvg(){
   let u=0,v=0,g=0; for(const s of w){u+=s.spd*Math.sin(s.rel*D2R);v+=s.spd*Math.cos(s.rel*D2R);g=Math.max(g,s.spd)}
   u/=w.length;v/=w.length; return{spd:Math.hypot(u,v),rel:norm360(Math.atan2(u,v)*R2D),gust:g,n:w.length};
 }
-function calOnData(e){
-  const d=e.target.value; if(d.byteLength<4)return;
-  const spd=d.getUint16(0,true)/100/MPH, rel=d.getUint16(2,true)%360;
-  if(d.byteLength>=5)CAL.batt=d.getUint8(4)*10;
+function calPush(spd,rel){                 // spd in mph, rel = wind-from angle relative to the orientation mark
   CAL.live={spd,rel}; CAL.samples.push({t:Date.now(),spd,rel});
   if(S.str){const c=S.str.cal||(S.str.cal={n:0,c:0,h:0,s:0}); c.n++; c.c+=spd*Math.sin(rel*D2R); c.h+=spd*Math.cos(rel*D2R); c.s+=spd}  // whole-string Calypso average
   const cut=Date.now()-60000; while(CAL.samples.length&&CAL.samples[0].t<cut)CAL.samples.shift();
   if(!calRenderTimer)calRenderTimer=setTimeout(()=>{calRenderTimer=null;render()},1000);
+}
+function calOnData(e){
+  const d=e.target.value; if(d.byteLength<4)return;
+  if(d.byteLength>=5)CAL.batt=d.getUint8(4)*10;
+  calPush(d.getUint16(0,true)/100/MPH, d.getUint16(2,true)%360);
+}
+/* WDOT wind meter (Kestrel/AB-linked Calypso): Microchip transparent-UART service, frames delimited by 0x7E.
+   Seen 2 Nov: 7E 00 00 06 00 5E 00 3A 41 2B 0D 82 D7 7E. Provisional reading (to confirm against the Calypso app):
+   bytes 3-4 speed (uint16, big-endian), 5-6 angle in degrees (uint16), 7-10 temperature (float32, big-endian), last byte check. */
+const WDOT_SVC='49535343-fe7d-4ae5-8fa9-9fafd205e455', WDOT_NOTIFY='0000fff2-0000-1000-8000-00805f9b34fb';
+const WDOT_SCALES={ms100:{lbl:'m/s ÷ 100',f:r=>r/100/MPH},kn100:{lbl:'knots ÷ 100',f:r=>r/100*1.15078},kmh10:{lbl:'km/h ÷ 10',f:r=>r/10*0.621371},mph10:{lbl:'mph ÷ 10',f:r=>r/10},ms10:{lbl:'m/s ÷ 10',f:r=>r/10/MPH}};
+let wdotBuf=[];
+function wdotOnData(e){
+  const d=e.target.value, b=new Uint8Array(d.buffer,d.byteOffset,d.byteLength);
+  for(const x of b){
+    if(x===0x7e){ if(wdotBuf.length)wdotFrame(wdotBuf); wdotBuf=[]; }
+    else wdotBuf.push(x);
+    if(wdotBuf.length>64)wdotBuf=[];
+  }
+}
+function wdotFrame(raw){
+  const p=[]; for(let i=0;i<raw.length;i++){ if(raw[i]===0x7d&&i+1<raw.length){p.push(raw[++i]^0x20)} else p.push(raw[i]) }   // HDLC-style escapes, if used
+  CAL.raw=p.map(x=>x.toString(16).padStart(2,'0')).join(' ');
+  if(p.length<11)return;
+  const dv=new DataView(new Uint8Array(p).buffer), rawSpd=dv.getUint16(3,false), ang=dv.getUint16(5,false), t=dv.getFloat32(7,false);
+  if(ang>360)return;
+  CAL.rawSpd=rawSpd; CAL.temp=isFinite(t)&&t>-40&&t<60?t:null;
+  calPush((WDOT_SCALES[S.wdotScale]||WDOT_SCALES.ms100).f(rawSpd), ang%360);
 }
 async function calConnect(){
   if(CAL.dev&&CAL.dev.gatt.connected){CAL.dev.gatt.disconnect();return}
@@ -2591,16 +2620,18 @@ async function calConnect(){
   try{
     CAL.status='Choose the Calypso in the list. Every nearby device is shown; it may be named ULTRASONIC, Calypso, or a serial number.';render();
     // Show every nearby device: the Kestrel-linked and Mini versions don't always advertise the Calypso name or service
-    const dev=await navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:[0x180d,0x180a,0x180f,0x181a,'6e400001-b5a3-f393-e0a9-e50e24dcca9e']});
+    const dev=await navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:[0x180d,0x180a,0x180f,0x181a,'6e400001-b5a3-f393-e0a9-e50e24dcca9e',WDOT_SVC]});
     CAL.dev=dev; dev.addEventListener('gattserverdisconnected',()=>{CAL.status='Disconnected. Tap Connect to reconnect.';CAL.ch=null;render()});
     CAL.status='Connecting…';render();
     const srv=await dev.gatt.connect();
-    let svc,ch;
+    let svc,ch,wdot=false;
     try{svc=await srv.getPrimaryService(0x180d); ch=await svc.getCharacteristic(0x2a39)}
-    catch(e){let list='';try{list=(await srv.getPrimaryServices()).map(x=>{const m=String(x.uuid).match(/^0000([0-9a-f]{4})-/);return m?m[1]:x.uuid}).join(', ')}catch(_){}
+    catch(e0){ try{svc=await srv.getPrimaryService(WDOT_SVC); ch=await svc.getCharacteristic(WDOT_NOTIFY); wdot=true}catch(e){} }
+    if(!ch){let list='';try{list=(await srv.getPrimaryServices()).map(x=>{const m=String(x.uuid).match(/^0000([0-9a-f]{4})-/);return m?m[1]:x.uuid}).join(', ')}catch(_){}
       dev.gatt.disconnect();CAL.status=`${dev.name||'This device'} connected but doesn't offer the standard Calypso wind data${list?` (services seen: ${list})`:''}. If it was the right device, open the Bluetooth Explorer page and record it for Claude; meanwhile use Kestrel / mine.`;render();return}
-    ch.addEventListener('characteristicvaluechanged',calOnData); await ch.startNotifications(); CAL.ch=ch;
-    CAL.status=`Connected to ${dev.name||'Calypso'}. Keep the orientation mark pointing at the target.`;
+    ch.addEventListener('characteristicvaluechanged',wdot?wdotOnData:calOnData); await ch.startNotifications(); CAL.ch=ch; CAL.wdot=wdot;
+    CAL.status=wdot?`Connected to ${dev.name}. Wind speed scaling is still being confirmed: compare with the Calypso app or a Kestrel and pick the matching setting below. Keep the orientation mark pointing at the target.`
+      :`Connected to ${dev.name||'Calypso'}. Keep the orientation mark pointing at the target.`;
     S.src='calypso'; save(); render();
   }catch(err){
     CAL.status=err&&err.name==='NotFoundError'?'No device chosen.':`Couldn't connect: ${err.message||err}. Check the Calypso is on and not connected to its own app.`;render();
@@ -2660,6 +2691,10 @@ function renderRange(){
   $('#calStatus').textContent=CAL.status+(CAL.batt!=null?` Battery ${CAL.batt}%.`:'');
   const clkOf=r=>Math.round(norm360(r)/30)%12||12;
   $('#calLive').textContent=CAL.live?`${CAL.live.spd.toFixed(1)} mph · ${clkOf(CAL.live.rel)} o'clock`:'–';
+  $('#wdotBox').hidden=!CAL.wdot;
+  if(CAL.wdot){ if(!$('#wdotScale').options.length)$('#wdotScale').innerHTML=Object.entries(WDOT_SCALES).map(([k,v])=>`<option value="${k}">${v.lbl}</option>`).join('');
+    $('#wdotScale').value=S.wdotScale;
+    $('#wdotRaw').textContent=CAL.rawSpd!=null?`Raw speed ${CAL.rawSpd} = ${Object.values(WDOT_SCALES).map(v=>v.f(CAL.rawSpd).toFixed(1)).join(' / ')} mph by each setting${CAL.temp!=null?` · meter temperature ${CAL.temp.toFixed(1)} °C`:''}. Frame: ${CAL.raw||''}`:'Waiting for data…'; }
   const a=calAvg(); $('#calAvg').textContent=a?`${a.spd.toFixed(1)} mph · ${clkOf(a.rel)} o'clock`:'–';
   $('#rmWindMsg').textContent=r?`Crosswind ${Math.abs(r.cross).toFixed(1)} mph ${r.cross>=0?'from right':'from left'}, ${r.head>=0?'head':'tail'} ${Math.abs(r.head).toFixed(1)} mph.`:'No wind value yet.';
   // dial
@@ -2700,6 +2735,7 @@ $('#rmDE').oninput=e=>{S.dial.e=e.target.value.trim();save();render()};
 $('#rmLight').onchange=e=>{S.light=e.target.value;noteObs();save();render()};
 $('#calWin').onchange=e=>{CAL.win=+e.target.value;render()};
 $('#calBtn').onclick=calConnect;
+$('#wdotScale').onchange=e=>{S.wdotScale=e.target.value;CAL.samples=[];save();render()};
 $('#rmCopy').onclick=()=>{$('#dCopy').click();$('#rmDE').value=S.dial.e;render()};
 $('#rmLog').onclick=()=>{$('#logNow').click();const b=$('#rmLog');b.textContent='Logged ✓';setTimeout(()=>b.textContent='Quick log, without the checklist',1500)};
 setInterval(()=>{if(S.src==='calypso')render()},2000);
