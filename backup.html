@@ -30,7 +30,7 @@ textarea{width:100%;box-sizing:border-box;height:160px;font:12px ui-monospace,Me
 const data={}; let n=0;
 try{
   for(let i=0;i<localStorage.length;i++){
-    const k=localStorage.key(i); if(!k||!k.startsWith('frd_'))continue;
+    const k=localStorage.key(i); if(!k||!k.startsWith('frd_')||k==='frd_appKey')continue;   // never export the photo-reading passphrase
     const v=localStorage.getItem(k); try{data[k]=JSON.parse(v)}catch(e){data[k]=v} n++;
   }
 }catch(e){document.getElementById('sum').textContent='This browser blocked access to saved data: '+e.message}
