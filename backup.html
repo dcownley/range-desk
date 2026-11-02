@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Range Desk backup</title>
+<style>
+:root{--bg:#f4f5f2;--fg:#1b201c;--muted:#5a645c;--line:#cfd5cc;--accent:#c23f1b;--panel:#fff}
+@media (prefers-color-scheme:dark){:root{--bg:#111513;--fg:#e4e9e2;--muted:#97a299;--line:#2b332e;--accent:#ee6a3c;--panel:#191e1b}}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,Segoe UI,Roboto,Arial,sans-serif}
+main{max-width:720px;margin:0 auto;padding:16px}
+h1{font-size:22px;margin:4px 0 8px}
+p{margin:8px 0}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin:12px 0}
+button{font:600 17px system-ui,sans-serif;padding:12px 18px;border-radius:6px;border:0;background:var(--accent);color:#fff;margin:4px 8px 4px 0}
+button.alt{background:transparent;color:var(--fg);border:1px solid var(--line)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+td,th{border-bottom:1px solid var(--line);padding:4px 6px;text-align:left}
+textarea{width:100%;box-sizing:border-box;height:160px;font:12px ui-monospace,Menlo,monospace;background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:6px}
+.muted{color:var(--muted);font-size:14px}
+</style></head><body><main>
+<h1>Range Desk backup</h1>
+<p>This page reads everything Range Desk has saved in this browser and saves it as one file. It does not change or delete anything.</p>
+<div class="box" id="sum">Reading…</div>
+<button id="dl" type="button">Download backup file</button>
+<button id="cp" type="button" class="alt">Copy as text</button>
+<p class="muted" id="msg"></p>
+<p class="muted">If the download doesn't appear, tap <b>Copy as text</b>, then paste it into an email to yourself or straight into the Claude chat.</p>
+<textarea id="raw" readonly></textarea>
+</main>
+<script>
+const data={}; let n=0;
+try{
+  for(let i=0;i<localStorage.length;i++){
+    const k=localStorage.key(i); if(!k||!k.startsWith('frd_'))continue;
+    const v=localStorage.getItem(k); try{data[k]=JSON.parse(v)}catch(e){data[k]=v} n++;
+  }
+}catch(e){document.getElementById('sum').textContent='This browser blocked access to saved data: '+e.message}
+const out={exported:new Date().toISOString(),page:location.href,userAgent:navigator.userAgent,items:data};
+const txt=JSON.stringify(out,null,1);
+document.getElementById('raw').value=txt;
+const cnt=k=>{const v=data['frd_'+k];return Array.isArray(v)?v.length:(v&&typeof v==='object'?Object.keys(v).length:(v==null?0:1))};
+const rows=[['String logs','logs'],['Plotted shots','shots'],['Mirage and light notes','obs'],['Barrel history','history'],['Loads','loads']];
+if(n){
+  document.getElementById('sum').innerHTML='<b>'+n+' saved items found.</b><table>'+rows.map(([l,k])=>'<tr><td>'+l+'</td><td>'+cnt(k)+'</td></tr>').join('')+'</table>';
+}else if(!document.getElementById('sum').textContent.startsWith('This')){
+  document.getElementById('sum').innerHTML='<b>Nothing found.</b> Open this page in the same browser you used for Range Desk on Saturday.';
+}
+const fname='range-desk-backup-'+new Date().toISOString().slice(0,10)+'.json';
+document.getElementById('dl').onclick=()=>{
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type:'application/json'}));a.download=fname;document.body.appendChild(a);a.click();a.remove();
+  document.getElementById('msg').textContent='Saved as '+fname+' (look in Downloads).';
+};
+document.getElementById('cp').onclick=async()=>{
+  try{await navigator.clipboard.writeText(txt);document.getElementById('msg').textContent='Copied.'}
+  catch(e){const t=document.getElementById('raw');t.focus();t.select();document.getElementById('msg').textContent='Text selected: use Copy from the menu.'}
+};
+</script></body></html>
