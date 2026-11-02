@@ -762,6 +762,11 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
         <label class="rm-lab">Humidity %<input id="rmRH" inputmode="decimal"></label>
       </div>
       <p class="rm-note" id="rmAtmMsg"></p>
+      <div class="rm-step" style="grid-template-columns:1fr auto">
+        <button type="button" id="wdBtn" class="primary">Connect Weatherdot (live)</button>
+        <button type="button" id="wdRead">Read now</button>
+      </div>
+      <p class="rm-note" id="wdStatus"></p>
       <button type="button" class="rm-photo" data-photo="atmos">Read Kestrel / Weatherdot photo</button>
     </section>
 
@@ -2523,6 +2528,47 @@ function renderMirage(){
 /* ---------- Calypso Ultrasonic over Web Bluetooth (Calypso developer manual 1.8:
    data service 0x180D, notify characteristic 0x2A39; speed uint16 LE /100 m/s, direction uint16 LE degrees
    relative to the orientation mark, battery x10 %, temperature -100 °C) ---------- */
+/* ---------- Calypso Weatherdot: standard Bluetooth Environmental Sensing service (0x181A) ---------- */
+// Temperature 0x2A6E (sint16, 0.01 °C), pressure 0x2A6D (uint32, 0.1 Pa; absolute = station pressure), humidity 0x2A6F (uint16, 0.01 %).
+const WD={dev:null,chars:{},last:null,status:'Not connected. Close Anemotracker first, so the Weatherdot is free.',timer:null,lastSave:0};
+function wdApply(){
+  const v=WD.last; if(!v)return;
+  const ok=v.T!=null&&v.T>-40&&v.T<60&&v.P!=null&&v.P>700&&v.P<1100&&(v.RH==null||(v.RH>=0&&v.RH<=100));
+  if(!ok){WD.status=`Weatherdot sends values that don't look right (temp ${v.T}, pressure ${v.P}, humidity ${v.RH}); not applied. Send Claude a screenshot.`;render();return}
+  S.kestrel={T:v.T.toFixed(1),P:v.P.toFixed(1),RH:v.RH!=null?v.RH.toFixed(0):S.kestrel.RH}; S.atmSrc='kestrel'; S.atmLive='Weatherdot';
+  ['rmT','kT'].forEach(id=>{const e=$('#'+id);if(e&&document.activeElement!==e)e.value=S.kestrel.T});
+  ['rmP','kP'].forEach(id=>{const e=$('#'+id);if(e&&document.activeElement!==e)e.value=S.kestrel.P});
+  ['rmRH','kRH'].forEach(id=>{const e=$('#'+id);if(e&&document.activeElement!==e)e.value=S.kestrel.RH});
+  WD.status=`Live from ${WD.dev&&WD.dev.name||'Weatherdot'}: ${v.T.toFixed(1)} °C, ${v.P.toFixed(1)} hPa (station), ${v.RH!=null?v.RH.toFixed(0)+' %':'humidity –'} at ${hm(Date.now())}. Check it agrees with Anemotracker the first time.`;
+  if(Date.now()-WD.lastSave>10000){WD.lastSave=Date.now();save()} render();
+}
+function wdDecode(k,dv){
+  WD.last=WD.last||{};
+  if(k==='T'&&dv.byteLength>=2)WD.last.T=dv.getInt16(0,true)/100;
+  if(k==='P'&&dv.byteLength>=4)WD.last.P=dv.getUint32(0,true)/1000;     // 0.1 Pa units -> hPa
+  if(k==='RH'&&dv.byteLength>=2)WD.last.RH=dv.getUint16(0,true)/100;
+}
+async function wdReadAll(){for(const [k,c] of Object.entries(WD.chars)){if(!c.properties.read)continue;try{wdDecode(k,await c.readValue())}catch(e){}} wdApply()}
+async function wdConnect(){
+  if(WD.dev&&WD.dev.gatt.connected){WD.dev.gatt.disconnect();return}
+  if(!navigator.bluetooth){WD.status='Bluetooth from a web page needs Chrome on Android.';render();return}
+  try{
+    WD.status='Choose the Weatherdot in the list (WEATHERDOT or WDOT-…).';render();
+    const dev=await navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:[0x181a,0x180f,0x180a]});
+    WD.dev=dev; dev.addEventListener('gattserverdisconnected',()=>{WD.status='Weatherdot disconnected. Tap Connect to reconnect.';clearInterval(WD.timer);render()});
+    WD.status='Connecting…';render();
+    const srv=await dev.gatt.connect();
+    let svc; try{svc=await srv.getPrimaryService(0x181a)}catch(e){dev.gatt.disconnect();WD.status=`${dev.name||'That device'} has no standard weather service. Pick the device named WEATHERDOT, or use the Bluetooth Explorer page.`;render();return}
+    WD.chars={};
+    for(const [k,u] of [['T',0x2a6e],['P',0x2a6d],['RH',0x2a6f]]){
+      try{const c=await svc.getCharacteristic(u); WD.chars[k]=c;
+        if(c.properties.notify){c.addEventListener('characteristicvaluechanged',e=>{wdDecode(k,e.target.value);wdApply()}); await c.startNotifications()}}catch(e){}
+    }
+    if(!Object.keys(WD.chars).length){dev.gatt.disconnect();WD.status='Connected, but no temperature, pressure or humidity found. Use the Bluetooth Explorer page and send Claude the recording.';render();return}
+    await wdReadAll(); clearInterval(WD.timer); WD.timer=setInterval(()=>{if(dev.gatt.connected)wdReadAll()},15000);
+  }catch(err){WD.status=err&&err.name==='NotFoundError'?'No device chosen.':`Couldn't connect: ${err.message||err}. Close Anemotracker and try again.`;render()}
+}
+$('#wdBtn').onclick=wdConnect; $('#wdRead').onclick=wdReadAll;
 const CAL={dev:null,ch:null,samples:[],batt:null,status:'Not connected. Point the orientation mark on the Calypso at the target.',win:10,live:null};
 let calRenderTimer=null;
 function calAvg(){
@@ -2603,6 +2649,7 @@ function renderRange(){
   document.querySelectorAll('#rmAtmSeg button').forEach(b=>b.classList.toggle('sel',b.dataset.asrc===S.atmSrc));
   $('#rmKes').hidden=S.atmSrc!=='kestrel';
   $('#rmAtmMsg').textContent=S.atmSrc==='kestrel'?(an&&an.src==='kestrel'?'Using your meter. Station pressure, not barometric.':'Enter temperature and station pressure to use your meter; the model is used until then.'):(an?`Model: ${an.Tc.toFixed(1)} °C, ${an.PhPa.toFixed(1)} hPa, ${an.RH.toFixed(0)}%.`:'Waiting for model data.');
+  $('#wdStatus').textContent=WD.status; $('#wdBtn').textContent=WD.dev&&WD.dev.gatt&&WD.dev.gatt.connected?'Disconnect Weatherdot':'Connect Weatherdot (live)';
   // wind
   document.querySelectorAll('#rmSrc button').forEach(b=>b.classList.toggle('sel',b.dataset.src===S.src));
   $('#rmManual').hidden=S.src!=='manual'; $('#rmCal').hidden=S.src!=='calypso';
@@ -2668,7 +2715,8 @@ function strChecks(){
   out.push(td.src==='Rangefinder'?{k:'dist',st:'ok',label:'Distance',v:`${fmtD(td.yd)} from the rangefinder`,go:'rmCardDist'}
     :{k:'dist',st:td.src==='Map pins'?'warn':'bad',label:'Distance',v:td.src==='Map pins'?`${fmtD(td.yd)} from the map pins; range the frame to confirm`:`card distance only; range the frame`,go:'rmCardDist'});
   const an=atmNow(), kOk=an&&an.src==='kestrel', kAge=minsAgo(S.kestrelT);
-  out.push(kOk?{k:'atm',st:kAge<=45?'ok':'warn',label:'Atmosphere',v:`Kestrel ${an.Tc.toFixed(1)} °C, ${an.PhPa.toFixed(1)} hPa${kAge<=45?'':`, entered ${Math.round(kAge)} min ago: read it again`}`,go:'rmCardAtm'}
+  const wdLive=WD.dev&&WD.dev.gatt&&WD.dev.gatt.connected&&WD.last;
+  out.push(kOk?{k:'atm',st:(kAge<=45||wdLive)?'ok':'warn',label:'Atmosphere',v:`${wdLive?'Weatherdot live':'Kestrel'} ${an.Tc.toFixed(1)} °C, ${an.PhPa.toFixed(1)} hPa${kAge<=45||wdLive?'':`, entered ${Math.round(kAge)} min ago: read it again`}`,go:'rmCardAtm'}
     :{k:'atm',st:'bad',label:'Atmosphere',v:'still the forecast model: enter the Kestrel reading',go:'rmCardAtm'});
   if(S.src==='calypso')out.push(calConnected()?{k:'wind',st:'ok',label:'Wind',v:'Calypso live; averaged over the string',go:'rmCardWind'}:{k:'wind',st:'bad',label:'Wind',v:'Calypso chosen but not sending: connect it, or use Kestrel / mine',go:'rmCardWind'});
   else if(S.src==='manual'){const a=minsAgo(S.manualT);out.push({k:'wind',st:a<=10?'ok':'warn',label:'Wind',v:`your reading ${(+S.manual.spd||0).toFixed(1)} mph from ${Math.round(norm360((+S.manual.dir||0)-geom().az)/30)%12||12} o'clock${a<=10?'':`, set ${isFinite(a)?Math.round(a)+' min ago':'earlier'}: update it`}`,go:'rmCardWind'})}
