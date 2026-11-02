@@ -147,6 +147,37 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
 .ps-warn{color:var(--warn);font-size:16px;margin:0}
 .ps-in button{min-height:52px;font-size:17px;border-radius:6px}
 .rm-photo{border-style:dashed!important}
+/* Guided string */
+.str-head{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+.str-head h3{font-size:22px!important;color:var(--fg)!important}
+.chk{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px}
+.chk li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 10px;align-items:center;border:1px solid var(--line);border-left-width:6px;border-radius:6px;padding:8px 10px}
+.chk li b{font-size:16px}
+.chk li span.v{grid-column:2;font-size:14px;color:var(--muted)}
+.chk li .dot{grid-row:1/3;width:14px;height:14px;border-radius:50%;background:currentColor}
+.chk li button{grid-row:1/3;grid-column:3;min-height:40px}
+.chk li.ok{border-left-color:var(--good)} .chk li.ok .dot{color:var(--good)}
+.chk li.warn{border-left-color:var(--warn)} .chk li.warn .dot{color:var(--warn)}
+.chk li.bad{border-left-color:var(--accent)} .chk li.bad .dot{color:var(--accent)}
+.str-grp{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px}
+.str-warn{margin:0;padding:10px 12px;border-radius:6px;border:2px solid var(--accent);color:var(--fg);font-size:16px}
+.str-last{border:1px solid var(--line);border-radius:6px;padding:10px 12px;font-size:15px;display:flex;flex-direction:column;gap:4px}
+.str-last b{font-size:16px}
+#strBtn.open{background:var(--good);border-color:var(--good)}
+.wt-f{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 10px;align-items:center;border-top:1px solid var(--line);padding-top:8px;margin-top:4px}
+.wt-f p{margin:0;font-size:15px}
+/* Sun mode: maximum contrast and larger type for a tablet in bright light */
+#rm.hc{--bg:#fff;--panel:#fff;--fg:#000;--muted:#1a1a1a;--line:#000;--accent:#c00000;--good:#00701f;--warn:#a85d00;--wind:#003f8a;color-scheme:light;background:#fff;color:#000;font-size:18px}
+#rm.hc .rm-card{border-width:2px}
+#rm.hc button,#rm.hc input,#rm.hc select,#rm.hc output{border:2px solid #000!important;font-weight:700;color:#000;background:#fff}
+#rm.hc button.primary{background:#000;color:#fff}
+#rm.hc #strBtn.open{background:var(--good);color:#fff;border-color:var(--good)!important}
+#rm.hc .rm-seg button.sel,#rm.hc .rm-clock button.sel{background:#000!important;color:#fff!important}
+#rm.hc .rm-note,#rm.hc .chk li span.v{color:#1a1a1a;font-size:16px}
+#rm.hc .chk li{border-width:2px;border-left-width:10px}
+#rm.hc .rm-solgrid b{font-size:clamp(34px,8vw,60px)}
+#rmSun[aria-pressed="true"],#rm.hc #rmSun[aria-pressed="true"]{background:#000;color:#fff}
+.rm-card.flash{outline:4px solid var(--accent);outline-offset:2px;transition:outline-color .3s}
 #settleChart{width:100%;height:auto;max-height:240px}
 #help{position:fixed;inset:0;z-index:3500;background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(24px + env(safe-area-inset-bottom,0px))}
 .help-body{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:18px;padding-block:14px;
@@ -503,10 +534,23 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
         <button type="button" id="csv">Export CSV</button>
       </div>
       <p class="note" id="clearConfirm" hidden>Tap Clear string again to delete all plotted shots and the off-target fouler count. Save the session to barrel history first if you want to keep it.</p>
-      <details id="smBox">
-        <summary>Import ShotMarker shots</summary>
+      <details id="impBox" open>
+        <summary>Import results (ShotMarker + Garmin)</summary>
         <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
-          <p class="note">In ShotMarker, export the session as CSV, then choose the file here. Shots are added to this string using the true distance set above (or ShotMarker's distance if none is set), and matched to your string logs by time.</p>
+          <p class="note">Choose the ShotMarker export (the .tar file, or its .z files) and the Garmin ShotView export (.xls, .xlsx or .csv) together. Strings are matched by the timing between shots, so device clocks and session names don't need to agree. Then check the dial for each string and tap Import.</p>
+          <input type="file" id="impFiles" multiple accept=".tar,.z,.txt,.json,.xls,.xlsx,.csv">
+          <p class="note" id="impMsg"></p>
+          <div class="scroll" id="impWrap" hidden><table id="impTbl"></table></div>
+          <div class="row" id="impGo" hidden>
+            <button type="button" class="primary" id="impImport">Import strings</button>
+            <span class="note" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="impReplace" checked style="width:auto"> Replace shots already imported from these strings</span>
+          </div>
+        </div>
+      </details>
+      <details id="smBox">
+        <summary>Import a ShotMarker CSV</summary>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+          <p class="note">For ShotMarker's CSV export. Shots are added using the true distance set above (or ShotMarker's distance if none is set), and matched to your string logs by time.</p>
           <input type="file" id="smFile" accept=".csv,text/csv">
           <div class="row" id="smPick" hidden>
             <label style="flex:1;min-width:0">Session<select id="smSess" style="width:100%"></select></label>
@@ -550,7 +594,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
   </div>
   <div class="help-body">
     <nav class="help-nav">
-      <a href="#h-start">Getting started</a><a href="#h-range">At the range</a><a href="#h-true">Truing</a><a href="#h-barrel">Barrel</a><a href="#h-fix">When something goes wrong</a><a href="#h-update">Updating</a>
+      <a href="#h-start">Getting started</a><a href="#h-range">At the range</a><a href="#h-true">Truing</a><a href="#h-wind">Wind truing</a><a href="#h-barrel">Barrel</a><a href="#h-fix">When something goes wrong</a><a href="#h-update">Updating</a>
     </nav>
 
     <section id="h-start">
@@ -566,13 +610,32 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
 
     <section id="h-range">
       <h2>At the range: Range mode</h2>
+      <p>The <b>String</b> card at the top runs each string for you. Everything else on the page is there to fill it in.</p>
+      <ol>
+        <li><b>Before the first sighter,</b> look at the checklist. Green is ready, amber needs a look, red is missing. Tap <b>Set</b> on any line to jump to it.</li>
+        <li>Tap <b>Start string</b>. The button turns green. Calypso readings are averaged from here until the end of the string.</li>
+        <li>Shoot. If the light or mirage changes, tap it in Mirage and light; it's time-stamped.</li>
+        <li>Optionally, tap where the group centred (clicks high/low, left/right). A ShotMarker import later replaces this.</li>
+        <li>Tap <b>End string and log</b>. One push records the distance, atmosphere, every wind source, your dial (your call), the group and the barrel. If anything is red, it tells you first; tap again to log anyway.</li>
+      </ol>
       <ul>
-        <li><b>Distance:</b> tap the card distance, then enter the rangefinder's line-of-sight reading (not AMR). Everything is solved at the true distance.</li>
-        <li><b>Atmosphere:</b> choose Kestrel / Weatherdot and enter temperature, <i>station</i> pressure and humidity, or use the photo button.</li>
-        <li><b>Wind:</b> Kestrel / mine (speed and clock position), Calypso (live, Chrome on Android only), or the model, consensus or airfield.</li>
-        <li><b>Dial and log:</b> tap <b>Copy solution</b>, dial it, correct the figures if you dialled anything different, then <b>Log conditions for this string</b> before shooting it.</li>
-        <li><b>Photo buttons:</b> photograph the Kestrel, the rangefinder or BDX app, or the Garmin. Check each value against the screen before applying.</li>
-        <li>After shooting, import the ShotMarker CSV under <b>Plotted shots</b>. Shots are matched to your string logs by time.</li>
+        <li><b>Sun mode</b> (top bar) switches to black on white with larger type for bright light.</li>
+        <li><b>Distance:</b> enter the rangefinder's line-of-sight reading (not AMR). Everything is solved at the true distance.</li>
+        <li><b>Atmosphere:</b> choose Kestrel / Weatherdot and enter temperature, <i>station</i> pressure and humidity, or use the photo button. Re-enter it every 45 minutes or so.</li>
+        <li><b>Wind:</b> Calypso (live, Chrome on Android only), or Kestrel / mine (speed and clock position). The forecast model is shown red: it's a starting point, not a measurement.</li>
+        <li><b>Dial:</b> tap <b>Copy solution</b>, dial it, and correct the figures if you dialled something different. The windage you dial is your wind call.</li>
+        <li>After shooting, import ShotMarker and Garmin under <b>Plotted shots</b>, Import results. Strings are matched by shot timing.</li>
+      </ul>
+    </section>
+
+    <section id="h-wind">
+      <h2>Wind truing</h2>
+      <p>For each string with a windage call and a group, the app works out the <b>effective wind</b>: the crosswind the bullet actually met, from your dial corrected by where the group landed, with spin drift taken out. It compares that with what the Calypso, the forecast model and your own reading said at the time.</p>
+      <ul>
+        <li>A factor below 1 means the source reads high. On 31 October the model read high and the Calypso matched the range.</li>
+        <li>Factors are kept per firing point, because shelter and wind shadows differ from range to range.</li>
+        <li>Nothing changes until you tap <b>Use this factor</b>; the wind label then shows "× 0.62 (trued)", for example. <b>Stop using</b> turns it off.</li>
+        <li>Two strings give a first factor; five or more give a steady one.</li>
       </ul>
     </section>
 
@@ -640,6 +703,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
   <div class="rm-bar">
     <b>Range mode</b>
     <span class="rm-sub" id="rmClock"></span>
+    <button type="button" id="rmSun" aria-pressed="false">Sun mode</button>
     <button type="button" id="rmHelp">Help</button>
     <button type="button" id="rmExit">Full view</button>
   </div>
@@ -652,7 +716,27 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
       <p class="rm-note" id="rmSolNote"></p>
     </section>
 
-    <section class="rm-card">
+    <section class="rm-card rm-sol" id="rmStr">
+      <div class="str-head"><h3 id="strTitle">String 1</h3><span class="rm-note" id="strSince"></span></div>
+      <ul class="chk" id="strChk"></ul>
+      <div id="strOpen" hidden>
+        <div class="rm-lab"><span>Where the group centred (optional; a ShotMarker import later replaces it)</span></div>
+        <div class="str-grp">
+          <div class="rm-step"><button type="button" data-ge="-1">▼ Low</button><output id="strGE">0</output><button type="button" data-ge="1">▲ High</button></div>
+          <div class="rm-step"><button type="button" data-gw="-1">◄ Left</button><output id="strGW">0</output><button type="button" data-gw="1">Right ►</button></div>
+        </div>
+        <p class="rm-note" id="strCal"></p>
+      </div>
+      <button type="button" class="primary rm-big" id="strBtn">Start string</button>
+      <p class="str-warn" id="strWarn" hidden></p>
+      <div class="rm-step" style="grid-template-columns:1fr 1fr" id="strOpenActs" hidden>
+        <button type="button" id="strCancel">Cancel string</button>
+        <button type="button" class="rm-photo" data-photo="chrono">Read Garmin photo</button>
+      </div>
+      <div id="strLast" class="str-last" hidden></div>
+    </section>
+
+    <section class="rm-card" id="rmCardDist">
       <h3>Distance</h3>
       <div class="rm-seg" id="rmNom"></div>
       <label class="rm-lab" for="rmLrf"><span>Rangefinder, line of sight (<span id="rmDU">yd</span>)</span></label>
@@ -666,7 +750,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
       <button type="button" class="rm-photo" data-photo="range">Read rangefinder photo</button>
     </section>
 
-    <section class="rm-card">
+    <section class="rm-card" id="rmCardAtm">
       <h3>Atmosphere</h3>
       <div class="rm-seg" id="rmAtmSeg">
         <button type="button" data-asrc="model">Model</button>
@@ -707,7 +791,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
       <p class="rm-note">Running right means the mirage flows towards the right, so the wind is from the left. Each change is time-stamped, so every shot carries the mirage and light at the moment it was fired.</p>
     </section>
 
-    <section class="rm-card">
+    <section class="rm-card" id="rmCardWind">
       <h3>Wind</h3>
       <div class="rm-seg" id="rmSrc">
         <button type="button" data-src="manual">Kestrel / mine</button>
@@ -739,7 +823,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
       <p class="rm-note" id="rmWindMsg"></p>
     </section>
 
-    <section class="rm-card">
+    <section class="rm-card" id="rmCardDial">
       <h3>Dial and log</h3>
       <label class="rm-lab" for="rmDE"><span>Elevation dialled (<span class="sUnit">MOA</span>)</span></label>
       <div class="rm-step">
@@ -757,7 +841,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
         <button type="button" id="rmCopy">Copy solution</button>
         <select id="rmLight" aria-label="Light"><option>Overcast</option><option>Bright overcast</option><option>Full sun</option><option>Low sun</option><option>Haze</option><option>Fog / mist</option><option>Changing</option></select>
       </div>
-      <button type="button" class="primary rm-big" id="rmLog">Log conditions for this string</button>
+      <button type="button" class="rm-big" id="rmLog">Quick log, without the checklist</button>
       <p class="rm-note" id="rmLogMsg"></p>
       <button type="button" class="rm-photo" data-photo="chrono">Read Garmin photo (after the string)</button>
       <p class="rm-note" id="rmChrono"></p>
@@ -788,7 +872,15 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
       <p class="rm-note" id="ciMsg"></p>
     </section>
 
-    <section class="rm-card">
+    <section class="rm-card rm-sol" id="rmWT">
+      <h3>Wind truing</h3>
+      <p class="rm-note">Your windage call, corrected by where the group landed (spin drift taken out), gives the wind the bullet actually met. Each wind source is compared with it, string by string, for this firing point.</p>
+      <div class="scroll"><table id="wtTbl"></table></div>
+      <div id="wtFactors"></div>
+      <p class="rm-note" id="wtMsg"></p>
+    </section>
+
+    <section class="rm-card" id="rmCardBarrel">
       <h3>Barrel</h3>
       <div class="rm-seg" id="rmBarrel">
         <button type="button" data-bstate="clean">Cleaned before today</button>
@@ -993,9 +1085,14 @@ const S={
   light:store.get('light','Full sun'),
   mirage:store.get('mirage',{dir:'none',str:'',focus:'mid'}), obs:store.get('obs',[]),
   stn:store.get('stn','auto'), metars:[],
+  str:store.get('str',null), kestrelT:store.get('kestrelT',null), manualT:store.get('manualT',null), hc:store.get('hc',false), windTrue:store.get('windTrue',{}),
   mode:null, wx:null, metar:null, elev:null
 };
-const save=()=>{for(const k of ['fp','tgt','example','distUnit','nominal','lrf','unit','click','faces','faceId','src','model','hAdj','manual','cal','shots','light','stn','sys','relay','ticked','cmpMode','windyProd','loads','loadId','optSpin','optAJ','optCor','atmSrc','kestrel','logs','dial','rmOpen','appKey','barrel','settleK','coldMin','history','truing','corr','mirage','obs','whiteV'])store.set(k,S[k])};
+let sigK=JSON.stringify(S.kestrel), sigM=JSON.stringify(S.manual);
+const save=()=>{
+  const k=JSON.stringify(S.kestrel), m=JSON.stringify(S.manual);          // time-stamp meter readings when they change
+  if(k!==sigK){sigK=k;S.kestrelT=Date.now()} if(m!==sigM){sigM=m;S.manualT=Date.now()}
+  for(const k of ['str','kestrelT','manualT','hc','windTrue','fp','tgt','example','distUnit','nominal','lrf','unit','click','faces','faceId','src','model','hAdj','manual','cal','shots','light','stn','sys','relay','ticked','cmpMode','windyProd','loads','loadId','optSpin','optAJ','optCor','atmSrc','kestrel','logs','dial','rmOpen','appKey','barrel','settleK','coldMin','history','truing','corr','mirage','obs','whiteV'])store.set(k,S[k])};
 
 /* ---------- Distance resolution: rangefinder > map pins > nominal ---------- */
 function geom(){ return vincenty(S.fp.lat,S.fp.lng,S.tgt.lat,S.tgt.lng); }
@@ -1252,9 +1349,9 @@ function renderValidation(){
   let t=`<tr><th>String</th><th>Shots</th><th>Pred elev</th><th>Observed</th><th>Diff ${U}</th><th>Clicks</th><th>Pred wind</th><th>Observed</th><th>Diff ${U}</th><th>Garmin fps</th></tr>`;
   for(const {g,shots} of [...groups.values()].sort((a,b)=>Date.parse(a.g.t)-Date.parse(b.g.t))){
     const n=shots.length, mx=shots.reduce((a,s)=>a+ANG_IN(s.xIn,s.yd),0)/n, my=shots.reduce((a,s)=>a+ANG_IN(s.yIn,s.yd),0)/n;
-    const obsE=g.dialE-my, obsW=(g.dialW??0)-mx, dE=obsE-g.predE, dW=g.predW!=null?obsW-g.predW:null;
+    const obsE=g.dialE-my, obsW=g.dialW!=null?g.dialW-mx:null, dE=g.predE!=null?obsE-g.predE:null, dW=g.predW!=null&&obsW!=null?obsW-g.predW:null;
     const wf=v=>(v>=0?'R ':'L ')+Math.abs(v/RAD_PER[u]).toFixed(2);
-    t+=`<tr><td>${new Date(g.t).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',hour12:false})} · ${fromYd(g.yd,S.distUnit).toFixed(0)}</td><td>${n}</td><td>${f(g.predE)}</td><td>${f(obsE)}</td><td>${sg(dE)}</td><td>${dE>=0?'+':'−'}${Math.abs(dE/RAD_PER[u]/ck).toFixed(1)}</td><td>${g.predW!=null?wf(g.predW):'–'}</td><td>${wf(obsW)}</td><td>${dW!=null?sg(dW):'–'}</td><td>${g.chrono?g.chrono.avg.toFixed(0):'–'}</td></tr>`;
+    t+=`<tr><td>${new Date(g.t).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',hour12:false})} · ${fromYd(g.yd,S.distUnit).toFixed(0)}</td><td>${n}</td><td>${g.predE!=null?f(g.predE):'–'}</td><td>${f(obsE)}</td><td>${dE!=null?sg(dE):'–'}</td><td>${dE!=null?(dE>=0?'+':'−')+Math.abs(dE/RAD_PER[u]/ck).toFixed(1):'–'}</td><td>${g.predW!=null?wf(g.predW):'–'}</td><td>${obsW!=null?wf(obsW):'–'}</td><td>${dW!=null?sg(dW):'–'}</td><td>${g.chrono?g.chrono.avg.toFixed(0):'–'}</td></tr>`;
   }
   $('#valTbl').innerHTML=t; $('#valBox').hidden=false;
 }
@@ -1385,19 +1482,25 @@ function fillLoadEditor(){
   const m={lName:'name',lCal:'calibre',lBullet:'bullet',lGr:'grains',lDrag:'drag',lBc:'bc',lMv:'mvFps',lMvT:'mvTempC',lMvS:'mvSens',lZero:'zeroYd',lSh:'sightIn',lTw:'twistIn',lTwD:'twistDir',lLen:'lenIn',lDia:'diaIn',lSU:'scopeUnit',lClick:'click'};
   for(const [id,k] of Object.entries(m))$('#'+id).value=l[k]??'';
 }
-function windNow(){
-  if(S.src==='calypso'){
+// Wind from a source (default: the one selected), with this firing point's accepted truing factor applied unless raw.
+function windNow(src,raw){
+  const w=windRaw(src||S.src); if(!w||raw)return w;
+  const key=wtKey(src||S.src), f=wtFactorOn(key);
+  return f?{...w,spd:w.spd*f.f,gust:w.gust!=null?w.gust*f.f:null,label:`${w.label} × ${f.f.toFixed(2)} (trued)`,trued:f.f}:w;
+}
+function windRaw(src){
+  if(src==='calypso'){
     const a=calAvg(); if(!a)return null;
     return{spd:a.spd,dir:norm360(geom().az+a.rel),gust:a.gust,label:`Calypso (${CAL.win} s avg)`,adj:1};
   }
-  if(S.src==='manual') return{spd:+S.manual.spd||0,dir:+S.manual.dir||0,gust:null,label:'Your reading',adj:1};
-  if(S.src==='metar'){
+  if(src==='manual') return{spd:+S.manual.spd||0,dir:+S.manual.dir||0,gust:null,label:'Your reading',adj:1};
+  if(src==='metar'){
     const m=S.metar; if(!m||m.error||m.wspd==null)return null;
     const k=1.15078, adj=S.hAdj?H_FACTOR:1;
     return{spd:m.wspd*k*adj,dir:m.wdir==='VRB'?null:+m.wdir,gust:m.wgst?m.wgst*k*adj:null,label:m.icaoId+' (10 m mast)',adj};
   }
   const adj=S.hAdj?H_FACTOR:1;
-  if(S.src==='consensus'){
+  if(src==='consensus'){
     const c=consensusAt(0); if(!c)return null;
     return{spd:c.spd*adj,dir:c.dir,gust:c.gust!=null?c.gust*adj:null,label:`Consensus of ${c.n} models`,adj};
   }
@@ -1722,6 +1825,7 @@ function renderFace(yd){
 }
 function meanShot(){const n=S.shots.length;return{x:S.shots.reduce((a,s)=>a+s.xIn,0)/n,y:S.shots.reduce((a,s)=>a+s.yIn,0)/n}}
 function scoreShot(s){
+  if(s.smScore)return String(s.smScore);          // ShotMarker's own score, as recorded on the range
   const f=face(), lab=scoreFor(Math.hypot(s.xIn,s.yIn)), sys=SYSTEMS[f.system];
   if(f.frameIn&&sys&&lab===sys.miss){const h=f.frameIn/2+(+S.cal||0)/2; if(Math.abs(s.xIn)<=h&&Math.abs(s.yIn)<=h)return f.hitLabel||'1'}
   return lab;
@@ -1930,6 +2034,155 @@ $('#smImport').onclick=()=>{
   S.shots.sort((a,b)=>Date.parse(a.t)-Date.parse(b.t));
   save(); render();
   $('#smMsg').textContent=`Imported ${n} shots.`+(noTime?` ${noTime} had no readable time, so they won't match a string log.`:'');
+};
+/* ---------- Results import: ShotMarker export (.tar / .z) + Garmin ShotView (.xls/.xlsx/.csv), matched by shot timing ---------- */
+// ShotMarker stores each string as zlib-compressed JSON; each shot is a 41-character record in a 64-symbol alphabet ('#'..'b').
+// Characters 0-6: shot time (ms since 1970, UTC), split as high 3 + low 4 digits, least significant first.
+// Characters 29-30 and 31-32: x and y, 12-bit values centred on 2048. Scale and offset were fitted to ShotMarker's own scores
+// on 70 shots (31 Oct 2026); positions are good to about ±5 mm. Scores are taken from ShotMarker as recorded.
+const SM_MM_PER_UNIT=0.37, SM_OFF_X=0.5, SM_OFF_Y=-7;
+function smDecodeShot(rec){
+  const v=[...rec].map(c=>c.charCodeAt(0)-35), le=(a,b)=>v.slice(a,b).reduce((s,x,i)=>s+x*Math.pow(64,i),0);
+  const t=le(0,3)*Math.pow(64,4)+le(3,7), p=i=>v[i]+64*v[i+1]-2048;
+  return{t,xMm:p(29)*SM_MM_PER_UNIT+SM_OFF_X,yMm:p(31)*SM_MM_PER_UNIT+SM_OFF_Y};
+}
+async function inflateZ(u8){
+  const ds=new DecompressionStream('deflate');            // zlib-wrapped deflate
+  const out=await new Response(new Blob([u8]).stream().pipeThrough(ds)).arrayBuffer();
+  return new TextDecoder().decode(out);
+}
+function readTar(buf){
+  const u8=new Uint8Array(buf), files=[]; let o=0;
+  const str=(a,n)=>new TextDecoder().decode(u8.subarray(a,a+n)).replace(/\0.*$/s,'').trim();
+  while(o+512<=u8.length){
+    const name=str(o,100); if(!name)break;
+    const size=parseInt(str(o+124,12),8)||0, type=String.fromCharCode(u8[o+156]||48);
+    if(type==='0'||type==='\0')files.push({name,data:u8.slice(o+512,o+512+size)});
+    o+=512+Math.ceil(size/512)*512;
+  }
+  return files;
+}
+function smSessionFromJson(j,id){
+  const scores=String(j.score_string||'').split(',').filter(Boolean).map(x=>x.split(':').pop());
+  const shots=(j.shots||[]).map((r,i)=>({...smDecodeShot(r),score:scores[i]??null})).sort((a,b)=>a.t-b.t);
+  return{id:String(j.ts||id),name:j.name||('String '+id),face:j.face_id||'',dist:j.dist??null,dunit:j.dist_unit||'',shots};
+}
+let XLSX_P=null;
+function loadXlsx(){
+  if(window.XLSX)return Promise.resolve(window.XLSX);
+  return XLSX_P||(XLSX_P=new Promise((ok,no)=>{const s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';s.onload=()=>ok(window.XLSX);s.onerror=()=>{XLSX_P=null;no(new Error('could not load the spreadsheet reader (needs internet)'))};document.head.appendChild(s)}));
+}
+const MONTHS=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+function garminSessions(XL,wb,fileName){
+  const out=[];
+  wb.SheetNames.forEach((sn,si)=>{
+    const rows=XL.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:false,defval:''}).map(r=>r.map(c=>String(c).trim()));
+    const h=rows.findIndex(r=>r[0]==='#'&&r.some(c=>/speed/i.test(c))); if(h<0)return;
+    const hd=rows[h], iv=hd.findIndex(c=>/speed/i.test(c)), it=hd.findIndex(c=>/^time/i.test(c)), mps=/m\/s|mps/i.test(hd[iv]);
+    const dRow=rows.find(r=>/^date$/i.test(r[0])), dm=dRow&&String(dRow[1]).match(/([A-Za-z]{3})[A-Za-z]*\.?\s+(\d{1,2}),?\s+(\d{4})/);
+    const base=dm?new Date(+dm[3],MONTHS.indexOf(dm[1].toUpperCase()),+dm[2]):null;
+    const shots=[];
+    for(let r=h+1;r<rows.length;r++){
+      if(!/^\d+$/.test(rows[r][0]))break;
+      const v=parseFloat(String(rows[r][iv]).replace(/,/g,'')); if(!isFinite(v))continue;
+      const tm=String(rows[r][it]||'').match(/(\d{1,2}):(\d{2}):(\d{2})/);
+      const t=base&&tm?new Date(base.getFullYear(),base.getMonth(),base.getDate(),+tm[1],+tm[2],+tm[3]).getTime():null;
+      shots.push({n:+rows[r][0],v:mps?v*3.28084:v,t});
+    }
+    if(!shots.length)return;
+    const vs=shots.map(s=>s.v), avg=vs.reduce((a,b)=>a+b,0)/vs.length;
+    const sd=vs.length>1?Math.sqrt(vs.reduce((a,b)=>a+(b-avg)**2,0)/(vs.length-1)):null;
+    out.push({id:fileName+'#'+si,name:(rows[0]&&rows[0][0])||sn,shots,avg,sd,es:Math.max(...vs)-Math.min(...vs)});
+  });
+  return out;
+}
+// Line a Garmin string up with a ShotMarker string: the gaps between shots are a fingerprint, whatever each clock says.
+function matchGarmin(sm,gs){
+  let best=null;
+  for(const g of gs){
+    if(g.shots.some(s=>s.t==null))continue;
+    for(let k=-3;k<=3;k++){
+      const pairs=[]; sm.shots.forEach((s,i)=>{const q=g.shots[i+k]; if(q)pairs.push([s,q])});
+      if(pairs.length<Math.min(5,sm.shots.length))continue;
+      const d=pairs.map(([s,q])=>s.t-q.t).sort((a,b)=>a-b), off=d[Math.floor(d.length/2)];
+      const resid=Math.max(...pairs.map(([s,q])=>Math.abs(s.t-q.t-off)));
+      if(resid>2500)continue;
+      const score=[pairs.length,-resid];
+      if(!best||score[0]>best.score[0]||(score[0]===best.score[0]&&score[1]>best.score[1]))best={g,k,off,resid,score,pairs};
+    }
+  }
+  return best;
+}
+let IMP=null;   // parsed import, waiting for the dial check
+$('#impFiles').onchange=async e=>{
+  const files=[...e.target.files]; if(!files.length)return;
+  const msg=t=>$('#impMsg').textContent=t; msg('Reading…');
+  try{
+    const smById=new Map(), garmin=[], notes=[];
+    const addZ=async(name,u8)=>{try{const j=JSON.parse(await inflateZ(u8)); if(j&&Array.isArray(j.shots)){const s=smSessionFromJson(j,(name.match(/string-(\d+)/)||[])[1]||name); if(s.shots.length)smById.set(s.id,s)}}catch(err){notes.push(name+': not readable')}};
+    for(const f of files){
+      const nm=f.name.toLowerCase(), buf=await f.arrayBuffer();
+      if(nm.endsWith('.tar')){for(const t of readTar(buf))if(/\.z$/i.test(t.name))await addZ(t.name,t.data)}
+      else if(nm.endsWith('.z'))await addZ(f.name,new Uint8Array(buf));
+      else if(/\.(xls|xlsx|csv)$/.test(nm)){
+        if(nm.endsWith('.csv')&&/^\s*[A-Za-z]{3}\s+\d{1,2}\s+\d{4}/.test(new TextDecoder().decode(buf.slice(0,200)))){notes.push(f.name+': this is a ShotMarker CSV, use "Import a ShotMarker CSV" below');continue}
+        const XL=await loadXlsx(); garmin.push(...garminSessions(XL,XL.read(new Uint8Array(buf),{type:'array'}),f.name));
+      }
+    }
+    const sm=[...smById.values()].sort((a,b)=>a.shots[0].t-b.shots[0].t);
+    if(!sm.length){$('#impWrap').hidden=$('#impGo').hidden=true;msg('No ShotMarker strings found. '+(garmin.length?`(${garmin.length} Garmin strings read.) `:'')+notes.join(' '));return}
+    const dE=S.dial.e||'', dW=S.dial.w||'', dWd=S.dial.wd||'R';
+    IMP=sm.map(s=>({s,m:matchGarmin(s,garmin),dE,dW,dWd,on:true}));
+    const nm=IMP.filter(r=>r.m).length;
+    msg(`${sm.length} ShotMarker string${sm.length>1?'s':''}, ${garmin.length} Garmin string${garmin.length!==1?'s':''}; ${nm} matched by shot timing. `+notes.join(' '));
+    renderImport();
+  }catch(err){msg('Could not read those files: '+err.message)}
+};
+function renderImport(){
+  const hhmm=t=>new Date(t).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',hour12:false});
+  let h=`<tr><th></th><th>Time</th><th>ShotMarker</th><th>Shots</th><th>Score</th><th>Garmin fps</th><th>Elev dialled (${UNIT_LBL[(curLoad()||{}).scopeUnit||'moa']})</th><th>Wind dialled</th></tr>`;
+  IMP.forEach((r,i)=>{
+    const sc=r.s.shots.map(x=>x.score), tot=sc.reduce((a,x)=>a+(x==='V'?5:(+x||0)),0), vs=sc.filter(x=>x==='V').length;
+    const g=r.m?`${r.m.g.avg.toFixed(0)} <span class="note">SD ${r.m.g.sd!=null?r.m.g.sd.toFixed(1):'–'}</span>`:'<span class="note">no match</span>';
+    h+=`<tr><td><input type="checkbox" data-i="${i}" class="impOn" ${r.on?'checked':''}></td><td>${hhmm(r.s.shots[0].t)}</td><td>${esc(r.s.name)}</td><td>${r.s.shots.length}</td><td>${sc.every(x=>x)?tot+'.'+vs:'–'}</td><td>${g}</td>`+
+      `<td><input data-i="${i}" class="impE" inputmode="decimal" style="width:5.5em" value="${esc(r.dE)}"></td>`+
+      `<td><input data-i="${i}" class="impW" inputmode="decimal" style="width:4.5em" value="${esc(r.dW)}"><select data-i="${i}" class="impWd"><option ${r.dWd==='R'?'selected':''}>R</option><option ${r.dWd==='L'?'selected':''}>L</option></select></td></tr>`;
+  });
+  $('#impTbl').innerHTML=h; $('#impWrap').hidden=false; $('#impGo').hidden=false;
+  document.querySelectorAll('.impOn').forEach(x=>x.onchange=e=>IMP[+e.target.dataset.i].on=e.target.checked);
+  document.querySelectorAll('.impE').forEach(x=>x.oninput=e=>{const i=+e.target.dataset.i;IMP[i].dE=e.target.value.trim();
+    for(let j=i+1;j<IMP.length;j++)if(!IMP[j].touchedE){IMP[j].dE=IMP[i].dE;const el=document.querySelector(`.impE[data-i="${j}"]`);if(el)el.value=IMP[i].dE}IMP[i].touchedE=true});
+  document.querySelectorAll('.impW').forEach(x=>x.oninput=e=>{IMP[+e.target.dataset.i].dW=e.target.value.trim()});
+  document.querySelectorAll('.impWd').forEach(x=>x.onchange=e=>{IMP[+e.target.dataset.i].dWd=e.target.value});
+}
+$('#impImport').onclick=()=>{
+  if(!IMP)return;
+  const td=trueDistance(), l=curLoad(), u=(l&&l.scopeUnit)||'moa'; let n=0, strings=0;
+  for(const r of IMP){
+    if(!r.on)continue; strings++;
+    if($('#impReplace').checked)S.shots=S.shots.filter(x=>x.smId!==r.s.id);
+    const smYd=r.s.dist!=null?(r.s.dunit==='m'?r.s.dist/M_PER_YD:+r.s.dist):null, useApp=td.src!=='Nominal'||smYd==null, yd=useApp?td.yd:smYd;
+    const vOf=new Map(r.m?r.m.pairs.map(([s,q])=>[s,q.v]):[]);
+    for(const s of r.s.shots){
+      S.shots.push({t:new Date(s.t).toISOString(),xIn:s.xMm/25.4,yIn:s.yMm/25.4,yd,nomYd:smYd??toYd(S.nominal,S.distUnit),distSrc:useApp?td.src:'ShotMarker setting',
+        cross:null,head:null,windSrc:null,light:'',src:'ShotMarker',session:r.s.name,smId:r.s.id,smScore:s.score,vFps:vOf.get(s)??null});
+      n++;
+    }
+    // One log per string, just before its first shot: the dial, the Garmin summary, and the load.
+    const first=r.s.shots[0].t, e=parseFloat(r.dE), w=parseFloat(r.dW);
+    const chrono=r.m?{avg:r.m.g.avg,sd:r.m.g.sd,es:r.m.g.es,n:r.m.g.shots.length,src:r.m.g.name}:null;
+    const ex=S.logs.find(g=>g.smId===r.s.id)||S.logs.find(g=>{const lt=Date.parse(g.t);return lt<=first+60000&&first-lt<45*60000&&!g.smId&&!S.logs.some(o=>o!==g&&Date.parse(o.t)>lt&&Date.parse(o.t)<=first)});
+    const rec={dialE:isFinite(e)?e*RAD_PER[u]:null,dialW:isFinite(w)?(r.dWd==='L'?-1:1)*w*RAD_PER[u]:null};
+    if(ex){Object.assign(ex,{smId:r.s.id},chrono?{chrono}:{},ex.dialE==null?{dialE:rec.dialE}:{},ex.dialW==null?{dialW:rec.dialW}:{})}
+    else S.logs.push({t:new Date(first-60000).toISOString(),yd,distSrc:useApp?td.src:'ShotMarker setting',Tc:null,PhPa:null,RH:null,atmSrc:'none',
+      windSrc:null,spd:null,dir:null,cross:null,head:null,predE:null,predW:null,...rec,load:l?l.name:'',mvFps:l?+l.mvFps:null,
+      light:'',mirage:null,chrono,imported:true,smId:r.s.id,name:r.s.name});
+  }
+  S.logs.sort((a,b)=>Date.parse(a.t)-Date.parse(b.t));
+  S.shots.sort((a,b)=>Date.parse(a.t)-Date.parse(b.t));
+  save(); render();
+  $('#impMsg').textContent=`Imported ${n} shots from ${strings} string${strings!==1?'s':''}, each with a string log. See the validation table below.`;
 };
 $('#refreshNow').onclick=()=>{refreshAll();scheduleRefresh()};
 document.querySelectorAll('#cmpMode button').forEach(b=>b.onclick=()=>{S.cmpMode=b.dataset.mode;save();renderCmp()});
@@ -2282,6 +2535,7 @@ function calOnData(e){
   const spd=d.getUint16(0,true)/100/MPH, rel=d.getUint16(2,true)%360;
   if(d.byteLength>=5)CAL.batt=d.getUint8(4)*10;
   CAL.live={spd,rel}; CAL.samples.push({t:Date.now(),spd,rel});
+  if(S.str){const c=S.str.cal||(S.str.cal={n:0,c:0,h:0,s:0}); c.n++; c.c+=spd*Math.sin(rel*D2R); c.h+=spd*Math.cos(rel*D2R); c.s+=spd}  // whole-string Calypso average
   const cut=Date.now()-60000; while(CAL.samples.length&&CAL.samples[0].t<cut)CAL.samples.shift();
   if(!calRenderTimer)calRenderTimer=setTimeout(()=>{calRenderTimer=null;render()},1000);
 }
@@ -2367,6 +2621,7 @@ function renderRange(){
   const lg=S.logs[S.logs.length-1];
   $('#rmChrono').textContent=lg&&lg.chrono?`Garmin for the ${new Date(lg.t).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',hour12:false})} string: ${lg.chrono.avg.toFixed(0)} fps${lg.chrono.sd!=null?', SD '+lg.chrono.sd.toFixed(1):''}${lg.chrono.es!=null?', ES '+lg.chrono.es.toFixed(0):''}.`:'';
   const g=S.logs[S.logs.length-1];
+  renderStr(); renderWT();
   $('#rmLogMsg').textContent=g?`Last log ${new Date(g.t).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',hour12:false})}: ${fromYd(g.yd,S.distUnit).toFixed(1)} ${S.distUnit}, ${g.Tc!=null?g.Tc.toFixed(1)+' °C':''} ${g.PhPa!=null?g.PhPa.toFixed(1)+' hPa':''}, dialled ${g.dialE!=null?(g.dialE/RAD_PER[u]).toFixed(3):'–'} up.`:'No strings logged yet today.';
 }
 $('#rmBarrel').addEventListener('click',e=>{const b=e.target.closest('[data-bstate]');if(!b)return;S.barrel.state=b.dataset.bstate;save();render()});
@@ -2397,8 +2652,157 @@ $('#rmLight').onchange=e=>{S.light=e.target.value;noteObs();save();render()};
 $('#calWin').onchange=e=>{CAL.win=+e.target.value;render()};
 $('#calBtn').onclick=calConnect;
 $('#rmCopy').onclick=()=>{$('#dCopy').click();$('#rmDE').value=S.dial.e;render()};
-$('#rmLog').onclick=()=>{$('#logNow').click();const b=$('#rmLog');b.textContent='Logged ✓';setTimeout(()=>b.textContent='Log conditions for this string',1500)};
+$('#rmLog').onclick=()=>{$('#logNow').click();const b=$('#rmLog');b.textContent='Logged ✓';setTimeout(()=>b.textContent='Quick log, without the checklist',1500)};
 setInterval(()=>{if(S.src==='calypso')render()},2000);
+
+/* ---------- Guided string: Start string, checklist, End string (one push logs everything) ---------- */
+const hm=t=>new Date(t).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',hour12:false});
+const sameDay=(a,b)=>new Date(a).toDateString()===new Date(b).toDateString();
+const minsAgo=t=>t?(Date.now()-t)/60000:Infinity;
+function strNumber(){return S.logs.filter(g=>sameDay(g.t,Date.now())&&!g.imported).length+1}
+function calConnected(){return !!(CAL.dev&&CAL.dev.gatt&&CAL.dev.gatt.connected&&CAL.samples.length&&Date.now()-CAL.samples[CAL.samples.length-1].t<15000)}
+function strChecks(){
+  const l=curLoad(), u=(l&&l.scopeUnit)||'moa', ck=(l&&+l.click)||0.125, td=trueDistance(), out=[];
+  out.push(td.src==='Rangefinder'?{k:'dist',st:'ok',label:'Distance',v:`${fmtD(td.yd)} from the rangefinder`,go:'rmCardDist'}
+    :{k:'dist',st:td.src==='Map pins'?'warn':'bad',label:'Distance',v:td.src==='Map pins'?`${fmtD(td.yd)} from the map pins; range the frame to confirm`:`card distance only; range the frame`,go:'rmCardDist'});
+  const an=atmNow(), kOk=an&&an.src==='kestrel', kAge=minsAgo(S.kestrelT);
+  out.push(kOk?{k:'atm',st:kAge<=45?'ok':'warn',label:'Atmosphere',v:`Kestrel ${an.Tc.toFixed(1)} °C, ${an.PhPa.toFixed(1)} hPa${kAge<=45?'':`, entered ${Math.round(kAge)} min ago: read it again`}`,go:'rmCardAtm'}
+    :{k:'atm',st:'bad',label:'Atmosphere',v:'still the forecast model: enter the Kestrel reading',go:'rmCardAtm'});
+  if(S.src==='calypso')out.push(calConnected()?{k:'wind',st:'ok',label:'Wind',v:'Calypso live; averaged over the string',go:'rmCardWind'}:{k:'wind',st:'bad',label:'Wind',v:'Calypso chosen but not sending: connect it, or use Kestrel / mine',go:'rmCardWind'});
+  else if(S.src==='manual'){const a=minsAgo(S.manualT);out.push({k:'wind',st:a<=10?'ok':'warn',label:'Wind',v:`your reading ${(+S.manual.spd||0).toFixed(1)} mph from ${Math.round(norm360((+S.manual.dir||0)-geom().az)/30)%12||12} o'clock${a<=10?'':`, set ${isFinite(a)?Math.round(a)+' min ago':'earlier'}: update it`}`,go:'rmCardWind'})}
+  else out.push({k:'wind',st:'bad',label:'Wind',v:'forecast only: measure it (Calypso, or Kestrel / mine)',go:'rmCardWind'});
+  const o=S.obs[S.obs.length-1], oAge=o?minsAgo(Date.parse(o.t)):Infinity;
+  out.push({k:'mir',st:oAge<=20||(S.str&&o&&Date.parse(o.t)>=Date.parse(S.str.t))?'ok':'warn',label:'Mirage and light',v:o?`${o.light||S.light}, mirage ${o.mDir||'none'}${oAge<=20?'':`, set ${Math.round(oAge)} min ago: still right?`}`:'not set yet',go:'rmMirage'});
+  const p=S.lastSol, dE=parseFloat(S.dial.e);
+  if(!isFinite(dE))out.push({k:'dial',st:'bad',label:'Dial',v:'nothing entered: tap Copy solution, then dial it',go:'rmCardDial'});
+  else{const dEc=p?Math.round((dE*RAD_PER[u]-p.elevRad)/RAD_PER[u]/ck):0, ws=dialSigned();
+    out.push({k:'dial',st:Math.abs(dEc)<=1?'ok':'warn',label:'Dial (your call)',v:`${dE.toFixed(3)} up, ${ws===0?'0':(ws>0?'R ':'L ')+Math.abs(ws).toFixed(3)}${Math.abs(dEc)>1?` · ${Math.abs(dEc)} clicks ${dEc>0?'above':'below'} the solution`:''}`,go:'rmCardDial'})}
+  out.push({k:'barrel',st:S.barrel.state?'ok':'warn',label:'Barrel',v:S.barrel.state==='clean'?'cleaned before today':'fouled from last session',go:'rmCardBarrel'});
+  return out;
+}
+let strArmed=false;
+function renderStr(){
+  const open=!!S.str, ch=strChecks(), l=curLoad(), u=(l&&l.scopeUnit)||'moa', ck=(l&&+l.click)||0.125;
+  $('#strTitle').textContent=open?`String ${S.str.n} open`:`String ${strNumber()}`;
+  $('#strSince').textContent=open?`since ${hm(S.str.t)} (${Math.max(0,Math.round(minsAgo(Date.parse(S.str.t))))} min)`:'Check the list, then Start string before the first sighter.';
+  $('#strChk').innerHTML=ch.map(c=>`<li class="${c.st}"><span class="dot" aria-label="${c.st==='ok'?'ready':c.st==='warn'?'check':'missing'}"></span><b>${c.label}</b><span class="v">${esc(c.v)}</span>${c.st!=='ok'?`<button type="button" data-go="${c.go}">Set</button>`:''}</li>`).join('');
+  $('#strOpen').hidden=!open; $('#strOpenActs').hidden=!open;
+  const b=$('#strBtn'); b.textContent=open?'End string and log':'Start string'; b.classList.toggle('open',open);
+  if(open){
+    $('#strGE').textContent=S.str.gE?`${Math.abs(S.str.gE)} click${Math.abs(S.str.gE)>1?'s':''} ${S.str.gE>0?'high':'low'}`:'centre';
+    $('#strGW').textContent=S.str.gW?`${Math.abs(S.str.gW)} click${Math.abs(S.str.gW)>1?'s':''} ${S.str.gW>0?'right':'left'}`:'centre';
+    const c=S.str.cal; $('#strCal').textContent=c&&c.n?`Calypso over this string so far: ${(c.s/c.n).toFixed(1)} mph, crosswind ${Math.abs(c.c/c.n).toFixed(1)} mph ${c.c>=0?'from right':'from left'} (${c.n} readings).`:(S.src==='calypso'?'Calypso average for the string will build up here.':'');
+  }
+  if(!strArmed)$('#strWarn').hidden=true;
+  const g=[...S.logs].reverse().find(x=>x.guided), lb=$('#strLast');
+  if(g&&!open){
+    const w=v=>v==null?'–':(v>=0?'R ':'L ')+Math.abs(v/RAD_PER[u]).toFixed(2);
+    const src=[g.calCross!=null?`Calypso ${fmtX(g.calCross)}`:null,g.modelCross!=null?`model ${fmtX(g.modelCross)}`:null].filter(Boolean).join(', ');
+    lb.innerHTML=`<b>String ${g.n} logged ✓ ${hm(g.t)}–${hm(g.tEnd)}</b><span>Your call ${w(g.dialW)}${g.group?`; group centred ${Math.abs(g.group.wRad)<1e-9?'0':w(g.group.wRad)}, ${Math.abs(g.group.eRad)<1e-9?'level':`${Math.abs(g.group.eRad/RAD_PER[u]).toFixed(2)} ${g.group.eRad>0?'high':'low'}`}`:''}.${src?` Wind: ${src}.`:''}${g.missing&&g.missing.length?` Logged without: ${g.missing.join(', ')}.`:''}</span><span>Now: save the ShotMarker series, and photograph the Garmin summary (or import both later).</span>`;
+    lb.hidden=false;
+  }else lb.hidden=true;
+}
+const fmtX=c=>`${Math.abs(c).toFixed(1)} mph ${c>=0?'R':'L'}`;   // crosswind: from right / from left
+$('#rmStr').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b)return;
+  if(b.dataset.go){const el=document.getElementById(b.dataset.go); if(el){el.scrollIntoView({behavior:'smooth',block:'start'}); el.classList.add('flash'); setTimeout(()=>el.classList.remove('flash'),1600)} return}
+  if(b.dataset.ge&&S.str){S.str.gE=(S.str.gE||0)+ +b.dataset.ge; save(); render(); return}
+  if(b.dataset.gw&&S.str){S.str.gW=(S.str.gW||0)+ +b.dataset.gw; save(); render(); return}
+});
+$('#strBtn').onclick=()=>{
+  if(!S.str){ S.str={t:new Date().toISOString(),n:strNumber(),gE:0,gW:0,cal:{n:0,c:0,h:0,s:0}}; strArmed=false; save(); render(); return }
+  const miss=strChecks().filter(c=>c.st==='bad');
+  if(miss.length&&!strArmed){
+    strArmed=true; const w=$('#strWarn'); w.hidden=false;
+    w.innerHTML=`<b>Not captured:</b> ${miss.map(m=>m.label.toLowerCase()).join(', ')}. Tap <b>Set</b> to fix it, or tap <b>End string and log</b> again to log without it.`;
+    setTimeout(()=>{strArmed=false;$('#strWarn').hidden=true},8000); return;
+  }
+  strArmed=false; strEnd(miss.map(m=>m.label));
+};
+$('#strCancel').onclick=()=>{S.str=null;save();render()};
+function strEnd(missing){
+  const st=S.str, l=curLoad(), u=(l&&l.scopeUnit)||'moa', ck=(l&&+l.click)||0.125, td=trueDistance(), brg=geom().az, p=S.lastSol;
+  const an=atmNow(), w=windNow(), r=w&&w.dir!=null?resolve(w,brg):null;
+  const cross=src=>{const x=windNow(src,true);return x&&x.dir!=null?resolve(x,brg).cross:null};
+  const sol=computeSolution(td.yd,{rowsYd:[td.yd]}), here=sol&&sol.rows[0];
+  const c=st.cal&&st.cal.n>=5?st.cal:null;
+  const dE=parseFloat(S.dial.e), ws=dialSigned();
+  S.logs.push({t:st.t,tEnd:new Date().toISOString(),guided:true,n:st.n,rk:rangeKey(),yd:td.yd,distSrc:td.src,
+    Tc:an?an.Tc:null,PhPa:an?an.PhPa:null,RH:an?an.RH:null,atmSrc:an?an.src:'none',
+    windSrc:w?w.label:null,spd:w?w.spd:null,dir:w?w.dir:null,cross:r?r.cross:null,head:r?r.head:null,
+    calCross:c?c.c/c.n:(S.src==='calypso'&&r?r.cross:null),calN:c?c.n:0,modelCross:cross('model'),consCross:cross('consensus'),
+    manualCross:S.src==='manual'?cross('manual'):null,
+    predE:p?p.elevRad:null,predW:p?p.windRad:null,dialE:isFinite(dE)?dE*RAD_PER[u]:null,dialW:ws*RAD_PER[u],
+    group:(st.gE||st.gW)?{eRad:(st.gE||0)*ck*RAD_PER[u],wRad:(st.gW||0)*ck*RAD_PER[u]}:null,
+    kWind:here?here.w10/10:null,spinCor:here?here.parts.spin+here.parts.cor:null,
+    load:p?p.load:'',mvFps:p?p.mvFps:null,light:S.light,mirage:{...S.mirage},missing,trued:w&&w.trued?w.trued:null});
+  S.str=null; save(); render();
+}
+
+/* ---------- Wind truing: effective crosswind from the call and the group, against each source ---------- */
+function rangeKey(){return `${S.fp.lat.toFixed(3)},${S.fp.lng.toFixed(3)}`}
+function wtKey(src){return src==='calypso'?'calypso':src==='consensus'?'consensus':src==='metar'?'metar':src==='manual'?'manual':'model'}
+function wtFactorOn(key){const r=S.windTrue[rangeKey()];const f=r&&r[key];return f&&f.on&&key!=='manual'?f:null}
+const WT_NAME={calypso:'Calypso',model:'Forecast model',consensus:'Model consensus',metar:'Airfield',manual:'Your Kestrel reading'};
+function srcKeyOfLabel(lb){lb=lb||'';return /^Calypso/.test(lb)?'calypso':/^Your reading/.test(lb)?'manual':/^Consensus/.test(lb)?'consensus':/10 m mast/.test(lb)?'metar':'model'}
+function wtPoints(){
+  const l=curLoad(), u=(l&&l.scopeUnit)||'moa', rk=rangeKey(), pts=[];
+  let fallback=null;
+  for(const g of S.logs){
+    if((g.rk||rk)!==rk||g.dialW==null)continue;
+    const sh=S.shots.filter(s=>logFor(s.t)===g);
+    let gx=null, from='';
+    if(sh.length>=3){gx=sh.reduce((a,s)=>a+ANG_IN(s.xIn,s.yd),0)/sh.length; from='plotted'}
+    else if(g.group){gx=g.group.wRad; from='your read'}
+    if(gx==null)continue;
+    let k=g.kWind, sc=g.spinCor;
+    if(k==null||sc==null){ if(!fallback){const s=computeSolution(g.yd,{rowsYd:[g.yd]});fallback=s&&s.rows[0]} if(!fallback)continue; k=fallback.w10/10; sc=fallback.parts.spin+fallback.parts.cor }
+    if(!(k>0))continue;
+    const need=g.dialW-gx, eff=(need-sc)/k;
+    const src={}; if(g.calCross!=null)src.calypso=g.calCross; if(g.modelCross!=null)src.model=g.modelCross; if(g.consCross!=null)src.consensus=g.consCross; if(g.manualCross!=null)src.manual=g.manualCross;
+    if(g.cross!=null){const key=srcKeyOfLabel(g.windSrc); if(src[key]==null)src[key]=g.trued?g.cross/g.trued:g.cross}
+    pts.push({g,eff,need,gx,from,src,u});
+  }
+  return pts;
+}
+function wtFit(pts,key){
+  const xs=pts.filter(p=>p.src[key]!=null&&Math.abs(p.src[key])>=0.5);
+  if(xs.length<2)return{n:xs.length};
+  const sxx=xs.reduce((a,p)=>a+p.src[key]**2,0), sxy=xs.reduce((a,p)=>a+p.src[key]*p.eff,0), f=sxy/sxx;
+  const res=xs.reduce((a,p)=>a+(p.eff-f*p.src[key])**2,0), se=Math.sqrt(res/(xs.length-1)/sxx);
+  return{n:xs.length,f,se};
+}
+function renderWT(){
+  const pts=wtPoints(), l=curLoad(), u=(l&&l.scopeUnit)||'moa', rk=rangeKey();
+  const w=v=>(v>=0?'R ':'L ')+Math.abs(v/RAD_PER[u]).toFixed(2), m=v=>v==null?'–':fmtX(v);
+  if(!pts.length){$('#wtTbl').innerHTML='';$('#wtFactors').innerHTML='';
+    $('#wtMsg').textContent='No strings yet with both a windage call and a group. End a string with the group position, or import ShotMarker shots, and this fills in.';return}
+  $('#wtTbl').innerHTML=`<tr><th>String</th><th>Your call</th><th>Group</th><th>Effective wind</th><th>Calypso</th><th>Model</th><th>Your reading</th></tr>`+
+    pts.map(p=>`<tr><td>${hm(p.g.t)}</td><td>${w(p.g.dialW)}</td><td>${w(p.gx)} <span class="note">${p.from}</span></td><td><b>${fmtX(p.eff)}</b></td><td>${m(p.src.calypso)}</td><td>${m(p.src.model??p.src.consensus)}</td><td>${m(p.src.manual)}</td></tr>`).join('');
+  const rec=S.windTrue[rk]||{};
+  $('#wtFactors').innerHTML=['calypso','model','consensus','metar'].map(key=>{
+    const fit=wtFit(pts,key), cur=rec[key]; if(!fit.n&&!cur)return'';
+    const name=WT_NAME[key];
+    if(fit.f==null)return`<div class="wt-f"><p><b>${name}:</b> ${fit.n} string so far; two or more with at least 0.5 mph of crosswind are needed.</p></div>`;
+    if(fit.f<=0.15||fit.f>3)return`<div class="wt-f"><p><b>${name}:</b> doesn't match the effective wind${fit.f<=0?' even in direction':''} (factor ${fit.f.toFixed(2)} from ${fit.n} strings). Check the direction setting, or whether it measures the same wind the bullet crosses.</p></div>`;
+    const ratio=fit.f, txt=ratio<0.9?`reads high: the bullet met about ${Math.round(ratio*100)}% of it`:ratio>1.1?`reads low: the bullet met about ${Math.round(ratio*100)}% of it`:'agrees with the effective wind';
+    const on=cur&&cur.on;
+    return`<div class="wt-f"><p><b>${name}:</b> ${txt}. Factor <b>${ratio.toFixed(2)} ± ${fit.se.toFixed(2)}</b> from ${fit.n} strings.${on?` In use: ${cur.f.toFixed(2)}.`:''}</p>`+
+      `<button type="button" data-wt="${key}" data-f="${ratio.toFixed(3)}" data-se="${fit.se.toFixed(3)}" data-n="${fit.n}" ${on?'data-off="1"':''} class="${on?'':'primary'}">${on?'Stop using':'Use this factor'}</button></div>`;
+  }).join('');
+  const ws=['calypso','model','consensus','metar'].map(k=>wtFit(pts,k)).filter(f=>f.f!=null&&f.se>0.25);
+  $('#wtMsg').textContent=ws.length?'Some factors still have a wide margin; a few more strings will steady them.':'Factors apply only at this firing point, and only after you tap Use.';
+}
+$('#wtFactors').addEventListener('click',e=>{
+  const b=e.target.closest('[data-wt]'); if(!b)return;
+  const rk=rangeKey(), rec=S.windTrue[rk]||(S.windTrue[rk]={});
+  if(b.dataset.off)rec[b.dataset.wt].on=false;
+  else rec[b.dataset.wt]={f:+b.dataset.f,se:+b.dataset.se,n:+b.dataset.n,on:true,t:new Date().toISOString()};
+  save(); render();
+});
+function setSun(on){S.hc=on;$('#rm').classList.toggle('hc',on);$('#rmSun').setAttribute('aria-pressed',on?'true':'false');save()}
+$('#rmSun').onclick=()=>setSun(!S.hc);
+setSun(S.hc);
 
 render(); fetchElev(); refreshAll();
 if(S.rmOpen)setRM(true);
