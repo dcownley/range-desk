@@ -208,6 +208,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
 .sess-line span{flex:1;min-width:200px}
 #sessForm input{font:500 17px var(--body)!important;text-align:left!important}
 .sess-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px}
+#valTbl tr.sel td{background:color-mix(in srgb,var(--accent) 14%,transparent)}
 .rm-card.flash{outline:4px solid var(--accent);outline-offset:2px;transition:outline-color .3s}
 #settleChart{width:100%;height:auto;max-height:240px}
 #help{position:fixed;inset:0;z-index:3500;background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(24px + env(safe-area-inset-bottom,0px))}
@@ -551,6 +552,8 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
 
     <section class="card">
       <h2>Plotted shots <small id="shotCount"></small></h2>
+      <div class="row"><label style="flex:1;min-width:0">Show<select id="viewStr" style="width:100%"></select></label>
+        <button type="button" id="viewPrev" aria-label="Previous string">◄</button><button type="button" id="viewNext" aria-label="Next string">►</button></div>
       <div class="kv">
         <div><span>Group centre</span><b id="vMean">–</b></div>
         <div><span>Correction</span><b id="vCorr">–</b></div>
@@ -1220,14 +1223,14 @@ const S={
   light:store.get('light','Full sun'),
   mirage:store.get('mirage',{dir:'none',str:'',focus:'mid'}), obs:store.get('obs',[]),
   stn:store.get('stn','auto'), metars:[],
-  str:store.get('str',null), sess:store.get('sess',{type:'practice',event:'',match:'',coach:'',shooterId:null}), shooters:store.get('shooters',[]), dayMv:store.get('dayMv',null), velLog:store.get('velLog',[]), folded:store.get('folded',null), ps:store.get('ps',{sight:2,cnt:15}), ciKind:store.get('ciKind','auto'), wdotScale:store.get('wdotScale','ms100'), kestrelT:store.get('kestrelT',null), manualT:store.get('manualT',null), hc:store.get('hc',false), windTrue:store.get('windTrue',{}),
+  str:store.get('str',null), viewLog:store.get('viewLog','all'), sess:store.get('sess',{type:'practice',event:'',match:'',coach:'',shooterId:null}), shooters:store.get('shooters',[]), dayMv:store.get('dayMv',null), velLog:store.get('velLog',[]), folded:store.get('folded',null), ps:store.get('ps',{sight:2,cnt:15}), ciKind:store.get('ciKind','auto'), wdotScale:store.get('wdotScale','ms100'), kestrelT:store.get('kestrelT',null), manualT:store.get('manualT',null), hc:store.get('hc',false), windTrue:store.get('windTrue',{}),
   mode:null, wx:null, metar:null, elev:null
 };
 let sigK=JSON.stringify(S.kestrel), sigM=JSON.stringify(S.manual);
 const save=()=>{
   const k=JSON.stringify(S.kestrel), m=JSON.stringify(S.manual);          // time-stamp meter readings when they change
   if(k!==sigK){sigK=k;S.kestrelT=Date.now()} if(m!==sigM){sigM=m;S.manualT=Date.now()}
-  for(const k of ['sess','shooters','dayMv','velLog','folded','ps','ciKind','wdotScale','str','kestrelT','manualT','hc','windTrue','fp','tgt','example','distUnit','nominal','lrf','unit','click','faces','faceId','src','model','hAdj','manual','cal','shots','light','stn','sys','relay','ticked','cmpMode','windyProd','loads','loadId','optSpin','optAJ','optCor','atmSrc','kestrel','logs','dial','rmOpen','appKey','barrel','settleK','coldMin','history','truing','corr','mirage','obs','whiteV'])store.set(k,S[k])};
+  for(const k of ['viewLog','sess','shooters','dayMv','velLog','folded','ps','ciKind','wdotScale','str','kestrelT','manualT','hc','windTrue','fp','tgt','example','distUnit','nominal','lrf','unit','click','faces','faceId','src','model','hAdj','manual','cal','shots','light','stn','sys','relay','ticked','cmpMode','windyProd','loads','loadId','optSpin','optAJ','optCor','atmSrc','kestrel','logs','dial','rmOpen','appKey','barrel','settleK','coldMin','history','truing','corr','mirage','obs','whiteV'])store.set(k,S[k])};
 
 /* ---------- Distance resolution: rangefinder > map pins > nominal ---------- */
 function geom(){ return vincenty(S.fp.lat,S.fp.lng,S.tgt.lat,S.tgt.lng); }
@@ -1486,7 +1489,7 @@ function renderValidation(){
     const n=shots.length, gn=groupNeed(g,shots);
     const obsE=gn.needE, obsW=gn.needW, dE=g.predE!=null?obsE-g.predE:null, dW=g.predW!=null&&obsW!=null?obsW-g.predW:null;
     const wf=v=>(v>=0?'R ':'L ')+Math.abs(v/RAD_PER[u]).toFixed(2);
-    t+=`<tr><td>${new Date(g.t).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',hour12:false})} · ${fromYd(g.yd,S.distUnit).toFixed(0)}${g.meta&&g.meta.shooter?' · '+esc(g.meta.shooter):''}${g.meta&&g.meta.match?' · '+esc(g.meta.match):''}</td><td>${n}</td><td>${g.predE!=null?f(g.predE):'–'}</td><td>${f(obsE)}</td><td>${dE!=null?sg(dE):'–'}</td><td>${dE!=null?(dE>=0?'+':'−')+Math.abs(dE/RAD_PER[u]/ck).toFixed(1):'–'}</td><td>${g.predW!=null?wf(g.predW):'–'}</td><td>${obsW!=null?wf(obsW):'–'}</td><td>${dW!=null?sg(dW):'–'}</td><td>${(()=>{const m=windMet(g,shots);return m?`${fmtX(m.mean)} (${Math.abs(m.min).toFixed(1)}–${Math.abs(m.max).toFixed(1)})`:'–'})()}</td><td>${g.chrono?g.chrono.avg.toFixed(0):'–'}</td></tr>`;
+    t+=`<tr data-log="${g.t}" style="cursor:pointer" class="${S.viewLog===g.t?'sel':''}"><td>${new Date(g.t).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',hour12:false})} · ${fromYd(g.yd,S.distUnit).toFixed(0)}${g.meta&&g.meta.shooter?' · '+esc(g.meta.shooter):''}${g.meta&&g.meta.match?' · '+esc(g.meta.match):''}</td><td>${n}</td><td>${g.predE!=null?f(g.predE):'–'}</td><td>${f(obsE)}</td><td>${dE!=null?sg(dE):'–'}</td><td>${dE!=null?(dE>=0?'+':'−')+Math.abs(dE/RAD_PER[u]/ck).toFixed(1):'–'}</td><td>${g.predW!=null?wf(g.predW):'–'}</td><td>${obsW!=null?wf(obsW):'–'}</td><td>${dW!=null?sg(dW):'–'}</td><td>${(()=>{const m=windMet(g,shots);return m?`${fmtX(m.mean)} (${Math.abs(m.min).toFixed(1)}–${Math.abs(m.max).toFixed(1)})`:'–'})()}</td><td>${g.chrono?g.chrono.avg.toFixed(0):'–'}</td></tr>`;
   }
   $('#valTbl').innerHTML=t; $('#valBox').hidden=false;
 }
@@ -1923,14 +1926,14 @@ function renderFace(yd){
   h+=grid('#7d8c80',1);
   h+=`<clipPath id="bullClip"><circle r="${bullR}"/></clipPath><g clip-path="url(#bullClip)">${grid('#ffffff',0.75)}</g>`;
   // shots at true bullet diameter, never smaller than a visible dot; numbered once zoomed in
-  const br=(S.cal/2)/ipu, minR=half/90, plotting=!$('#rm').hidden&&S.str, vis=plotting?psShots().map(q=>q.s):S.shots;
+  const br=(S.cal/2)/ipu, minR=half/90, plotting=!$('#rm').hidden&&S.str, vis=visShots(); fillViewStr();
   vis.forEach((s,i)=>{
     const ip=inPerUnit(S.unit,s.yd), x=s.xIn/ip, y=-s.yIn/ip, r=Math.max(br,minR);
     const last=i===vis.length-1;
     h+=`<circle cx="${x}" cy="${y}" r="${r}" fill="${last?'#ee6a3c':'#ffd23f'}" fill-opacity=".9" stroke="#111" stroke-width="${sw*1.2}"/>`;
     if(r>half/30) h+=`<text x="${x}" y="${y}" font-size="${Math.min(r*0.9,half/12)}" text-anchor="middle" dominant-baseline="central" fill="#111" font-family="var(--mono)" font-weight="600">${plotting?psShots()[i].lab:i+1}</text>`;
   });
-  if(!plotting&&S.shots.length>1){const mn=meanShot(); const ip=inPerUnit(S.unit,yd);
+  if(!plotting&&vis.length>1){const mn=meanShot(vis); const ip=inPerUnit(S.unit,yd);
     const mx=mn.x/ip, my=-mn.y/ip, k=half/25;
     h+=`<path d="M${mx-k},${my}H${mx+k}M${mx},${my-k}V${my+k}" stroke="#1b6a9c" stroke-width="${sw*3}"/>`;}
   const fmt=v=>{if(v>=1)return String(v); const n=Math.round(1/v); return Math.abs(1/n-v)<1e-9?`1/${n}`:String(+v.toFixed(3))};
@@ -1945,27 +1948,46 @@ function renderFace(yd){
   $('#ringTbl').innerHTML=t;
 
   // shot table
-  $('#shotCount').textContent=S.shots.length?S.shots.length+' shots':'none yet';
+  $('#shotCount').textContent=S.shots.length?(vis.length===S.shots.length?S.shots.length+' shots':`${vis.length} of ${S.shots.length} shots`):'none yet';
   const SEQ=roundSeq().info;
   let st=`<tr><th>#</th><th>Round</th><th>Score</th><th>X ${U.label}</th><th>Y ${U.label}</th><th>Dist</th><th>Cross mph</th><th>Light</th></tr>`;
-  S.shots.slice().reverse().forEach((s,ri)=>{const i=S.shots.length-ri, ip=inPerUnit(S.unit,s.yd);
-    const sq=SEQ.get(i-1);
+  vis.slice().reverse().forEach((s,ri)=>{const i=vis.length-ri, ip=inPerUnit(S.unit,s.yd);
+    const sq=SEQ.get(S.shots.indexOf(s));
     st+=`<tr><td>${i}</td><td>${sq?sq.idx+(sq.cold?' cold':''):'–'}</td><td>${scoreShot(s)}</td><td>${(s.xIn/ip).toFixed(2)}</td><td>${(s.yIn/ip).toFixed(2)}</td><td>${fromYd(s.yd,S.distUnit).toFixed(0)}</td><td>${s.cross!=null?(s.cross>0?'R ':'L ')+Math.abs(s.cross).toFixed(1):'–'}</td><td>${(obsAt(s.t)||{}).light||s.light||''}</td></tr>`});
-  $('#shotTbl').innerHTML=S.shots.length?st:'';
-  if(S.shots.length){
-    const mn=meanShot(), ip=inPerUnit(S.unit,yd), mx=mn.x/ip, my=mn.y/ip;
+  $('#shotTbl').innerHTML=vis.length?st:'';
+  if(vis.length){
+    const mn=meanShot(vis), ip=inPerUnit(S.unit,yd), mx=mn.x/ip, my=mn.y/ip;
     $('#vMean').textContent=`${mx>=0?'R':'L'} ${Math.abs(mx).toFixed(2)}, ${my>=0?'H':'Lo'} ${Math.abs(my).toFixed(2)} ${U.label}`;
     const cw=Math.round(Math.abs(mx)/S.click), ce=Math.round(Math.abs(my)/S.click);
     $('#vCorr').textContent=`${cw} ${mx>0?'left':'right'}, ${ce} ${my>0?'down':'up'}`;
-    $('#vTotal').textContent=totalScore();
-    const n=S.shots.length; let es=0, mr=0;
-    for(let i=0;i<n;i++){mr+=Math.hypot(S.shots[i].xIn-mn.x,S.shots[i].yIn-mn.y);for(let j=i+1;j<n;j++)es=Math.max(es,Math.hypot(S.shots[i].xIn-S.shots[j].xIn,S.shots[i].yIn-S.shots[j].yIn))}
+    $('#vTotal').textContent=totalScore(vis);
+    const n=vis.length; let es=0, mr=0;
+    for(let i=0;i<n;i++){mr+=Math.hypot(vis[i].xIn-mn.x,vis[i].yIn-mn.y);for(let j=i+1;j<n;j++)es=Math.max(es,Math.hypot(vis[i].xIn-vis[j].xIn,vis[i].yIn-vis[j].yIn))}
     mr/=n;
     $('#vES').textContent=n>1?`${(es/ip).toFixed(2)} ${U.label} · ${es.toFixed(2)} in`:'–';
     $('#vMR').textContent=n>1?`${(mr/ip).toFixed(2)} ${U.label} · ${mr.toFixed(2)} in`:'–';
   }else{['#vMean','#vCorr','#vTotal','#vES','#vMR'].forEach(k=>$(k).textContent='–')}
 }
-function meanShot(){const n=S.shots.length;return{x:S.shots.reduce((a,s)=>a+s.xIn,0)/n,y:S.shots.reduce((a,s)=>a+s.yIn,0)/n}}
+/* Which shots the face and statistics show: one string, the latest, or everything */
+function viewLogs(){return S.logs.filter(g=>S.shots.some(s=>logFor(s.t)===g))}
+function visShots(){
+  if(!$('#rm').hidden&&S.str)return psShots().map(q=>q.s);
+  const v=S.viewLog||'all';
+  if(v==='all')return S.shots;
+  if(v==='unlogged')return S.shots.filter(s=>!logFor(s.t));
+  const g=S.logs.find(x=>x.t===v); return g?S.shots.filter(s=>logFor(s.t)===g):S.shots;
+}
+function logLabel(g){const m=g.meta||{}, d=new Date(g.t);
+  return `${d.toLocaleDateString([], {day:'numeric',month:'short'})} ${d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',hour12:false})} · ${fromYd(g.yd,S.distUnit).toFixed(0)} ${S.distUnit}${m.shooter?' · '+m.shooter:''}${m.match?' · '+m.match:(g.name?' · '+g.name:'')}`}
+function fillViewStr(){
+  const L=viewLogs(), sel=$('#viewStr'); if(!sel)return;
+  if(S.viewLog&&S.viewLog!=='all'&&S.viewLog!=='unlogged'&&!L.some(g=>g.t===S.viewLog))S.viewLog='all';
+  const un=S.shots.filter(s=>!logFor(s.t)).length;
+  const html=`<option value="all">All shots (${S.shots.length})</option>`+L.slice().reverse().map(g=>`<option value="${g.t}">${esc(logLabel(g))} (${S.shots.filter(s=>logFor(s.t)===g).length})</option>`).join('')+(un?`<option value="unlogged">Shots with no string (${un})</option>`:'');
+  if(sel.dataset.h!==html){sel.innerHTML=html;sel.dataset.h=html}
+  sel.value=S.viewLog||'all';
+}
+function meanShot(list){list=list||visShots();const n=list.length;return{x:list.reduce((a,s)=>a+s.xIn,0)/n,y:list.reduce((a,s)=>a+s.yIn,0)/n}}
 function scoreShot(s){
   if(s.smScore)return String(s.smScore);          // ShotMarker's own score, as recorded on the range
   const f=face(), lab=scoreFor(Math.hypot(s.xIn,s.yIn)), sys=SYSTEMS[f.system];
@@ -1977,10 +1999,10 @@ function scoreFor(rIn){
   for(const [lab,d] of ringsOf(f)) if(rIn-br<=d/2) return lab;  // line-cutter scores the higher ring
   const sys=SYSTEMS[f.system]; return sys&&sys.labels?sys.miss:'–';
 }
-function totalScore(){
-  const f=face(), sys=SYSTEMS[f.system]; if(!sys||!sys.labels||!S.shots.length)return'–';
+function totalScore(list){
+  list=list||visShots(); const f=face(), sys=SYSTEMS[f.system]; if(!sys||!sys.labels||!list.length)return'–';
   let pts=0,b=0;
-  S.shots.forEach(s=>{const l=scoreShot(s);pts+=points(l,f.system);if(l===sys.bonus)b++});
+  list.forEach(s=>{const l=scoreShot(s);pts+=points(l,f.system);if(l===sys.bonus)b++});
   return f.system==='uk'?`${pts}.${b}`:`${pts}-${b}X`;
 }
 function svgPoint(e){const svg=$('#face'),pt=svg.createSVGPoint();pt.x=e.clientX;pt.y=e.clientY;return pt.matrixTransform(svg.getScreenCTM().inverse())}
@@ -2039,17 +2061,17 @@ $('#zFit').onclick=()=>{VIEW.z=1;VIEW.cx=0;VIEW.cy=0;renderFace(trueDistance().y
 $('#zBull').onclick=()=>{const {rings,fullHalf,ipu}=faceGeom(trueDistance().yd);
   VIEW.z=(fullHalf*ipu)/(rings[Math.min(1,rings.length-1)][1]/2*1.15);VIEW.cx=0;VIEW.cy=0;renderFace(trueDistance().yd)};
 $('#zGroup').onclick=()=>{
-  if(!S.shots.length)return;
-  const xs=S.shots.map(s=>s.xIn), ys=S.shots.map(s=>s.yIn), {fullHalf,ipu}=faceGeom(trueDistance().yd);
+  const v=visShots(); if(!v.length)return;
+  const xs=v.map(s=>s.xIn), ys=v.map(s=>s.yIn), {fullHalf,ipu}=faceGeom(trueDistance().yd);
   const span=Math.max(Math.max(...xs)-Math.min(...xs),Math.max(...ys)-Math.min(...ys),(+S.cal||0.3)*4);
   VIEW.cx=(Math.max(...xs)+Math.min(...xs))/2; VIEW.cy=(Math.max(...ys)+Math.min(...ys))/2;
   VIEW.z=(fullHalf*ipu)/(span*0.75); renderFace(trueDistance().yd);
 };
-$('#undoShot').onclick=()=>{S.shots.pop();save();render()};
+$('#undoShot').onclick=()=>{const v=visShots();if(v.length)S.shots.splice(S.shots.indexOf(v[v.length-1]),1);save();render()};
 let clearArmed=false;
 $('#clearShots').onclick=()=>{
-  if(!clearArmed){clearArmed=true;$('#clearConfirm').hidden=false;setTimeout(()=>{clearArmed=false;$('#clearConfirm').hidden=true},4000);return}
-  S.shots=[];S.barrel.foulers=[];S.obs=[];clearArmed=false;$('#clearConfirm').hidden=true;save();render();
+  if(!clearArmed){clearArmed=true;$('#clearConfirm').textContent=(S.viewLog||'all')==='all'?'Tap Clear string again to delete ALL plotted shots and the off-target fouler count. To remove one string only, choose it under Show first. Save all data to a file first if you want to keep them.':`Tap Clear string again to delete the ${visShots().length} shots of the string shown. Other strings are kept.`;$('#clearConfirm').hidden=false;setTimeout(()=>{clearArmed=false;$('#clearConfirm').hidden=true},4000);return}
+  if((S.viewLog||'all')==='all'){S.shots=[];S.barrel.foulers=[];S.obs=[]}else{const v=new Set(visShots());S.shots=S.shots.filter(x=>!v.has(x))}clearArmed=false;$('#clearConfirm').hidden=true;save();render();
 };
 $('#csv').onclick=()=>{
   const hdr='date,session_type,event,match_detail,shooter,competitor_no,coach,rifle,time,source,session,score,x_in,y_in,x_moa,y_moa,true_dist_yd,nominal_dist_yd,dist_source,velocity_fps,crosswind_mph,headwind_mph,wind_source,light,log_time,temp_c,station_hpa,rh_pct,atm_source,pred_elev_moa,dialled_elev_moa,pred_wind_moa,dialled_wind_moa,load,mv_fps,garmin_avg_fps,garmin_sd,round_of_session,gap_min,cold_bore,barrel_state,rounds_since_clean,mirage_flow,mirage_strength,mirage_focus,light_at_shot';
@@ -2335,6 +2357,10 @@ $('#dataOpen').onchange=async e=>{
   catch(err){$('#dataMsg').textContent='That file could not be read as Range Desk data: '+err.message}
   e.target.value='';
 };
+$('#valTbl').addEventListener('click',e=>{const r=e.target.closest('[data-log]');if(!r)return;S.viewLog=r.dataset.log;save();render();if(visShots().length>1)$('#zGroup').click();$('#face').scrollIntoView({behavior:'smooth',block:'center'})});
+$('#viewStr').onchange=e=>{S.viewLog=e.target.value;save();render();if(S.viewLog!=='all'&&visShots().length>1)$('#zGroup').click();else $('#zFit').click()};
+const stepView=d=>{const opts=[...$('#viewStr').options].map(o=>o.value), i=opts.indexOf(S.viewLog||'all'), j=Math.min(opts.length-1,Math.max(0,i+d));S.viewLog=opts[j];save();render();if(S.viewLog!=='all'&&visShots().length>1)$('#zGroup').click();else $('#zFit').click()};
+$('#viewPrev').onclick=()=>stepView(-1); $('#viewNext').onclick=()=>stepView(1);
 $('#impImport').onclick=()=>{
   if(!IMP)return;
   const td=trueDistance(), l=curLoad(), u=(l&&l.scopeUnit)||'moa'; let n=0, strings=0;
