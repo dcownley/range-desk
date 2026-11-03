@@ -209,8 +209,21 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
 #sessForm input{font:500 17px var(--body)!important;text-align:left!important}
 .sess-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px}
 #valTbl tr.sel td{background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.offchip{font:700 13px var(--body);letter-spacing:.06em;text-transform:uppercase;background:var(--warn);color:#000;border-radius:999px;padding:4px 10px}
 .rm-card.flash{outline:4px solid var(--accent);outline-offset:2px;transition:outline-color .3s}
 #settleChart{width:100%;height:auto;max-height:240px}
+#records{position:fixed;inset:0;z-index:3400;background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(24px + env(safe-area-inset-bottom,0px))}
+#records .help-body{max-width:1180px}
+.rec-f{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.rec-f label{display:flex;flex-direction:column;gap:3px;font-size:13px;color:var(--muted)}
+.rec-tot{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.rec-tot div{border:1px solid var(--line);border-radius:6px;padding:8px 10px;display:flex;flex-direction:column}
+.rec-tot b{font:600 22px/1.15 var(--display)} .rec-tot span{font-size:13px;color:var(--muted)}
+.rec-scroll{overflow-x:auto} #recTbl{font-size:14px;border-collapse:collapse;width:100%}
+#recTbl td,#recTbl th{padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap;text-align:left}
+#recTbl tr[data-t]{cursor:pointer} #recTbl tr.sel td{background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.rec-meter{height:10px;border:1px solid var(--line);border-radius:5px;overflow:hidden} .rec-meter i{display:block;height:100%;background:var(--accent)}
+.rec-act{display:flex;flex-wrap:wrap;gap:8px}
 #help{position:fixed;inset:0;z-index:3500;background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(24px + env(safe-area-inset-bottom,0px))}
 .help-body{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:18px;padding-block:14px;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));font-size:16px;line-height:1.55}
@@ -248,6 +261,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
 <body>
 <header>
   <h1>Range <b>Desk</b></h1>
+  <span class="offchip" id="offChip" hidden>Offline</span>
   <form class="search" id="searchForm">
     <input id="q" placeholder="Search a range or paste lat, lon" aria-label="Search a range or coordinates">
     <button type="submit">Go</button>
@@ -256,6 +270,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
     <button id="btnFP" type="button">Place firing point</button>
     <button id="btnT" type="button">Place target</button>
     <button id="btnRM" type="button" class="primary">Range mode</button>
+    <button id="btnRec" type="button">Records</button>
     <button id="btnHelp" type="button">Help</button>
   </div>
 </header>
@@ -367,6 +382,8 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
         <div><span>Shot angle</span><b id="vAng">–</b></div>
       </div>
       <p class="note">Heights come from a 90 m terrain model, good enough to flag a slope but not to replace a survey.</p>
+      <div class="row"><button type="button" id="offSave">Save this range for offline</button></div>
+      <p class="note" id="offMsg">Saves the map around the firing point and target, so Range Desk works with no signal. Do it at home on Wi-Fi.</p>
     </section>
 
     <section class="card">
@@ -629,6 +646,71 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
 </main>
 
 
+<div id="records" hidden role="dialog" aria-label="Records">
+  <div class="rm-bar"><b>Records</b><span class="rm-sub" id="recSub"></span><button type="button" id="recClose">Close</button></div>
+  <div class="help-body">
+    <section>
+      <h2>Filter</h2>
+      <div class="rec-f">
+        <label>From<input type="date" id="rfFrom"></label>
+        <label>To<input type="date" id="rfTo"></label>
+        <label>Shooter<select id="rfShooter"></select></label>
+        <label>Session<select id="rfType"></select></label>
+        <label>Event<select id="rfEvent"></select></label>
+        <label>Distance<select id="rfDist"></select></label>
+        <label>Load<select id="rfLoad"></select></label>
+        <label>Coach<select id="rfCoach"></select></label>
+        <label>Batch<select id="rfBatch"></select></label>
+      </div>
+      <div class="rec-act" style="margin-top:8px"><button type="button" id="rfClear">Show everything</button></div>
+    </section>
+    <section>
+      <h2>Summary</h2>
+      <div class="rec-tot" id="recTot"></div>
+      <div id="recMix" hidden style="margin-top:10px;border:2px solid var(--accent);border-radius:6px;padding:10px 12px"></div>
+      <div id="recByB" hidden style="margin-top:10px"><b>By batch</b><div class="rec-scroll"><table id="recBTbl" style="font-size:14px;border-collapse:collapse;width:100%"></table></div>
+        <p class="rm-note" style="margin:4px 0 0">Each batch is worked out on its own. The figures above are for all the strings shown together.</p></div>
+    </section>
+    <section id="recBcBox">
+      <h2>Ballistic coefficient from velocity</h2>
+      <p class="rm-note" style="margin:0 0 8px">From the Garmin's muzzle velocity and ShotMarker's speed at the target, in each string's own air. It measures drag directly, so it doesn't depend on where the shots landed or what was dialled.</p>
+      <div id="recBc"></div>
+      <div class="rec-act" style="margin-top:8px"><button type="button" id="recBcUse">Use in load</button><button type="button" id="recBcUndo">Undo</button><button type="button" id="recBcCopy">Copy for QuickLOAD</button></div>
+      <p class="rm-note" id="recBcMsg"></p>
+    </section>
+    <section>
+      <h2>Strings</h2>
+      <p class="rm-note" style="margin:0 0 8px">Tap a string to see its details, change its tags, or show it on the target.</p>
+      <div class="rec-scroll"><table id="recTbl"></table></div>
+      <div id="recEdit" hidden style="margin-top:10px;border:1px solid var(--line);border-radius:6px;padding:10px 12px">
+        <div id="recEditHead" style="font-weight:600;margin-bottom:6px"></div>
+        <div class="rec-f">
+          <label>Session<select id="reType"></select></label>
+          <label>Event<input id="reEvent"></label>
+          <label>Match or detail<input id="reMatch"></label>
+          <label>Shooter<input id="reShooter"></label>
+          <label>Competitor no.<input id="reNumber"></label>
+          <label>Coach<input id="reCoach"></label>
+          <label>Batch or lot<input id="reBatch"></label>
+          <label>Rifle<input id="reRifle"></label>
+          <label>Note<input id="reNote"></label>
+        </div>
+        <div class="rec-act" style="margin-top:8px"><button type="button" id="reSave" class="primary">Save tags</button><button type="button" id="reShow">Show on target</button><button type="button" id="reClose">Close</button></div>
+      </div>
+    </section>
+    <section>
+      <h2>Reports and data</h2>
+      <div class="rec-act">
+        <button type="button" id="recCsv">Export these strings (CSV)</button>
+        <button type="button" id="recShotCsv">Export their shots (CSV)</button>
+        <button type="button" id="recArchive">Save these as a data file</button>
+        <button type="button" id="recDel">Delete these from this device</button>
+      </div>
+      <p class="rm-note" id="recMsg"></p>
+      <div style="margin-top:10px"><div class="rec-meter"><i id="recMeterBar" style="width:0"></i></div><p class="rm-note" id="recMeter" style="margin:4px 0 0"></p></div>
+    </section>
+  </div>
+</div>
 <div id="help" hidden role="dialog" aria-label="Help">
   <div class="rm-bar">
     <b>Help</b>
@@ -637,7 +719,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
   </div>
   <div class="help-body">
     <nav class="help-nav">
-      <a href="#h-start">Getting started</a><a href="#h-range">At the range</a><a href="#h-true">Truing</a><a href="#h-sess">Session</a><a href="#h-plot">Plot sheet</a><a href="#h-wind">Wind truing</a><a href="#h-barrel">Barrel</a><a href="#h-fix">When something goes wrong</a><a href="#h-update">Updating</a>
+      <a href="#h-start">Getting started</a><a href="#h-range">At the range</a><a href="#h-true">Truing</a><a href="#h-offline">No signal</a><a href="#h-sess">Session</a><a href="#h-plot">Plot sheet</a><a href="#h-wind">Wind truing</a><a href="#h-rec">Records</a><a href="#h-barrel">Barrel</a><a href="#h-fix">When something goes wrong</a><a href="#h-update">Updating</a>
     </nav>
 
     <section id="h-start">
@@ -669,6 +751,29 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
         <li><b>Dial:</b> tap <b>Copy solution</b>, dial it, and correct the figures if you dialled something different. The windage you dial is your wind call.</li>
         <li>After shooting, import ShotMarker and Garmin under <b>Plotted shots</b>, Import results. Strings are matched by shot timing.</li>
       </ul>
+    </section>
+
+    <section id="h-rec">
+      <h2>Records</h2>
+      <p>Records (in the header and in Range mode) lists every string on this device, newest first.</p>
+      <ul>
+        <li><b>Filter</b> by date, shooter, session type, event, distance, load or coach. The summary, the BC and every export follow the filter.</li>
+        <li><b>Summary</b>: strings, shots, points and V count, average group, average Garmin velocity, and how many clicks of elevation the strings needed against the app's solution.</li>
+        <li><b>BC from velocity</b>: where a string has both the Garmin's muzzle velocity and ShotMarker's speed at the target, the app works out the G7 and G1 BC that joins the two in that string's air. <b>Use in load</b> puts it into the current load (Undo puts it back); <b>Copy for QuickLOAD</b> gives a short summary to paste into your load notes or QuickTARGET.</li>
+        <li><b>Batches:</b> set the ammunition batch in Session details whenever you change ammunition. Today's velocity, truing and temperature learning only combine readings from the same batch, and Records shows a By batch table when the strings shown include more than one. If untagged strings fall into two clear velocity groups, Records says so and offers to tag them as two batches.</li>
+        <li><b>Tap a string</b> to correct its tags (event, detail, shooter, coach, note) or show it on the target.</li>
+        <li><b>Export</b> the strings or their shots as CSV for a spreadsheet, or <b>save them as a data file</b> to keep. To make room, save first, then <b>Delete these from this device</b>; opening the file again later brings them back.</li>
+      </ul>
+    </section>
+    <section id="h-offline">
+      <h2>No signal at the range</h2>
+      <ol>
+        <li>At home on Wi-Fi, place the firing point and target pins, then tap <b>Save this range for offline</b> (Line of fire card). It saves the app, the map around the range (about 300 tiles) and the latest weather.</li>
+        <li>At the range with no signal, open Range Desk as usual. An <b>Offline</b> tag shows at the top. The solver, String card, plot sheet, Calypso and Weatherdot all work; everything you log is kept on the tablet.</li>
+        <li>The model weather shown is the last saved copy, marked "saved, no signal". Use your Weatherdot / Kestrel and Calypso for the day's values.</li>
+        <li>Photo reading, airfield reports and the Windy map need a signal. They work again as soon as there is one.</li>
+      </ol>
+      <p class="help-note">Save each range you shoot at once; save it again before a trip to refresh the weather.</p>
     </section>
 
     <section id="h-sess">
@@ -770,7 +875,9 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
   <div class="rm-bar">
     <b>Range mode</b>
     <span class="rm-sub" id="rmClock"></span>
+    <span class="offchip" id="offChip2" hidden>Offline</span>
     <button type="button" id="rmSun" aria-pressed="false">Sun mode</button>
+    <button type="button" id="rmRec">Records</button>
     <button type="button" id="rmHelp">Help</button>
     <button type="button" id="rmExit">Full view</button>
   </div>
@@ -792,7 +899,9 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
           <label class="rm-lab">Event, range or competition<input id="sessEvent" placeholder="e.g. Bisley Century, or NRA Autumn Open"></label>
           <label class="rm-lab">Match or detail<input id="sessMatch" placeholder="e.g. Match 3, 2 + 15 at 900"></label>
           <label class="rm-lab">Coach<input id="sessCoach" placeholder="name, if coached"></label>
+          <label class="rm-lab">Ammunition batch or lot<input id="sessBatch" placeholder="e.g. Lot 12, or Batch B"></label>
         </div>
+        <p class="rm-note" style="margin:0">Change the batch whenever you switch ammunition. Velocity, truing and temperature learning are kept separate for each batch, so two batches are never averaged together.</p>
         <div class="rm-lab"><span>Shooter</span></div>
         <div class="rm-seg" id="sessShooters"></div>
         <div class="sess-grid">
@@ -1247,9 +1356,9 @@ const fmtD = yd => `${fromYd(yd,S.distUnit).toFixed(1)} ${S.distUnit}`;
 /* ---------- Map ---------- */
 const map=L.map('map',{zoomControl:true,attributionControl:true});
 L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-  {maxZoom:20,maxNativeZoom:19,attribution:'Imagery © Esri, Maxar, Earthstar Geographics, GIS User Community'}).addTo(map);
+  {maxZoom:20,maxNativeZoom:18,attribution:'Imagery © Esri, Maxar, Earthstar Geographics, GIS User Community'}).addTo(map);
 L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
-  {maxZoom:20,maxNativeZoom:19,opacity:.85}).addTo(map);
+  {maxZoom:20,maxNativeZoom:16,opacity:.85}).addTo(map);
 const icon=(cls,txt,sz=34)=>L.divIcon({className:'',html:`<div class="pin ${cls}" style="width:${sz}px;height:${sz}px">${txt}</div>`,iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]});
 const mFP=L.marker(S.fp,{draggable:true,icon:icon('pin-fp','FP'),title:'Firing point'}).addTo(map);
 const mT=L.marker(S.tgt,{draggable:true,icon:icon('pin-t','T'),title:'Target'}).addTo(map);
@@ -1293,8 +1402,8 @@ function alertNote(t){const n=$('#mapnote');n.hidden=false;n.textContent=t;setTi
 async function fetchElev(){
   try{
     const r=await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${S.fp.lat.toFixed(5)},${S.tgt.lat.toFixed(5)}&longitude=${S.fp.lng.toFixed(5)},${S.tgt.lng.toFixed(5)}`);
-    const j=await r.json(); S.elev=j.elevation; render();
-  }catch(e){S.elev=null}
+    const j=await r.json(); S.elev=j.elevation; wxCacheSet('elev',j.elevation); render();
+  }catch(e){const c=wxCacheGet('elev'); S.elev=c?c.v:null; render()}
 }
 let wxTimer=null;
 function debouncedWx(){clearTimeout(wxTimer);wxTimer=setTimeout(()=>{refreshAll();scheduleRefresh();loadWindy()},600)}
@@ -1310,8 +1419,14 @@ async function fetchCmp(){
       S.cmp[m.id]=ok?{time:h.time,spd:h.wind_speed_10m,dir:h.wind_direction_10m,gust:h.wind_gusts_10m}:{none:true};
     }catch(e){S.cmp[m.id]={error:e.message||'unavailable'}}
   }));
+  if(MODELS.some(m=>S.cmp[m.id]&&S.cmp[m.id].spd))wxCacheSet('cmp',S.cmp);
+  else{const c=wxCacheGet('cmp'); if(c)S.cmp=c.v}
   renderCmp(); render();
 }
+// Last good weather, kept per firing point (about 1 km), so the app still has numbers with no signal
+function wxKey(){return `${S.fp.lat.toFixed(2)},${S.fp.lng.toFixed(2)}`}
+function wxCacheSet(k,v){try{const all=JSON.parse(localStorage.getItem('frd_wxCache')||'{}'); all[k]={key:wxKey(),t:Date.now(),v}; localStorage.setItem('frd_wxCache',JSON.stringify(all))}catch(e){}}
+function wxCacheGet(k){try{const all=JSON.parse(localStorage.getItem('frd_wxCache')||'{}'), c=all[k]; return c&&c.key===wxKey()&&Date.now()-c.t<36*3600*1000?c:null}catch(e){return null}}
 function refreshAll(){
   S.lastFetch=new Date(); S.nextFetch=new Date(Date.now()+10*60*1000);
   fetchWx(); fetchMetar(); fetchCmp(); updLine();
@@ -1331,8 +1446,12 @@ async function fetchWx(){
   try{
     const r=await fetch('https://api.open-meteo.com/v1/forecast?'+p);
     const j=await r.json(); if(j.error)throw new Error(j.reason);
-    S.wx=j; $('#wxErr').hidden=true;
-  }catch(e){S.wx=null;$('#wxErr').hidden=false;$('#wxErr').textContent='Model wind unavailable: '+(e.message||'network error')+'. Try another model or enter your own reading.'}
+    S.wx=j; S.wxStale=null; $('#wxErr').hidden=true; wxCacheSet('wx',j);
+  }catch(e){
+    const c=wxCacheGet('wx');
+    if(c){S.wx=c.v;S.wxStale=c.t;$('#wxErr').hidden=false;$('#wxErr').textContent=`No signal: using the model data saved at ${new Date(c.t).toLocaleString([], {weekday:'short',hour:'2-digit',minute:'2-digit',hour12:false})}. Use your Kestrel / Weatherdot and Calypso for today's values.`}
+    else{S.wx=null;$('#wxErr').hidden=false;$('#wxErr').textContent='Model wind unavailable: '+(e.message||'network error')+'. Try another model or enter your own reading.'}
+  }
   render();
 }
 async function fetchMetar(){
@@ -1349,7 +1468,8 @@ async function fetchMetar(){
       .map(s=>{const v=vincenty(lat,lng,s.lat,s.lon);return{...s,d:v.m,brgTo:v.az}})
       .sort((a,b)=>a.d-b.d).slice(0,10);
     pickStation();
-  }catch(e){S.metars=[];S.metar={error:e.message||'network error'}}
+    wxCacheSet('metars',S.metars);
+  }catch(e){const c=wxCacheGet('metars'); if(c&&c.v.length){S.metars=c.v;pickStation();S.metar={...S.metar,stale:c.t}}else{S.metars=[];S.metar={error:e.message||'network error'}}}
   fillStations(); render();
 }
 function pickStation(){
@@ -1457,7 +1577,7 @@ function atmNow(){
     if(isFinite(T)&&P>500&&P<1100) return{Tc:T,PhPa:P,RH:isFinite(RH)?RH:50,src:'kestrel',label:'Kestrel'};
   }
   const c=S.wx&&S.wx.current;
-  return c?{Tc:c.temperature_2m,PhPa:c.surface_pressure,RH:c.relative_humidity_2m,src:'model',label:S.atmSrc==='kestrel'?'Model (Kestrel entry incomplete)':'Model'}:null;
+  return c?{Tc:c.temperature_2m,PhPa:c.surface_pressure,RH:c.relative_humidity_2m,src:'model',label:S.atmSrc==='kestrel'?'Model (Kestrel entry incomplete)':(S.wxStale?'Model (saved, no signal)':'Model')}:null;
 }
 const ANG_IN=(inch,yd)=>inch/(yd*36);                 // inches on target -> radians
 function logFor(tIso){
@@ -1484,12 +1604,12 @@ function renderValidation(){
   for(const s of S.shots){const g=logFor(s.t); if(!g||g.dialE==null)continue; if(!groups.has(g.t))groups.set(g.t,{g,shots:[]}); groups.get(g.t).shots.push(s)}
   if(!groups.size){$('#valBox').hidden=true;return}
   const f=r=>(r/RAD_PER[u]).toFixed(2), sg=r=>(r>=0?'+':'−')+Math.abs(r/RAD_PER[u]).toFixed(2);
-  let t=`<tr><th>String</th><th>Shots</th><th>Pred elev</th><th>Observed</th><th>Diff ${U}</th><th>Clicks</th><th>Pred wind</th><th>Observed</th><th>Diff ${U}</th><th>Wind met, mph (range)</th><th>Garmin fps</th></tr>`;
+  let t=`<tr><th>String</th><th>Shots</th><th>Pred elev</th><th>Observed</th><th>Diff ${U}</th><th>Clicks</th><th>Pred wind</th><th>Observed</th><th>Diff ${U}</th><th>Wind met, mph (range)</th><th>Garmin fps</th><th>At target fps</th><th>BC from velocity (G7)</th></tr>`;
   for(const {g,shots} of [...groups.values()].sort((a,b)=>Date.parse(a.g.t)-Date.parse(b.g.t))){
     const n=shots.length, gn=groupNeed(g,shots);
     const obsE=gn.needE, obsW=gn.needW, dE=g.predE!=null?obsE-g.predE:null, dW=g.predW!=null&&obsW!=null?obsW-g.predW:null;
     const wf=v=>(v>=0?'R ':'L ')+Math.abs(v/RAD_PER[u]).toFixed(2);
-    t+=`<tr data-log="${g.t}" style="cursor:pointer" class="${S.viewLog===g.t?'sel':''}"><td>${new Date(g.t).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',hour12:false})} · ${fromYd(g.yd,S.distUnit).toFixed(0)}${g.meta&&g.meta.shooter?' · '+esc(g.meta.shooter):''}${g.meta&&g.meta.match?' · '+esc(g.meta.match):''}</td><td>${n}</td><td>${g.predE!=null?f(g.predE):'–'}</td><td>${f(obsE)}</td><td>${dE!=null?sg(dE):'–'}</td><td>${dE!=null?(dE>=0?'+':'−')+Math.abs(dE/RAD_PER[u]/ck).toFixed(1):'–'}</td><td>${g.predW!=null?wf(g.predW):'–'}</td><td>${obsW!=null?wf(obsW):'–'}</td><td>${dW!=null?sg(dW):'–'}</td><td>${(()=>{const m=windMet(g,shots);return m?`${fmtX(m.mean)} (${Math.abs(m.min).toFixed(1)}–${Math.abs(m.max).toFixed(1)})`:'–'})()}</td><td>${g.chrono?g.chrono.avg.toFixed(0):'–'}</td></tr>`;
+    t+=`<tr data-log="${g.t}" style="cursor:pointer" class="${S.viewLog===g.t?'sel':''}"><td>${new Date(g.t).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',hour12:false})} · ${fromYd(g.yd,S.distUnit).toFixed(0)}${g.meta&&g.meta.shooter?' · '+esc(g.meta.shooter):''}${g.meta&&g.meta.match?' · '+esc(g.meta.match):''}</td><td>${n}</td><td>${g.predE!=null?f(g.predE):'–'}</td><td>${f(obsE)}</td><td>${dE!=null?sg(dE):'–'}</td><td>${dE!=null?(dE>=0?'+':'−')+Math.abs(dE/RAD_PER[u]/ck).toFixed(1):'–'}</td><td>${g.predW!=null?wf(g.predW):'–'}</td><td>${obsW!=null?wf(obsW):'–'}</td><td>${dW!=null?sg(dW):'–'}</td><td>${(()=>{const m=windMet(g,shots);return m?`${fmtX(m.mean)} (${Math.abs(m.min).toFixed(1)}–${Math.abs(m.max).toFixed(1)})`:'–'})()}</td><td>${g.chrono?g.chrono.avg.toFixed(0):'–'}</td>${(()=>{const b=bcFromVel(g,shots);return b?`<td>${b.vt.toFixed(0)}</td><td>${b.g7.toFixed(3)}${b.sd!=null?` ±${b.sd.toFixed(3)}`:''}</td>`:'<td>–</td><td>–</td>'})()}</tr>`;
   }
   $('#valTbl').innerHTML=t; $('#valBox').hidden=false;
 }
@@ -1539,10 +1659,13 @@ function boreFor(l){
   return boreCache[key];
 }
 function loadValid(l){return ['bc','mvFps','zeroYd','sightIn'].every(k=>+l[k]>0)}
-const mvEntries=t=>t.entries.filter(e=>(e.kind||'mv')==='mv'), bcEntries=t=>t.entries.filter(e=>e.kind==='bc');
+// Ammunition batch: velocity, truing and temperature learning only ever combine readings from the same batch
+const curBatch=()=>((S.sess&&S.sess.batch)||'').trim();
+const sameBatch=b=>((b||'').trim().toLowerCase())===curBatch().toLowerCase();
+const mvEntries=t=>t.entries.filter(e=>(e.kind||'mv')==='mv'&&sameBatch(e.batch)), bcEntries=t=>t.entries.filter(e=>e.kind==='bc'&&sameBatch(e.batch));
 function sessionMv(l){const t=S.truing.session;return t&&t.on&&t.loadId===l.id&&mvEntries(t).length?combinedMv(mvEntries(t)).mv:null}
 // Today's measured velocity, converted back to the load's reference temperature so the solver's temperature model still applies
-function dayMvRef(l){const d=S.dayMv; if(!d||!d.on||d.loadId!==l.id||!sameDayTs(d.t))return null; const T=d.Tc??+l.mvTempC; return d.fps-(+l.mvSens||0)*(T-(+l.mvTempC||15))}
+function dayMvRef(l){const d=S.dayMv; if(!d||!d.on||d.loadId!==l.id||!sameDayTs(d.t)||!sameBatch(d.batch))return null; const T=d.Tc??+l.mvTempC; return d.fps-(+l.mvSens||0)*(T-(+l.mvTempC||15))}
 const sameDayTs=t=>new Date(t).toDateString()===new Date().toDateString();
 function sessionBc(l){const t=S.truing.session;return t&&t.on&&t.loadId===l.id&&bcEntries(t).length?combinedBc(bcEntries(t)).bc:null}
 function computeSolution(trueYd,opt){
@@ -1872,6 +1995,23 @@ function drawSpark(brg){
 
 /* ---------- Target face & shots ---------- */
 const facesFor=sys=>S.faces.filter(f=>f.system===sys);
+/* ShotMarker's scores are exact; the positions read from its export are good to about ±5-9 mm. Where a decoded
+   position disagrees with ShotMarker's own score, it is moved straight out from (or in towards) the centre, by the
+   smallest amount that puts it in the ring ShotMarker scored. The decoded position is kept with the shot. */
+function faceForYd(nomYd){
+  const c=S.faces.filter(f=>f.system==='uk'&&f.dist&&f.dist.yd);
+  return c.find(f=>f.dist.yd.some(d=>Math.abs(d-nomYd)<1))||c.sort((a,b)=>Math.min(...a.dist.yd.map(d=>Math.abs(d-nomYd)))-Math.min(...b.dist.yd.map(d=>Math.abs(d-nomYd))))[0]||null;
+}
+function snapToScore(sh){
+  if(!sh.smScore||sh.smAdj!=null)return sh;
+  const f=faceForYd(sh.nomYd??Math.round(sh.yd/100)*100); if(!f){sh.smAdj=false;return sh}
+  const rings=ringsOf(f), i=rings.findIndex(r=>r[0]===String(sh.smScore)), br=(+S.cal||0.308)/2;
+  if(i<0){sh.smAdj=false;return sh}
+  const lo=i>0?rings[i-1][1]/2+br:0, hi=rings[i][1]/2+br, r=Math.hypot(sh.xIn,sh.yIn);
+  let k=1; if(r>hi)k=(hi*0.97)/r; else if(r<lo&&r>0)k=(lo*1.03)/r;
+  if(k!==1){sh.dec={x:sh.xIn,y:sh.yIn}; sh.xIn*=k; sh.yIn*=k; sh.smAdj=true} else sh.smAdj=false;
+  return sh;
+}
 const faceNow=()=>S.faces.find(f=>f.id===S.faceId&&f.system===S.sys)||facesFor(S.sys)[0]||S.faces[0];
 // A string chosen under Show is drawn on its own face, at its own distance; otherwise today's face and distance
 function viewedLog(){ if(!$('#rm').hidden&&S.str)return null; const v=S.viewLog; if(!v||v==='all'||v==='unlogged')return null; return S.logs.find(g=>g.t===v)||null }
@@ -1963,7 +2103,9 @@ function renderFace(yd){
   let st=`<tr><th>#</th><th>Round</th><th>Score</th><th>X ${U.label}</th><th>Y ${U.label}</th><th>Dist</th><th>Cross mph</th><th>Light</th></tr>`;
   vis.slice().reverse().forEach((s,ri)=>{const i=vis.length-ri, ip=inPerUnit(S.unit,s.yd);
     const sq=SEQ.get(S.shots.indexOf(s));
-    st+=`<tr><td>${i}</td><td>${sq?sq.idx+(sq.cold?' cold':''):'–'}</td><td>${scoreShot(s)}</td><td>${(s.xIn/ip).toFixed(2)}</td><td>${(s.yIn/ip).toFixed(2)}</td><td>${fromYd(s.yd,S.distUnit).toFixed(0)}</td><td>${s.cross!=null?(s.cross>0?'R ':'L ')+Math.abs(s.cross).toFixed(1):'–'}</td><td>${(obsAt(s.t)||{}).light||s.light||''}</td></tr>`});
+    st+=`<tr><td>${i}</td><td>${sq?sq.idx+(sq.cold?' cold':''):'–'}</td><td>${scoreShot(s)}${s.smAdj?'*':''}</td><td>${(s.xIn/ip).toFixed(2)}</td><td>${(s.yIn/ip).toFixed(2)}</td><td>${fromYd(s.yd,S.distUnit).toFixed(0)}</td><td>${s.cross!=null?(s.cross>0?'R ':'L ')+Math.abs(s.cross).toFixed(1):'–'}</td><td>${(obsAt(s.t)||{}).light||s.light||''}</td></tr>`});
+  { const adj=vis.filter(x=>x.smAdj), mm=adj.map(x=>Math.hypot(x.xIn-x.dec.x,x.yIn-x.dec.y)*25.4);
+    if(adj.length)st+=`<tr><td colspan="8" class="note" style="white-space:normal">* Scored by ShotMarker; its plotted position was moved ${Math.min(...mm).toFixed(0)}–${Math.max(...mm).toFixed(0)} mm to agree with that score (positions read from its export are good to about ±5–9 mm). A shot whose edge touches a ring line scores the higher ring.</td></tr>`; }
   $('#shotTbl').innerHTML=vis.length?st:'';
   if(vis.length){
     const mn=meanShot(vis), ip=inPerUnit(S.unit,yd), mx=mn.x/ip, my=mn.y/ip;
@@ -2222,7 +2364,9 @@ const SM_MM_PER_UNIT=0.37, SM_OFF_X=0.5, SM_OFF_Y=-7;
 function smDecodeShot(rec){
   const v=[...rec].map(c=>c.charCodeAt(0)-35), le=(a,b)=>v.slice(a,b).reduce((s,x,i)=>s+x*Math.pow(64,i),0);
   const t=le(0,3)*Math.pow(64,4)+le(3,7), p=i=>v[i]+64*v[i+1]-2048;
-  return{t,xMm:p(29)*SM_MM_PER_UNIT+SM_OFF_X,yMm:p(31)*SM_MM_PER_UNIT+SM_OFF_Y};
+  // Characters 33-34: the bullet's speed at the target, in fps less 1000 (checked against ShotMarker's own display: 2148 fps)
+  const vt=v[33]+64*v[34]+1000;
+  return{t,xMm:p(29)*SM_MM_PER_UNIT+SM_OFF_X,yMm:p(31)*SM_MM_PER_UNIT+SM_OFF_Y,vTgt:vt>1000&&vt<4000?vt:null};
 }
 async function inflateZ(u8){
   const ds=new DecompressionStream('deflate');            // zlib-wrapped deflate
@@ -2350,16 +2494,24 @@ function mergeData(j,fname){
     const it=j.items||j, get=k=>it['frd_'+k]??it[k];
     let nl=0,ns=0,nv=0,nsh=0;
     const logKey=g=>g.smId?'sm'+g.smId:'t'+g.t, haveL=new Set(S.logs.map(logKey));
-    for(const g of get('logs')||[]){if(!g||!g.t||haveL.has(logKey(g)))continue;S.logs.push(g);haveL.add(logKey(g));nl++}
+    const oldL=new Map(S.logs.map(g=>[logKey(g),g])); let nb=0;
+    for(const g of get('logs')||[]){if(!g||!g.t)continue;
+      if(haveL.has(logKey(g))){const o=oldL.get(logKey(g)), b=g.meta&&g.meta.batch; if(o&&b&&!(o.meta&&o.meta.batch)){o.meta=o.meta||{};o.meta.batch=b;nb++} continue}
+      S.logs.push(g);haveL.add(logKey(g));nl++}
     const shotKey=x=>`${x.t}|${(+x.xIn).toFixed(3)}|${(+x.yIn).toFixed(3)}`, haveS=new Set(S.shots.map(shotKey));
-    for(const x of get('shots')||[]){if(!x||!x.t||haveS.has(shotKey(x)))continue;S.shots.push(x);haveS.add(shotKey(x));ns++}
+    const byKey=new Map(S.shots.map(x=>[`${x.t}|${x.smId||''}`,x])); let nv2=0;
+    for(const x of get('shots')||[]){
+      if(!x||!x.t)continue;
+      const old=byKey.get(`${x.t}|${x.smId||''}`);
+      if(old){ if(x.vTgt!=null&&old.vTgt==null){old.vTgt=x.vTgt;nv2++} if(x.vFps!=null&&old.vFps==null)old.vFps=x.vFps; continue }
+      if(haveS.has(shotKey(x)))continue; S.shots.push(snapToScore(x));haveS.add(shotKey(x));ns++}
     const haveV=new Set(S.velLog.map(v=>v.t+'|'+v.fps));
-    for(const v of get('velLog')||[]){if(!v||haveV.has(v.t+'|'+v.fps))continue;S.velLog.push(v);nv++}
+    for(const v of get('velLog')||[]){if(!v)continue;if(haveV.has(v.t+'|'+v.fps)){const o=S.velLog.find(x=>x.t===v.t&&x.fps===v.fps);if(o&&v.batch&&!o.batch)o.batch=v.batch;continue}S.velLog.push(v);nv++}
     for(const p of get('shooters')||[]){if(!p||!p.name||S.shooters.some(q=>q.name===p.name&&String(q.number||'')===String(p.number||'')))continue;S.shooters.push({...p,id:'s'+Date.now()+Math.random().toString(36).slice(2,6)});nsh++}
     for(const l of get('loads')||[]){if(l&&l.id&&!S.loads.some(q=>q.id===l.id))S.loads.push(l)}
     S.logs.sort((a,b)=>Date.parse(a.t)-Date.parse(b.t)); S.shots.sort((a,b)=>Date.parse(a.t)-Date.parse(b.t));
     save(); render();
-    return`Opened ${fname}: added ${nl} strings, ${ns} shots${nv?`, ${nv} velocity readings`:''}${nsh?`, ${nsh} shooters`:''}. Anything already here was skipped.`;
+    return`Opened ${fname}: added ${nl} strings, ${ns} shots${nv?`, ${nv} velocity readings`:''}${nsh?`, ${nsh} shooters`:''}${nv2?`; target speeds added to ${nv2} shots already here`:''}${nb?`; batch tags added to ${nb} strings already here`:''}. Anything already here was skipped.`;
 }
 const isRangeDeskData=j=>j&&typeof j==='object'&&((j.items&&(j.items.frd_logs||j.items.frd_shots))||j.frd_logs||j.frd_shots);
 $('#dataOpen').onchange=async e=>{
@@ -2382,7 +2534,8 @@ $('#impImport').onclick=()=>{
     const vOf=new Map(r.m?r.m.pairs.map(([s,q])=>[s,q.v]):[]);
     for(const s of r.s.shots){
       S.shots.push({t:new Date(s.t).toISOString(),xIn:s.xMm/25.4,yIn:s.yMm/25.4,yd,nomYd:smYd??toYd(S.nominal,S.distUnit),distSrc:useApp?td.src:'ShotMarker setting',
-        cross:null,head:null,windSrc:null,light:'',src:'ShotMarker',session:r.s.name,smId:r.s.id,smScore:s.score,vFps:vOf.get(s)??null});
+        cross:null,head:null,windSrc:null,light:'',src:'ShotMarker',session:r.s.name,smId:r.s.id,smScore:s.score,vFps:vOf.get(s)??null,vTgt:s.vTgt??null});
+      snapToScore(S.shots[S.shots.length-1]);
       n++;
     }
     // One log per string, just before its first shot: the dial, the Garmin summary, and the load.
@@ -2635,7 +2788,7 @@ function combinedBc(entries){
   return{bc,unc,n:entries.length,shots:entries.reduce((a,e)=>a+(e.src==='group'?(e.n||0):0),0)};
 }
 // Velocity the drag truing should hold fixed: the Garmin average for this string (at today's temperature), else velocity trued at shorter range, else the load.
-function chronoFor(g){if(g&&g.chrono)return g.chrono; const c=[...S.logs].reverse().find(x=>x.chrono&&Date.now()-Date.parse(x.t)<6*3600*1000);return c?c.chrono:null}
+function chronoFor(g){if(g&&g.chrono)return g.chrono; const c=[...S.logs].reverse().find(x=>x.chrono&&sameBatch(x.meta&&x.meta.batch)&&Date.now()-Date.parse(x.t)<6*3600*1000);return c?c.chrono:null}
 function mvRefFromChrono(ch){const l=curLoad(), T=(atmNow()||{}).Tc??+l.mvTempC; return ch.avg-(+l.mvSens||0)*(T-(+l.mvTempC||15))}
 function bcBasis(g){
   const l=curLoad(), ch=chronoFor(g), t=S.truing.session&&S.truing.session.loadId===l.id?S.truing.session:null;
@@ -2651,7 +2804,7 @@ function addCorrection(neededRad,src,n,g){
   const l=curLoad(), td=trueDistance(), u=l.scopeUnit||'moa', kind=S.ciKind==='auto'||!S.ciKind?ciKindAuto():S.ciKind;
   const base=computeSolution(td.yd,{mvRef:+l.mvFps,bcRef:+l.bc,rowsYd:[td.yd],fast:true});
   const an=atmNow(), r=base&&base.rows[0];
-  const e={t:new Date().toISOString(),yd:td.yd,distSrc:td.src,neededRad,baseRad:r?r.elevRad:null,mach:r?r.v/base.atm.c:null,src,n:n||null,Tc:an?an.Tc:null,PhPa:an?an.PhPa:null,kind};
+  const e={t:new Date().toISOString(),batch:curBatch(),yd:td.yd,distSrc:td.src,neededRad,baseRad:r?r.elevRad:null,mach:r?r.v/base.atm.c:null,src,n:n||null,Tc:an?an.Tc:null,PhPa:an?an.PhPa:null,kind};
   if(kind==='bc'){
     const b=bcBasis(g), bc=bcForElevation(td.yd,neededRad,b.mvRef);
     if(bc==null){$('#ciMsg').textContent='That correction is outside what a drag change can explain (BC more than 40% off). Check the distance, the dial and the click direction.';return}
@@ -2754,6 +2907,202 @@ $('#ciClear').onclick=()=>{
   if(!ciClearArmed){ciClearArmed=true;$('#ciMsg').textContent="Tap Clear today's corrections again to remove them.";setTimeout(()=>{ciClearArmed=false},4000);return}
   ciClearArmed=false;S.truing.session=null;S.corr.clicks=0;save();render();$('#ciMsg').textContent='Corrections cleared.';
 };
+
+/* ---------- Records: every string on this device, filtered, totalled, exported, archived ---------- */
+const REC={f:{from:'',to:'',shooter:'',type:'',event:'',dist:'',load:'',coach:'',batch:''},sel:null,delArmed:false,bcUndo:null};
+const recMeta=g=>g.meta||{};
+const recLoadName=g=>recMeta(g).load||g.load||'';
+const recDist=g=>{const m=recMeta(g);return m.nominal!=null?`${m.nominal} ${m.unit||'yd'}`:`${Math.round(g.yd/100)*100} yd`};
+const recShots=g=>S.shots.filter(s=>logFor(s.t)===g);
+const recKey=g=>S.shots.length+'|'+JSON.stringify(g.meta||{})+'|'+(g.dialE??'')+'|'+(g.dialW??'')+'|'+S.loadId;
+function recStats(g){
+  if(g._rc&&g._rc.k===recKey(g))return g._rc.v;
+  const sh=recShots(g), n=sh.length, l=curLoad(), u=(l&&l.scopeUnit)||'moa', ck=(l&&+l.click)||0.125;
+  let pts=null,b=0; const sysKey=S.sys, sys=SYSTEMS[sysKey];
+  if(sys&&sys.labels&&n){pts=0;sh.forEach(s=>{const lb=scoreShot(s);pts+=points(lb,sysKey)||0;if(lb===sys.bonus)b++})}
+  let es=null,mr=null;
+  if(n>1){const xs=sh.map(s=>ANG_IN(s.xIn,s.yd)), ys=sh.map(s=>ANG_IN(s.yIn,s.yd)); let m=0;
+    for(let i=0;i<n;i++)for(let j=i+1;j<n;j++)m=Math.max(m,Math.hypot(xs[i]-xs[j],ys[i]-ys[j]));
+    const cx=xs.reduce((a,c)=>a+c,0)/n, cy=ys.reduce((a,c)=>a+c,0)/n; es=m; mr=xs.reduce((a,x,i)=>a+Math.hypot(x-cx,ys[i]-cy),0)/n}
+  const gn=n?groupNeed(g,sh):null, dE=gn&&gn.needE!=null&&g.predE!=null?gn.needE-g.predE:null;
+  const wm=n?windMet(g,sh):null, bc=n?bcFromVel(g,sh):null;
+  const v={n,pts,b,es,mr,dEclk:dE!=null?dE/RAD_PER[u]/ck:null,wm,bc,mv:g.chrono?g.chrono.avg:null,sd:g.chrono?g.chrono.sd:null};
+  Object.defineProperty(g,'_rc',{value:{k:recKey(g),v},writable:true,configurable:true,enumerable:false});
+  return v;
+}
+function recFiltered(){
+  const f=REC.f;
+  return S.logs.filter(g=>{const m=recMeta(g), d=(m.date||g.t.slice(0,10));
+    if(f.from&&d<f.from)return false; if(f.to&&d>f.to)return false;
+    if(f.shooter&&(m.shooter||'')!==f.shooter)return false; if(f.type&&(m.type||'')!==f.type)return false;
+    if(f.event&&(m.event||'')!==f.event)return false; if(f.dist&&recDist(g)!==f.dist)return false;
+    if(f.load&&recLoadName(g)!==f.load)return false; if(f.coach&&(m.coach||'')!==f.coach)return false; if(f.batch&&(f.batch==='~none'?!!m.batch:(m.batch||'')!==f.batch))return false;
+    return true}).sort((a,b)=>Date.parse(b.t)-Date.parse(a.t));
+}
+function recOpts(id,vals,all,lbl){
+  const el=$('#'+id), cur=el.value, u=[...new Set(vals.filter(Boolean))].sort();
+  el.innerHTML=`<option value="">${all}</option>`+u.map(v=>`<option value="${esc(v)}">${esc(lbl?lbl(v):v)}</option>`).join('');
+  el.value=u.includes(cur)?cur:'';
+}
+function recStorage(){
+  let n=0; try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);n+=(k.length+(localStorage.getItem(k)||'').length)*2}}catch(e){}
+  const cap=5*1024*1024, pct=Math.min(100,n/cap*100);
+  $('#recMeterBar').style.width=pct.toFixed(1)+'%';
+  $('#recMeter').textContent=`Storage on this device: about ${(n/1048576).toFixed(2)} MB of roughly 5 MB used (${pct.toFixed(0)}%).${pct>70?' Save older strings to a data file and delete them here to make room.':''}`;
+}
+function renderRecords(){
+  if($('#records').hidden)return;
+  const L=S.logs;
+  recOpts('rfShooter',L.map(g=>recMeta(g).shooter),'All shooters');
+  recOpts('rfType',L.map(g=>recMeta(g).type),'All sessions',v=>SESS_LBL[v]||v);
+  recOpts('rfEvent',L.map(g=>recMeta(g).event),'All events');
+  recOpts('rfDist',L.map(recDist),'All distances');
+  recOpts('rfLoad',L.map(recLoadName),'All loads');
+  recOpts('rfCoach',L.map(g=>recMeta(g).coach),'All coaches');
+  recOpts('rfBatch',L.map(g=>recMeta(g).batch),'All batches');
+  if(L.some(g=>!recMeta(g).batch)&&L.some(g=>recMeta(g).batch)){const el=$('#rfBatch');if(!el.querySelector('[value="~none"]'))el.insertAdjacentHTML('beforeend','<option value="~none">No batch set</option>');if(REC.f.batch==='~none')el.value='~none'}
+  Object.entries({rfFrom:'from',rfTo:'to',rfShooter:'shooter',rfType:'type',rfEvent:'event',rfDist:'dist',rfLoad:'load',rfCoach:'coach',rfBatch:'batch'}).forEach(([id,k])=>{REC.f[k]=$('#'+id).value});
+  const F=recFiltered(), st=F.map(g=>[g,recStats(g)]);
+  $('#recSub').textContent=`${F.length} of ${L.length} strings`;
+  // totals
+  const sum=(a)=>a.reduce((x,y)=>x+y,0), shots=sum(st.map(([,v])=>v.n));
+  const sc=st.filter(([,v])=>v.pts!=null&&v.n), pts=sum(sc.map(([,v])=>v.pts)), vb=sum(sc.map(([,v])=>v.b)), scn=sum(sc.map(([,v])=>v.n));
+  const mvs=st.filter(([,v])=>v.mv), mvAvg=mvs.length?sum(mvs.map(([,v])=>v.mv))/mvs.length:null;
+  const es=st.filter(([,v])=>v.es!=null), esAvg=es.length?sum(es.map(([,v])=>v.es))/es.length:null;
+  const de=st.filter(([,v])=>v.dEclk!=null), deAvg=de.length?sum(de.map(([,v])=>v.dEclk))/de.length:null;
+  const l=curLoad(), u=(l&&l.scopeUnit)||'moa', U=UNIT_LBL[u];
+  const tile=(b,t)=>`<div><b>${b}</b><span>${t}</span></div>`;
+  $('#recTot').innerHTML=[tile(F.length,'strings'),tile(shots,'shots'),
+    sc.length?tile(`${pts}.${vb}`,`points from ${scn} shots (${(pts/scn).toFixed(2)} a shot, ${(vb/scn*100).toFixed(0)}% V)`):'',
+    esAvg!=null?tile((esAvg/RAD_PER[u]).toFixed(2),`average group, ${U} extreme spread`):'',
+    mvAvg!=null?tile(mvAvg.toFixed(0),`average Garmin fps (${mvs.length} strings)${[...new Set(st.map(([g])=>recMeta(g).batch||''))].filter(Boolean).length>1?', mixed batches: see By batch':''}`):'',
+    deAvg!=null?tile((deAvg>=0?'+':'−')+Math.abs(deAvg).toFixed(1),`clicks of elevation needed against the app (${de.length} strings)${[...new Set(st.map(([g])=>recMeta(g).batch||''))].filter(Boolean).length>1?', mixed batches':''}`):''].join('');
+  // Batches: work each out on its own, and warn when untagged strings look like more than one
+  const bset=[...new Set(st.map(([g])=>recMeta(g).batch||''))];
+  const nb=bset.filter(Boolean).length;
+  if(nb>=2||(nb===1&&bset.includes(''))){
+    const row=(b,arr)=>{const mv=arr.filter(([,v])=>v.mv), de=arr.filter(([,v])=>v.dEclk!=null), bc=arr.filter(([,v])=>v.bc), sc=arr.filter(([,v])=>v.pts!=null&&v.n);
+      const mm=mv.length?sum(mv.map(([,v])=>v.mv))/mv.length:null, msd=mv.length>1?Math.sqrt(sum(mv.map(([,v])=>(v.mv-mm)**2))/(mv.length-1)):null;
+      const w=sum(bc.map(([,v])=>v.bc.n)), g7=w?sum(bc.map(([,v])=>v.bc.g7*v.bc.n))/w:null, d=de.length?sum(de.map(([,v])=>v.dEclk))/de.length:null, n=sum(sc.map(([,v])=>v.n));
+      return`<tr><td>${esc(b||'No batch set')}</td><td>${arr.length}</td><td>${mm!=null?mm.toFixed(0)+(msd!=null?` (strings ±${msd.toFixed(0)})`:''):'–'}</td><td>${d!=null?(d>=0?'+':'−')+Math.abs(d).toFixed(1):'–'}</td><td>${g7!=null?g7.toFixed(3):'–'}</td><td>${n?(sum(sc.map(([,v])=>v.pts))/n).toFixed(2):'–'}</td></tr>`};
+    $('#recBTbl').innerHTML=`<tr><th>Batch</th><th>Strings</th><th>Garmin fps</th><th>Elev vs app, clicks</th><th>BC G7</th><th>Points a shot</th></tr>`+bset.map(b=>row(b,st.filter(([g])=>(recMeta(g).batch||'')===b))).join('');
+    $('#recBTbl').querySelectorAll('td,th').forEach(c=>{c.style.cssText='padding:5px 8px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap'});
+    $('#recByB').hidden=false;
+  }else $('#recByB').hidden=true;
+  const split=recSplit(st);
+  if(split){
+    $('#recMix').hidden=false;
+    $('#recMix').innerHTML=`<b>These strings look like two batches.</b> ${split.lo.length} string${split.lo.length>1?'s':''} averaged ${split.loMv.toFixed(0)} fps and ${split.hi.length} averaged ${split.hiMv.toFixed(0)} fps, a gap of ${split.gap.toFixed(0)} fps between strings that are each consistent to about ±${split.sd.toFixed(0)}. Averages across both describe neither batch.
+      <div style="margin:6px 0">Slower: ${split.lo.map(([g])=>esc(logLabel(g))).join('; ')}</div>
+      <div class="rec-act"><button type="button" id="recSplitGo" class="primary">Tag as two batches</button><span class="rm-note" style="align-self:center">Names them "Batch A (${split.hiMv.toFixed(0)} fps)" and "Batch B (${split.loMv.toFixed(0)} fps)"; rename any string by tapping it.</span></div>`;
+    $('#recSplitGo').onclick=()=>{split.hi.forEach(([g])=>{g.meta=g.meta||{};g.meta.batch=`Batch A (${split.hiMv.toFixed(0)} fps)`});split.lo.forEach(([g])=>{g.meta=g.meta||{};g.meta.batch=`Batch B (${split.loMv.toFixed(0)} fps)`});save();render();renderRecords();$('#recMsg').textContent='Tagged as two batches.'};
+  }else $('#recMix').hidden=true;
+  const mixed=nb>=2;
+  // BC
+  const bcs=st.filter(([,v])=>v.bc);
+  if(bcs.length){
+    const w=sum(bcs.map(([,v])=>v.bc.n)), g7=sum(bcs.map(([,v])=>v.bc.g7*v.bc.n))/w, g1=sum(bcs.map(([,v])=>v.bc.g1*v.bc.n))/w;
+    const lo=Math.min(...bcs.map(([,v])=>v.bc.g7)), hi=Math.max(...bcs.map(([,v])=>v.bc.g7));
+    const mv=sum(bcs.map(([,v])=>v.bc.mv*v.bc.n))/w, vt=sum(bcs.map(([,v])=>v.bc.vt*v.bc.n))/w;
+    const T=sum(bcs.map(([,v])=>v.bc.Tc))/bcs.length, P=sum(bcs.map(([,v])=>v.bc.PhPa))/bcs.length, yds=[...new Set(bcs.map(([,v])=>v.bc.yd.toFixed(0)))];
+    REC.bc={g7,g1,lo,hi,n:w,strings:bcs.length,mv,vt,T,P,yds};
+    const lb=l?+l.bc:null, ld=l?l.drag:'G7';
+    $('#recBc').innerHTML=`<div class="rec-tot">${tile(g7.toFixed(3),`G7 (range ${lo.toFixed(3)}–${hi.toFixed(3)})`)}${tile(g1.toFixed(3),'G1 equivalent')}${tile(`${mv.toFixed(0)} → ${vt.toFixed(0)}`,`fps, muzzle to target at ${yds.join(', ')} yd`)}${tile(w,`shots in ${bcs.length} string${bcs.length>1?'s':''}`)}</div>
+      ${mixed?`<p class="rm-note" style="margin:8px 0 0"><b>By batch:</b> ${bset.filter(Boolean).map(b=>{const a=bcs.filter(([g])=>recMeta(g).batch===b);if(!a.length)return null;const w2=sum(a.map(([,v])=>v.bc.n));return`${esc(b)} G7 ${(sum(a.map(([,v])=>v.bc.g7*v.bc.n))/w2).toFixed(3)} (${a.length} strings)`}).filter(Boolean).join('; ')}. The bullet's BC shouldn't change with powder charge; a real difference between batches points to a different bullet lot or a velocity-dependent drag. Filter to one batch before Use in load if they differ.</p>`:''}
+      <p class="rm-note" style="margin:8px 0 0">${l?`The load (${esc(l.name)}) has ${ld} ${lb.toFixed(3)}; this is ${(((ld==='G1'?g1:g7)/lb-1)*100).toFixed(1)}% ${(ld==='G1'?g1:g7)>=lb?'higher':'lower'}.`:''} A BC measured at one distance describes the drag over that stretch; check it with sighters at the longer distances before relying on it there.</p>`;
+    $('#recBcUse').disabled=!l; $('#recBcCopy').disabled=false;
+  }else{REC.bc=null;$('#recBc').innerHTML='<p class="rm-note" style="margin:0">None of these strings has both Garmin and ShotMarker speeds. Import ShotMarker\'s .tar and the Garmin file together to get one.</p>';$('#recBcUse').disabled=$('#recBcCopy').disabled=true}
+  $('#recBcUndo').disabled=!REC.bcUndo;
+  // table
+  const f2=(v,d=2)=>v==null?'–':v.toFixed(d);
+  let t=`<tr><th>Date</th><th>Shooter</th><th>Session · event · detail</th><th>Dist</th><th>Shots</th><th>Score</th><th>Group ${U}</th><th>Elev vs app, clicks</th><th>Wind met mph</th><th>Batch</th><th>Garmin fps</th><th>At target fps</th><th>BC G7 (G1)</th></tr>`;
+  for(const [g,v] of st){const m=recMeta(g), d=new Date(g.t);
+    t+=`<tr data-t="${g.t}" class="${REC.sel===g.t?'sel':''}"><td>${d.toLocaleDateString([], {day:'numeric',month:'short',year:'2-digit'})} ${d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',hour12:false})}</td><td>${esc(m.shooter||'')}${m.number?' '+esc(m.number):''}</td><td>${esc([SESS_LBL[m.type]||m.type,m.event,m.match||g.name].filter(Boolean).join(' · '))}</td><td>${recDist(g)}</td><td>${v.n}</td><td>${v.pts!=null&&v.n?`${v.pts}.${v.b}`:'–'}</td><td>${v.es!=null?(v.es/RAD_PER[u]).toFixed(2):'–'}</td><td>${v.dEclk!=null?(v.dEclk>=0?'+':'−')+Math.abs(v.dEclk).toFixed(1):'–'}</td><td>${v.wm?`${fmtX(v.wm.mean)}`:'–'}</td><td>${esc(m.batch||'–')}</td><td>${v.mv?v.mv.toFixed(0)+(v.sd!=null?` ±${v.sd.toFixed(0)}`:''):'–'}</td><td>${v.bc?v.bc.vt.toFixed(0):'–'}</td><td>${v.bc?`${v.bc.g7.toFixed(3)} (${v.bc.g1.toFixed(3)})`:'–'}</td></tr>`}
+  if(!F.length)t+=`<tr><td colspan="13">No strings match these filters.</td></tr>`;
+  $('#recTbl').innerHTML=t;
+  recEditFill(); recStorage();
+  $('#recDel').textContent=REC.delArmed?`Tap again to delete ${F.length} string${F.length===1?'':'s'} and their shots`:'Delete these from this device';
+}
+// Untagged strings whose Garmin averages fall into two clear groups: the gap must be at least 15 fps and well beyond
+// the within-string scatter, so ordinary day-to-day drift isn't flagged.
+function recSplit(st){
+  const a=st.filter(([g,v])=>v.mv&&!recMeta(g).batch).sort((x,y)=>x[1].mv-y[1].mv); if(a.length<3)return null;
+  let gi=-1,gap=0; for(let i=0;i<a.length-1;i++){const d=a[i+1][1].mv-a[i][1].mv;if(d>gap){gap=d;gi=i}}
+  const sds=a.map(([,v])=>v.sd).filter(x=>x!=null).sort((x,y)=>x-y), sd=sds.length?sds[Math.floor(sds.length/2)]:8;
+  if(gap<15||gap<4*sd)return null;
+  const lo=a.slice(0,gi+1), hi=a.slice(gi+1), m=arr=>arr.reduce((t,[,v])=>t+v.mv,0)/arr.length;
+  return{lo,hi,loMv:m(lo),hiMv:m(hi),gap,sd};
+}
+function recEditFill(){
+  const g=S.logs.find(x=>x.t===REC.sel); $('#recEdit').hidden=!g; if(!g)return;
+  const m=recMeta(g); $('#recEditHead').textContent=logLabel(g);
+  $('#reType').innerHTML=Object.entries(SESS_LBL).map(([k,v])=>`<option value="${k}" ${m.type===k?'selected':''}>${v}</option>`).join('');
+  [['reEvent','event'],['reMatch','match'],['reShooter','shooter'],['reNumber','number'],['reCoach','coach'],['reRifle','rifle'],['reBatch','batch']].forEach(([id,k])=>{if(document.activeElement!==$('#'+id))$('#'+id).value=m[k]||''});
+  if(document.activeElement!==$('#reNote'))$('#reNote').value=g.note||'';
+}
+function setRecords(open){$('#records').hidden=!open; REC.delArmed=false; if(open){$('#records').scrollTop=0;renderRecords()}}
+$('#btnRec').onclick=()=>setRecords(true); $('#rmRec').onclick=()=>setRecords(true); $('#recClose').onclick=()=>setRecords(false);
+['rfFrom','rfTo','rfShooter','rfType','rfEvent','rfDist','rfLoad','rfCoach','rfBatch'].forEach(id=>$('#'+id).onchange=()=>{REC.delArmed=false;renderRecords()});
+$('#rfClear').onclick=()=>{['rfFrom','rfTo','rfShooter','rfType','rfEvent','rfDist','rfLoad','rfCoach','rfBatch'].forEach(id=>$('#'+id).value='');renderRecords()};
+$('#recTbl').addEventListener('click',e=>{const r=e.target.closest('[data-t]');if(!r)return;REC.sel=REC.sel===r.dataset.t?null:r.dataset.t;renderRecords();if(REC.sel)$('#recEdit').scrollIntoView({behavior:'smooth',block:'nearest'})});
+$('#reClose').onclick=()=>{REC.sel=null;renderRecords()};
+$('#reSave').onclick=()=>{const g=S.logs.find(x=>x.t===REC.sel);if(!g)return;g.meta=g.meta||{};
+  g.meta.type=$('#reType').value;[['reEvent','event'],['reMatch','match'],['reShooter','shooter'],['reNumber','number'],['reCoach','coach'],['reRifle','rifle'],['reBatch','batch']].forEach(([id,k])=>{g.meta[k]=$('#'+id).value.trim()});
+  g.note=$('#reNote').value.trim(); S.shots.filter(s=>logFor(s.t)===g).forEach(s=>{s.shooter=g.meta.shooter});
+  save();render();renderRecords();$('#recMsg').textContent='Tags saved.'};
+$('#reShow').onclick=()=>{const g=S.logs.find(x=>x.t===REC.sel);if(!g)return;setRecords(false);if(!$('#rm').hidden)$('#rmExit').click();S.viewLog=g.t;save();render();
+  if(visShots().length>1)$('#zGroup').click();$('#face').scrollIntoView({behavior:'smooth',block:'center'})};
+const recDl=(txt,name,type)=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type}));a.download=name;document.body.appendChild(a);a.click();a.remove()};
+const recName=()=>{const f=REC.f, bits=[f.shooter,f.event,f.dist,f.from&&('from '+f.from),f.to&&('to '+f.to)].filter(Boolean).join(' ').replace(/[^\w.-]+/g,'-');return`range-desk-records${bits?'-'+bits:''}-${new Date().toISOString().slice(0,10)}`};
+$('#recCsv').onclick=()=>{
+  const F=recFiltered(), l=curLoad(), u=(l&&l.scopeUnit)||'moa', q=v=>v==null?'':`"${String(v).replace(/"/g,'""')}"`;
+  const hdr=`date,time,session_type,event,match_detail,shooter,competitor_no,coach,rifle,load,batch,distance,true_dist_yd,shots,score,v_count,group_es_${u},mean_radius_${u},elev_vs_app_clicks,wind_met_mph,wind_min_mph,wind_max_mph,garmin_fps,garmin_sd,target_fps,bc_g7,bc_g7_sd,bc_g1,temp_c,station_hpa,rh_pct,note`;
+  const rows=F.map(g=>{const m=recMeta(g), v=recStats(g), d=new Date(g.t), b=v.bc;
+    return[m.date||g.t.slice(0,10),d.toTimeString().slice(0,5),q(SESS_LBL[m.type]||m.type||''),q(m.event||''),q(m.match||''),q(m.shooter||''),q(m.number||''),q(m.coach||''),q(m.rifle||''),q(recLoadName(g)),q(m.batch||''),q(recDist(g)),g.yd.toFixed(1),v.n,v.pts??'',v.pts!=null?v.b:'',
+      v.es!=null?(v.es/RAD_PER[u]).toFixed(3):'',v.mr!=null?(v.mr/RAD_PER[u]).toFixed(3):'',v.dEclk!=null?v.dEclk.toFixed(2):'',v.wm?v.wm.mean.toFixed(2):'',v.wm?v.wm.min.toFixed(2):'',v.wm?v.wm.max.toFixed(2):'',
+      v.mv!=null?v.mv.toFixed(1):'',v.sd!=null?v.sd.toFixed(1):'',b?b.vt.toFixed(0):'',b?b.g7.toFixed(4):'',b&&b.sd!=null?b.sd.toFixed(4):'',b?b.g1.toFixed(4):'',
+      ...(g.Tc!=null?[g.Tc.toFixed(1),g.PhPa!=null?g.PhPa.toFixed(1):'',g.RH!=null?g.RH.toFixed(0):'']:b&&b.atmFrom!=='today'?[b.Tc.toFixed(1),b.PhPa.toFixed(1),b.RH!=null?(+b.RH).toFixed(0):'']:['','','']),q(g.note||'')].join(',')});
+  recDl(hdr+'\n'+rows.join('\n'),recName()+'.csv','text/csv'); $('#recMsg').textContent=`Exported ${F.length} strings.`};
+$('#recShotCsv').onclick=()=>{
+  const F=new Set(recFiltered()), l=curLoad(), u=(l&&l.scopeUnit)||'moa';
+  const hdr=`string_time,shooter,event,match_detail,distance,shot_time,score,x_in,y_in,x_${u},y_${u},garmin_fps,target_fps,dial_elev_${u},dial_wind_${u}`, q=v=>`"${String(v||'').replace(/"/g,'""')}"`;
+  const rows=S.shots.filter(s=>F.has(logFor(s.t))).map(s=>{const g=logFor(s.t), m=recMeta(g), ip=s.yd*36*RAD_PER[u], dE=s.dialE??g.dialE, dW=s.dialW??g.dialW;
+    return[g.t,q(m.shooter),q(m.event),q(m.match),q(recDist(g)),s.t,scoreShot(s),s.xIn.toFixed(3),s.yIn.toFixed(3),(s.xIn/ip).toFixed(3),(s.yIn/ip).toFixed(3),s.vFps!=null?s.vFps.toFixed(0):'',s.vTgt??'',dE!=null?(dE/RAD_PER[u]).toFixed(3):'',dW!=null?(dW/RAD_PER[u]).toFixed(3):''].join(',')});
+  recDl(hdr+'\n'+rows.join('\n'),recName()+'-shots.csv','text/csv'); $('#recMsg').textContent=`Exported ${rows.length} shots.`};
+function recSubset(){
+  const F=recFiltered(), set=new Set(F), sh=S.shots.filter(s=>set.has(logFor(s.t)));
+  const t0=Math.min(...F.map(g=>+new Date(g.t)))-6*3600e3, t1=Math.max(...F.map(g=>+new Date(g.tEnd||g.t)))+6*3600e3;
+  const vel=S.velLog.filter(v=>{const t=+new Date(v.t);return t>=t0&&t<=t1});
+  const names=new Set(F.map(g=>recMeta(g).shooter).filter(Boolean));
+  return{F,sh,vel,shooters:S.shooters.filter(p=>names.has(p.name))};
+}
+$('#recArchive').onclick=()=>{
+  const {F,sh,vel,shooters}=recSubset(); if(!F.length){$('#recMsg').textContent='No strings to save.';return}
+  const txt=JSON.stringify({exported:new Date().toISOString(),app:'Range Desk',note:`Records: ${F.length} strings`,items:{frd_logs:F,frd_shots:sh,frd_velLog:vel,frd_shooters:shooters,frd_loads:S.loads}},null,1);
+  recDl(txt,recName()+'.json','application/json'); REC.saved=F.map(g=>g.t).join('|');
+  $('#recMsg').textContent=`Saved ${F.length} strings and ${sh.length} shots. Open it again any time with Open a data file; nothing is lost by deleting them here once it's safe.`};
+$('#recDel').onclick=()=>{
+  const F=recFiltered(); if(!F.length)return;
+  if(!REC.delArmed){REC.delArmed=true;renderRecords();$('#recMsg').textContent=(REC.saved===F.map(g=>g.t).join('|')?'':'These strings have not been saved to a file in this visit. ')+`Tap again to delete ${F.length} string${F.length===1?'':'s'} from this device.`;setTimeout(()=>{if(REC.delArmed){REC.delArmed=false;renderRecords()}},6000);return}
+  REC.delArmed=false; const set=new Set(F), ns=S.shots.length;
+  S.shots=S.shots.filter(s=>!set.has(logFor(s.t))); S.logs=S.logs.filter(g=>!set.has(g));
+  if(S.viewLog&&F.some(g=>g.t===S.viewLog))S.viewLog='all'; REC.sel=null;
+  save();render();renderRecords();$('#recMsg').textContent=`Deleted ${F.length} strings and ${ns-S.shots.length} shots from this device.`};
+$('#recBcUse').onclick=()=>{
+  const l=curLoad(), b=REC.bc; if(!l||!b)return;
+  const nb=+(l.drag==='G1'?b.g1:b.g7).toFixed(3);
+  REC.bcUndo={loadId:l.id,bc:+l.bc}; l.bc=nb; Object.keys(boreCache).forEach(k=>delete boreCache[k]);
+  if(typeof fillLoadEditor==='function')fillLoadEditor(); save(); render(); renderRecords();
+  $('#recBcMsg').textContent=`${l.name} now has ${l.drag} ${nb.toFixed(3)} (was ${REC.bcUndo.bc.toFixed(3)}). Undo puts it back.`};
+$('#recBcUndo').onclick=()=>{const u=REC.bcUndo; if(!u)return; const l=S.loads.find(x=>x.id===u.loadId); if(l){l.bc=u.bc;Object.keys(boreCache).forEach(k=>delete boreCache[k]);if(typeof fillLoadEditor==='function')fillLoadEditor()}
+  REC.bcUndo=null; save(); render(); renderRecords(); $('#recBcMsg').textContent=`Undone: BC is back to ${u.bc.toFixed(3)}.`};
+$('#recBcCopy').onclick=async()=>{
+  const b=REC.bc, l=curLoad(); if(!b)return;
+  const txt=[`Range Desk: BC from measured velocity`,`Load: ${l?l.name:''}${l&&l.grains?`, ${l.grains} gr`:''}`,
+    `Muzzle velocity (Garmin): ${b.mv.toFixed(0)} fps`,`Velocity at target (ShotMarker): ${b.vt.toFixed(0)} fps at ${b.yds.join(', ')} yd`,
+    `Air: ${b.T.toFixed(1)} °C, station pressure ${b.P.toFixed(1)} hPa`,`G7 BC: ${b.g7.toFixed(3)} (strings ranged ${b.lo.toFixed(3)} to ${b.hi.toFixed(3)})`,`G1 BC: ${b.g1.toFixed(3)}`,
+    `Based on ${b.n} shots in ${b.strings} strings.`,`For QuickTARGET: enter the G7 (or G1) value with the velocity above; QuickLOAD's own velocity prediction is separate.`].join('\n');
+  try{await navigator.clipboard.writeText(txt);$('#recBcMsg').textContent='Copied. Paste it into your load notes.'}catch(e){recDl(txt,'range-desk-bc.txt','text/plain');$('#recBcMsg').textContent='Copy blocked, so it was saved as a text file.'}};
 /* Help */
 function setHelp(open){$('#help').hidden=!open; if(open)$('#help').scrollTop=0}
 $('#btnHelp').onclick=()=>setHelp(true); $('#rmHelp').onclick=()=>setHelp(true); $('#helpClose').onclick=()=>setHelp(false);
@@ -3122,13 +3471,13 @@ function renderBracket(wb){
 /* ---------- Today's velocity and the load's temperature response ---------- */
 function setDayMv(fps,src,sd,n){
   const l=curLoad(), an=atmNow();
-  S.dayMv={loadId:l.id,fps:+fps,Tc:an?an.Tc:null,atmSrc:an?an.src:null,t:new Date().toISOString(),src,on:true};
-  S.velLog.push({t:S.dayMv.t,loadId:l.id,fps:+fps,sd:sd??null,n:n??null,Tc:S.dayMv.Tc,PhPa:an?an.PhPa:null,RH:an?an.RH:null,atmSrc:S.dayMv.atmSrc,src});
+  S.dayMv={loadId:l.id,batch:curBatch(),fps:+fps,Tc:an?an.Tc:null,atmSrc:an?an.src:null,t:new Date().toISOString(),src,on:true};
+  S.velLog.push({t:S.dayMv.t,loadId:l.id,batch:curBatch(),fps:+fps,sd:sd??null,n:n??null,Tc:S.dayMv.Tc,PhPa:an?an.PhPa:null,RH:an?an.RH:null,atmSrc:S.dayMv.atmSrc,src});
   save(); render();
 }
 // Velocity against temperature for this load: least-squares slope once the readings span 5 °C or more
 function velSens(l){
-  const v=S.velLog.filter(x=>x.loadId===l.id&&x.Tc!=null&&isFinite(x.fps)); if(v.length<3)return{n:v.length};
+  const v=S.velLog.filter(x=>x.loadId===l.id&&sameBatch(x.batch)&&x.Tc!=null&&isFinite(x.fps)); if(v.length<3)return{n:v.length};
   const ts=v.map(x=>x.Tc), span=Math.max(...ts)-Math.min(...ts); if(span<5)return{n:v.length,span};
   const mt=ts.reduce((a,b)=>a+b,0)/v.length, mv=v.reduce((a,x)=>a+x.fps,0)/v.length;
   const sxx=v.reduce((a,x)=>a+(x.Tc-mt)**2,0), slope=v.reduce((a,x)=>a+(x.Tc-mt)*(x.fps-mv),0)/sxx;
@@ -3141,8 +3490,8 @@ function renderVel(){
   $('#velMsg').textContent=d&&d.on?`In use today: ${Math.round(d.fps)} fps at ${d.Tc!=null?d.Tc.toFixed(1)+' °C':'unknown temperature'} (${d.src}, ${hm(d.t)}). The load stays at ${l.mvFps} fps at ${l.mvTempC} °C.`
     :`Using the load: ${l.mvFps} fps at ${l.mvTempC} °C${+l.mvSens?`, ${l.mvSens} fps per °C`:''}.`;
   $('#velOff').disabled=!(d&&d.on);
-  const v=S.velLog.filter(x=>x.loadId===l.id).slice(-8).reverse();
-  $('#velTbl').innerHTML=v.length?`<tr><th>Date</th><th>fps</th><th>°C</th><th>hPa</th><th>Source</th></tr>`+v.map(x=>`<tr><td>${new Date(x.t).toLocaleDateString([], {day:'numeric',month:'short'})} ${hm(x.t)}</td><td>${Math.round(x.fps)}</td><td>${x.Tc!=null?x.Tc.toFixed(1):'–'}</td><td>${x.PhPa!=null?x.PhPa.toFixed(0):'–'}</td><td>${esc(x.src)}</td></tr>`).join(''):'';
+  const v=S.velLog.filter(x=>x.loadId===l.id).slice(-8).reverse(), anyB=v.some(x=>x.batch);
+  $('#velTbl').innerHTML=v.length?`<tr><th>Date</th><th>fps</th><th>°C</th><th>hPa</th>${anyB?'<th>Batch</th>':''}<th>Source</th></tr>`+v.map(x=>`<tr${sameBatch(x.batch)?'':' style="opacity:.55"'}><td>${new Date(x.t).toLocaleDateString([], {day:'numeric',month:'short'})} ${hm(x.t)}</td><td>${Math.round(x.fps)}</td><td>${x.Tc!=null?x.Tc.toFixed(1):'–'}</td><td>${x.PhPa!=null?x.PhPa.toFixed(0):'–'}</td>${anyB?`<td>${esc(x.batch||'–')}</td>`:''}<td>${esc(x.src)}</td></tr>`).join(''):'';
   const vs=velSens(l), box=$('#velSens');
   if(vs.slope==null)box.innerHTML=`<p class="rm-note">${vs.n<3?`${vs.n} reading${vs.n===1?'':'s'} so far.`:`Readings span ${vs.span.toFixed(1)} °C so far.`} Three or more readings across at least 5 °C give the load's temperature response.</p>`;
   else box.innerHTML=`<p class="rm-note">From ${vs.n} readings across ${vs.span.toFixed(1)} °C: <b>${vs.slope>=0?'+':'−'}${Math.abs(vs.slope).toFixed(1)} ± ${vs.se.toFixed(1)} fps per °C</b>, about ${Math.round(vs.at15)} fps at 15 °C. The load has ${+l.mvSens||0} fps per °C.</p>
@@ -3150,7 +3499,7 @@ function renderVel(){
   const b=$('#velSensUse'); if(b)b.onclick=()=>{l.mvSens=+vs.slope.toFixed(1);fillLoadEditor();save();render();$('#velMsg').textContent=`Load updated: ${l.mvSens} fps per °C. Edit load in full view to change it back.`};
 }
 $('#velAdd').onclick=()=>{const v=parseFloat($('#velIn').value);if(!(v>1000&&v<5000)){$('#velMsg').textContent='Enter a velocity in fps, for example 2896.';return}setDayMv(v,'entered');$('#velIn').value=''};
-$('#velGarmin').onclick=()=>{const ch=[...S.logs].reverse().find(x=>x.chrono);if(!ch){$('#velMsg').textContent='No Garmin average yet: import ShotView or use Read Garmin photo.';return}setDayMv(ch.chrono.avg,'Garmin '+hm(ch.t),ch.chrono.sd,ch.chrono.n)};
+$('#velGarmin').onclick=()=>{const ch=[...S.logs].reverse().find(x=>x.chrono&&sameBatch(x.meta&&x.meta.batch));if(!ch){$('#velMsg').textContent='No Garmin average for this batch yet: import ShotView or use Read Garmin photo.';return}setDayMv(ch.chrono.avg,'Garmin '+hm(ch.t),ch.chrono.sd,ch.chrono.n)};
 $('#velOff').onclick=()=>{if(S.dayMv){S.dayMv.on=false;save();render()}};
 /* ---------- Session details: who, with what, where, and why, tagged on every log ---------- */
 const SESS_LBL={practice:'Practice',training:'Training',coached:'Coached session',competition:'Competition'};
@@ -3158,24 +3507,24 @@ function curShooter(){return S.shooters.find(x=>x.id===S.sess.shooterId)||null}
 function sessMeta(){
   const sh=curShooter(), l=curLoad(), td=trueDistance();
   return{date:new Date().toISOString().slice(0,10),type:S.sess.type,event:S.sess.event||'',match:S.sess.match||'',coach:S.sess.coach||'',
-    shooter:sh?sh.name:'',number:sh?sh.number||'':'',rifle:sh?sh.rifle||'':'',load:l?l.name:'',loadId:l?l.id:'',nominal:S.nominal,unit:S.distUnit,trueYd:+td.yd.toFixed(1)};
+    shooter:sh?sh.name:'',number:sh?sh.number||'':'',rifle:sh?sh.rifle||'':'',load:l?l.name:'',loadId:l?l.id:'',batch:curBatch(),nominal:S.nominal,unit:S.distUnit,trueYd:+td.yd.toFixed(1)};
 }
 function renderSess(){
   const sh=curShooter(), l=curLoad();
-  const bits=[SESS_LBL[S.sess.type]||'Practice',S.sess.event,S.sess.match,sh?`${sh.name}${sh.number?` (No. ${sh.number})`:''}`:'no shooter set',sh&&sh.rifle?sh.rifle:'',l?l.name:'',S.sess.coach?`coach ${S.sess.coach}`:''].filter(Boolean);
+  const bits=[SESS_LBL[S.sess.type]||'Practice',S.sess.event,S.sess.match,sh?`${sh.name}${sh.number?` (No. ${sh.number})`:''}`:'no shooter set',sh&&sh.rifle?sh.rifle:'',l?l.name:'',S.sess.batch?`batch ${S.sess.batch}`:'',S.sess.coach?`coach ${S.sess.coach}`:''].filter(Boolean);
   $('#sessSum').textContent=`${new Date().toLocaleDateString([], {weekday:'short',day:'numeric',month:'short'})} · ${bits.join(' · ')}`;
   document.querySelectorAll('#sessType button').forEach(b=>b.classList.toggle('sel',b.dataset.v===S.sess.type));
   $('#sessShooters').innerHTML=S.shooters.map(x=>`<button type="button" data-id="${x.id}" class="${x.id===S.sess.shooterId?'sel':''}">${esc(x.name||'Unnamed')}${x.number?' '+esc(x.number):''}</button>`).join('')||'<span class="rm-note">No shooters yet: type a name below.</span>';
   $('#shLoad').innerHTML=S.loads.map(x=>`<option value="${x.id}" ${sh&&sh.loadId===x.id?'selected':''}>${esc(x.name)}</option>`).join('');
   const act=document.activeElement;
-  [['sessEvent','event'],['sessMatch','match'],['sessCoach','coach']].forEach(([id,k])=>{if(act!==$('#'+id))$('#'+id).value=S.sess[k]||''});
+  [['sessEvent','event'],['sessMatch','match'],['sessCoach','coach'],['sessBatch','batch']].forEach(([id,k])=>{if(act!==$('#'+id))$('#'+id).value=S.sess[k]||''});
   [['shName','name'],['shNum','number'],['shRifle','rifle']].forEach(([id,k])=>{if(act!==$('#'+id))$('#'+id).value=sh?sh[k]||'':''});
   $('#shDel').disabled=!sh;
   const locked=!!S.str; document.querySelectorAll('#sessShooters button,#shAdd,#shDel').forEach(b=>b.disabled=locked||(b.id==='shDel'&&!sh));
 }
 $('#sessEdit').onclick=()=>{const f=$('#sessForm');f.hidden=!f.hidden;$('#sessEdit').textContent=f.hidden?'Session details':'Done'};
 $('#sessType').addEventListener('click',e=>{const b=e.target.closest('[data-v]');if(!b)return;S.sess.type=b.dataset.v;save();render()});
-[['sessEvent','event'],['sessMatch','match'],['sessCoach','coach']].forEach(([id,k])=>$('#'+id).oninput=e=>{S.sess[k]=e.target.value;save();renderSess()});
+[['sessEvent','event'],['sessMatch','match'],['sessCoach','coach'],['sessBatch','batch']].forEach(([id,k])=>$('#'+id).oninput=e=>{S.sess[k]=e.target.value;save();k==='batch'?render():renderSess()});
 function ensureShooter(){let sh=curShooter();if(!sh){sh={id:'s'+Date.now(),name:'',number:'',rifle:'',loadId:S.loadId};S.shooters.push(sh);S.sess.shooterId=sh.id}return sh}
 [['shName','name'],['shNum','number'],['shRifle','rifle']].forEach(([id,k])=>$('#'+id).oninput=e=>{ensureShooter()[k]=e.target.value;save();renderSess()});
 $('#shLoad').onchange=e=>{const sh=ensureShooter();sh.loadId=e.target.value;S.loadId=sh.loadId;save();render()};
@@ -3284,6 +3633,33 @@ function windMet(g,sh){
   const m=sh.map(s=>{const d=s.dialW!=null?s.dialW:g.dialW;return(d-ANG_IN(s.xIn,s.yd)-sc)/k}).sort((a,b)=>a-b);
   return{mean:m.reduce((a,b)=>a+b,0)/m.length,min:m[0],max:m[m.length-1]};
 }
+/* BC from velocity: the Garmin's muzzle velocity and ShotMarker's speed at the target, over the true distance and in
+   that string's air, give the drag directly, independent of where the shots landed. */
+function velAt(mvFps,bc,drag,yd,atm){
+  const l=curLoad(); const L={...solverLoad({...l,mvFps,bc,drag},atm.Tc),mv:mvFps*FT};
+  const bore=boreFor({...l,mvFps,bc,drag}); const p=flyPath(L,atm,{},[yd*M_PER_YD],bore)[0]; return p?p.v/FT:null;
+}
+function bcSolve(mv,vt,yd,atm,drag){
+  let lo=0.05,hi=drag==='G1'?1.5:0.8;
+  if(!(velAt(mv,lo,drag,yd,atm)<vt&&velAt(mv,hi,drag,yd,atm)>vt))return null;
+  for(let i=0;i<30;i++){const m=(lo+hi)/2; velAt(mv,m,drag,yd,atm)>vt?hi=m:lo=m}
+  return(lo+hi)/2;
+}
+function bcFromVel(g,sh){
+  const pairs=sh.filter(s=>s.vTgt!=null&&(s.vFps!=null||(g.chrono&&g.chrono.avg))).map(s=>({mv:s.vFps??g.chrono.avg,vt:s.vTgt}));
+  if(pairs.length<3)return null;
+  // The string's own air; otherwise the nearest string within 6 hours that has it; otherwise today's
+  let an=g.Tc!=null&&g.PhPa!=null?{Tc:g.Tc,PhPa:g.PhPa,RH:g.RH??50}:null, atmFrom=an?'string':null;
+  if(!an){const t0=+new Date(g.t), near=S.logs.filter(x=>x.Tc!=null&&x.PhPa!=null&&Math.abs(new Date(x.t)-t0)<6*3600e3).sort((x,y)=>Math.abs(new Date(x.t)-t0)-Math.abs(new Date(y.t)-t0))[0];
+    if(near){an={Tc:near.Tc,PhPa:near.PhPa,RH:near.RH??50};atmFrom='nearby string'}}
+  if(!an){an=atmNow();atmFrom='today'} if(!an)return null;
+  const atm=atmosphere(an.Tc,an.PhPa,an.RH), m=a=>a.reduce((x,y)=>x+y,0)/a.length;
+  const mv=m(pairs.map(p=>p.mv)), vt=m(pairs.map(p=>p.vt));
+  const g7=bcSolve(mv,vt,g.yd,atm,'G7'), g1=bcSolve(mv,vt,g.yd,atm,'G1'); if(g7==null)return null;
+  const per=pairs.map(p=>bcSolve(p.mv,p.vt,g.yd,atm,'G7')).filter(x=>x!=null);
+  const sd=per.length>1?Math.sqrt(per.reduce((a,b)=>a+(b-m(per))**2,0)/(per.length-1)):null;
+  return{g7,g1,sd,n:pairs.length,mv,vt,yd:g.yd,atmFrom,Tc:an.Tc,PhPa:an.PhPa,RH:an.RH};
+}
 function groupNeed(g,sh){
   const e=[],w=[];
   for(const s of sh){const yE=ANG_IN(s.yIn,s.yd), xW=ANG_IN(s.xIn,s.yd);
@@ -3352,6 +3728,45 @@ function setSun(on){S.hc=on;$('#rm').classList.toggle('hc',on);$('#rmSun').setAt
 $('#rmSun').onclick=()=>setSun(!S.hc);
 setSun(S.hc);
 
+/* ---------- Offline ---------- */
+function showOnline(){const off=!navigator.onLine;['offChip','offChip2'].forEach(id=>{const e=$('#'+id);if(e)e.hidden=!off})}
+addEventListener('online',()=>{showOnline();refreshAll()}); addEventListener('offline',showOnline); showOnline();
+if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'))navigator.serviceWorker.register('sw.js').catch(()=>{});
+// Tile maths (Web Mercator)
+const lon2x=(lon,z)=>Math.floor((lon+180)/360*Math.pow(2,z));
+const lat2y=(lat,z)=>{const r=lat*D2R;return Math.floor((1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*Math.pow(2,z))};
+function rangeTiles(){
+  const pad=0.004, la=[S.fp.lat,S.tgt.lat], lo=[S.fp.lng,S.tgt.lng];
+  const n=Math.max(...la)+pad, s_=Math.min(...la)-pad, e=Math.max(...lo)+pad*1.6, w=Math.min(...lo)-pad*1.6;
+  const urls=[];
+  for(let z=12;z<=18;z++){
+    const x0=lon2x(w,z),x1=lon2x(e,z),y0=lat2y(n,z),y1=lat2y(s_,z);
+    for(let x=x0;x<=x1;x++)for(let y=y0;y<=y1;y++){
+      urls.push(`https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`);
+      if(z<=16)urls.push(`https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/${z}/${y}/${x}`);
+    }
+  }
+  return urls;
+}
+$('#offSave').onclick=async()=>{
+  if(!('caches' in window)){$('#offMsg').textContent='This browser cannot save maps for offline use.';return}
+  if(!navigator.onLine){$('#offMsg').textContent='No signal now: save the range at home on Wi-Fi.';return}
+  const urls=rangeTiles(), c=await caches.open('rd-tiles-v1'); let done=0, got=0, fail=0, quota=false;
+  $('#offSave').disabled=true;
+  // the app itself and its libraries, so the page opens with no signal
+  try{const a=await caches.open('rd-app-v1'); await a.addAll(['./','./index.html']);}catch(e){}
+  try{const l=await caches.open('rd-lib-v1'); for(const el of document.querySelectorAll('script[src^="https://cdnjs"],link[rel=stylesheet][href^="https://"]')){const u=el.src||el.href; if(!(await l.match(u)))await l.put(u,await fetch(u,{mode:'no-cors'}))}}catch(e){}
+  const work=async u=>{try{if(!(await c.match(u))){let r=null;try{r=await fetch(u,{mode:'cors',credentials:'omit'})}catch(_){} if(!r||!r.ok)r=await fetch(u,{mode:'no-cors'});await c.put(u,r)} got++}catch(e){fail++;if(/quota/i.test(String(e)))quota=true} done++;
+    if(done%20===0||done===urls.length)$('#offMsg').textContent=`Saving the map: ${done} of ${urls.length} tiles…`};
+  for(let i=0;i<urls.length;i+=6)await Promise.all(urls.slice(i,i+6).map(work));
+  const saved=JSON.parse(localStorage.getItem('frd_offRanges')||'[]').filter(r=>r.key!==wxKey());
+  saved.push({key:wxKey(),fp:S.fp,tgt:S.tgt,t:Date.now(),tiles:got}); localStorage.setItem('frd_offRanges',JSON.stringify(saved));
+  $('#offSave').disabled=false;
+  $('#offMsg').textContent=quota?`The tablet ran out of storage after ${got} map tiles. Free some space, or zoom the pins in closer, and save again.`:`Saved for offline: ${got} map tiles${fail?` (${fail} could not be fetched)`:''}, the app and the latest weather. With no signal, the map, solver, Calypso and Weatherdot all still work.`;
+};
+{ const sv=JSON.parse(localStorage.getItem('frd_offRanges')||'[]').find(r=>r.key===wxKey()); if(sv)$('#offMsg').textContent=`This range was saved for offline on ${new Date(sv.t).toLocaleDateString([], {day:'numeric',month:'short'})} (${sv.tiles} map tiles). Save again to refresh it.`; }
+
+{ let n=0; S.shots.forEach(x=>{if(x.smScore&&x.smAdj==null){snapToScore(x);n++}}); if(n)save(); }
 render(); fetchElev(); refreshAll();
 if(S.rmOpen)setRM(true);
 scheduleRefresh();
