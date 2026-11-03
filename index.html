@@ -1824,7 +1824,7 @@ function render(){
 
   renderSolution(td.yd);
   renderLogs();
-  renderFace(td.yd);
+  renderFace(faceYd());
   renderValidation();
   renderSettling();
   renderRange();
@@ -1872,7 +1872,17 @@ function drawSpark(brg){
 
 /* ---------- Target face & shots ---------- */
 const facesFor=sys=>S.faces.filter(f=>f.system===sys);
-const face=()=>S.faces.find(f=>f.id===S.faceId&&f.system===S.sys)||facesFor(S.sys)[0]||S.faces[0];
+const faceNow=()=>S.faces.find(f=>f.id===S.faceId&&f.system===S.sys)||facesFor(S.sys)[0]||S.faces[0];
+// A string chosen under Show is drawn on its own face, at its own distance; otherwise today's face and distance
+function viewedLog(){ if(!$('#rm').hidden&&S.str)return null; const v=S.viewLog; if(!v||v==='all'||v==='unlogged')return null; return S.logs.find(g=>g.t===v)||null }
+function faceForLog(g){
+  const m=g.meta||{}, unit=m.unit||'yd', nomYd=m.nominal!=null?toYd(+m.nominal,unit):Math.round(g.yd/100)*100;
+  const cands=S.faces.filter(f=>f.system===S.sys&&f.dist);
+  return cands.find(f=>(f.dist[unit]||[]).includes(+(m.nominal??Math.round(g.yd/100)*100)))
+    ||cands.find(f=>(f.dist.yd||[]).some(d=>Math.abs(d-nomYd)<1))||null;
+}
+const face=()=>{const g=viewedLog(); const f=g&&faceForLog(g); return f||faceNow()};
+const faceYd=()=>{const g=viewedLog(); return g?g.yd:trueDistance().yd};
 const VIEW={z:1,cx:0,cy:0};   // zoom factor and view centre in inches (face coords, y up)
 const MAJOR={moa:1,smoa:1,mil:0.5};
 function faceGeom(yd){
@@ -2007,6 +2017,7 @@ function totalScore(list){
 }
 function svgPoint(e){const svg=$('#face'),pt=svg.createSVGPoint();pt.x=e.clientX;pt.y=e.clientY;return pt.matrixTransform(svg.getScreenCTM().inverse())}
 function plotAt(e){
+  if(viewedLog()){$('#clearConfirm').textContent='You are looking at a logged string. Choose All shots under Show to plot new shots.';$('#clearConfirm').hidden=false;setTimeout(()=>{$('#clearConfirm').hidden=true},5000);return}
   const p=svgPoint(e), td=trueDistance(), ipu=inPerUnit(S.unit,td.yd);
   const xIn=p.x*ipu, yIn=-p.y*ipu, w=windNow();
   const r=w&&w.dir!=null?resolve(w,geom().az):null;
@@ -2020,7 +2031,7 @@ function plotAt(e){
 function zoomAbout(k,pxIn,pyIn){
   const z0=VIEW.z, z1=Math.min(400,Math.max(1,z0*k)), r=z0/z1;
   VIEW.cx=pxIn+(VIEW.cx-pxIn)*r; VIEW.cy=pyIn+(VIEW.cy-pyIn)*r; VIEW.z=z1;
-  renderFace(trueDistance().yd);
+  renderFace(faceYd());
 }
 const ptrs=new Map(); let gesture=null;
 const faceEl=$('#face');
@@ -2032,7 +2043,7 @@ faceEl.addEventListener('pointerdown',e=>{
 faceEl.addEventListener('pointermove',e=>{
   if(!ptrs.has(e.pointerId)||!gesture)return;
   const prev=ptrs.get(e.pointerId); ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
-  const yd=trueDistance().yd, ipu=inPerUnit(S.unit,yd);
+  const yd=faceYd(), ipu=inPerUnit(S.unit,yd);
   if(gesture.type==='pinch'&&ptrs.size===2){
     const [a,b]=[...ptrs.values()], d=Math.hypot(a.x-b.x,a.y-b.y);
     const mid=svgPoint({clientX:(a.x+b.x)/2,clientY:(a.y+b.y)/2});
@@ -2052,20 +2063,20 @@ const endPtr=e=>{
 };
 faceEl.addEventListener('pointerup',endPtr); faceEl.addEventListener('pointercancel',endPtr);
 faceEl.addEventListener('wheel',e=>{
-  e.preventDefault(); const p=svgPoint(e), ipu=inPerUnit(S.unit,trueDistance().yd);
+  e.preventDefault(); const p=svgPoint(e), ipu=inPerUnit(S.unit,faceYd());
   zoomAbout(Math.exp(-e.deltaY*0.0015),p.x*ipu,-p.y*ipu);
 },{passive:false});
 $('#zIn').onclick=()=>zoomAbout(2,VIEW.cx,VIEW.cy);
 $('#zOut').onclick=()=>zoomAbout(0.5,VIEW.cx,VIEW.cy);
-$('#zFit').onclick=()=>{VIEW.z=1;VIEW.cx=0;VIEW.cy=0;renderFace(trueDistance().yd)};
-$('#zBull').onclick=()=>{const {rings,fullHalf,ipu}=faceGeom(trueDistance().yd);
-  VIEW.z=(fullHalf*ipu)/(rings[Math.min(1,rings.length-1)][1]/2*1.15);VIEW.cx=0;VIEW.cy=0;renderFace(trueDistance().yd)};
+$('#zFit').onclick=()=>{VIEW.z=1;VIEW.cx=0;VIEW.cy=0;renderFace(faceYd())};
+$('#zBull').onclick=()=>{const {rings,fullHalf,ipu}=faceGeom(faceYd());
+  VIEW.z=(fullHalf*ipu)/(rings[Math.min(1,rings.length-1)][1]/2*1.15);VIEW.cx=0;VIEW.cy=0;renderFace(faceYd())};
 $('#zGroup').onclick=()=>{
   const v=visShots(); if(!v.length)return;
-  const xs=v.map(s=>s.xIn), ys=v.map(s=>s.yIn), {fullHalf,ipu}=faceGeom(trueDistance().yd);
+  const xs=v.map(s=>s.xIn), ys=v.map(s=>s.yIn), {fullHalf,ipu}=faceGeom(faceYd());
   const span=Math.max(Math.max(...xs)-Math.min(...xs),Math.max(...ys)-Math.min(...ys),(+S.cal||0.3)*4);
   VIEW.cx=(Math.max(...xs)+Math.min(...xs))/2; VIEW.cy=(Math.max(...ys)+Math.min(...ys))/2;
-  VIEW.z=(fullHalf*ipu)/(span*0.75); renderFace(trueDistance().yd);
+  VIEW.z=(fullHalf*ipu)/(span*0.75); renderFace(faceYd());
 };
 $('#undoShot').onclick=()=>{const v=visShots();if(v.length)S.shots.splice(S.shots.indexOf(v[v.length-1]),1);save();render()};
 let clearArmed=false;
@@ -2096,7 +2107,7 @@ $('#csv').onclick=()=>{
 function fillNominal(){$('#nominal').innerHTML=NOMINALS[S.distUnit].map(v=>`<option ${v==S.nominal?'selected':''}>${v}</option>`).join('')}
 function fillClicks(){$('#click').innerHTML=UNITS[S.unit].clicks.map(([l,v])=>`<option value="${v}" ${v==S.click?'selected':''}>${l}</option>`).join('')}
 function fillFaces(){
-  const f=face(); S.faceId=f.id;
+  const f=faceNow(); S.faceId=f.id;
   $('#sysSel').value=S.sys;
   $('#faceSel').innerHTML=facesFor(S.sys).map(x=>`<option value="${x.id}" ${x.id===f.id?'selected':''}>${x.name}</option>`).join('');
   $('#faceName').value=f.name; $('#faceRings').value=f.dias.join('\n');
@@ -2398,7 +2409,7 @@ document.querySelectorAll('#srcSeg button').forEach(b=>b.onclick=()=>{S.src=b.da
 $('#faceSave').onclick=()=>{
   const dias=$('#faceRings').value.split('\n').map(l=>parseFloat(l.trim().split(/\s+/).pop())).filter(v=>v>0).sort((a,b)=>a-b);
   if(!dias.length)return;
-  let f=face();
+  let f=faceNow();
   if(/^(icfra|nra)-/.test(f.id||'')){ // rulebook faces stay as published; an edit makes your own copy
     const id='f'+Date.now(); f={...f,id,name:($('#faceName').value.trim()&&$('#faceName').value.trim()!==f.name?$('#faceName').value.trim():f.name+' (my copy)'),mm:null,src:null,dist:null};
     S.faces.push(f); S.faceId=id;
