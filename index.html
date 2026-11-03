@@ -565,6 +565,15 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
         <button type="button" id="csv">Export CSV</button>
       </div>
       <p class="note" id="clearConfirm" hidden>Tap Clear string again to delete all plotted shots and the off-target fouler count. Save the session to barrel history first if you want to keep it.</p>
+      <details id="dataBox">
+        <summary>Data files: save, open and merge</summary>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+          <p class="note">Save everything on this device to one file, or open a Range Desk data file (a backup, an archive, or a team mate's file). Opening adds its strings and shots to what is here; anything already here is skipped, nothing is overwritten.</p>
+          <div class="row"><button type="button" id="dataSave">Save all data to a file</button></div>
+          <input type="file" id="dataOpen" accept=".json,application/json">
+          <p class="note" id="dataMsg"></p>
+        </div>
+      </details>
       <details id="impBox" open>
         <summary>Import results (ShotMarker + Garmin)</summary>
         <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
@@ -2259,6 +2268,10 @@ $('#impFiles').onchange=async e=>{
     const addZ=async(name,u8)=>{try{const j=JSON.parse(await inflateZ(u8)); if(j&&Array.isArray(j.shots)){const s=smSessionFromJson(j,(name.match(/string-(\d+)/)||[])[1]||name); if(s.shots.length)smById.set(s.id,s)}}catch(err){notes.push(name+': not readable')}};
     for(const f of files){
       const nm=f.name.toLowerCase(), buf=await f.arrayBuffer();
+      if(nm.endsWith('.json')){
+        try{const j=JSON.parse(new TextDecoder().decode(buf)); if(isRangeDeskData(j)){notes.push(mergeData(j,f.name));continue}}catch(_){}
+        const z=new Uint8Array(buf); await addZ(f.name,z); continue;
+      }
       if(nm.endsWith('.tar')){for(const t of readTar(buf))if(/\.z$/i.test(t.name))await addZ(t.name,t.data)}
       else if(nm.endsWith('.z'))await addZ(f.name,new Uint8Array(buf));
       else if(/\.(xls|xlsx|csv)$/.test(nm)){
@@ -2267,7 +2280,7 @@ $('#impFiles').onchange=async e=>{
       }
     }
     const sm=[...smById.values()].sort((a,b)=>a.shots[0].t-b.shots[0].t);
-    if(!sm.length){$('#impWrap').hidden=$('#impGo').hidden=true;msg('No ShotMarker strings found. '+(garmin.length?`(${garmin.length} Garmin strings read.) `:'')+notes.join(' '));return}
+    if(!sm.length){$('#impWrap').hidden=$('#impGo').hidden=true;msg((notes.some(n=>/^Opened/.test(n))?'':'No ShotMarker strings found. ')+(garmin.length?`(${garmin.length} Garmin strings read.) `:'')+notes.join(' '));return}
     const dE=S.dial.e||'', dW=S.dial.w||'', dWd=S.dial.wd||'R';
     IMP=sm.map(s=>({s,m:matchGarmin(s,garmin),dE,dW,dWd,on:true}));
     const nm=IMP.filter(r=>r.m).length;
@@ -2292,6 +2305,36 @@ function renderImport(){
   document.querySelectorAll('.impW').forEach(x=>x.oninput=e=>{IMP[+e.target.dataset.i].dW=e.target.value.trim()});
   document.querySelectorAll('.impWd').forEach(x=>x.onchange=e=>{IMP[+e.target.dataset.i].dWd=e.target.value});
 }
+/* ---------- Data files: save everything, or merge a backup / archive / team mate's file ---------- */
+const DATA_KEYS=['logs','shots','velLog','shooters','obs','history','loads','windTrue'];
+$('#dataSave').onclick=()=>{
+  const items={}; DATA_KEYS.forEach(k=>items['frd_'+k]=S[k]);
+  const txt=JSON.stringify({exported:new Date().toISOString(),app:'Range Desk',items},null,1);
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type:'application/json'}));a.download=`range-desk-data-${new Date().toISOString().slice(0,10)}.json`;document.body.appendChild(a);a.click();a.remove();
+  $('#dataMsg').textContent=`Saved ${S.logs.length} strings and ${S.shots.length} shots.`;
+};
+function mergeData(j,fname){
+    const it=j.items||j, get=k=>it['frd_'+k]??it[k];
+    let nl=0,ns=0,nv=0,nsh=0;
+    const logKey=g=>g.smId?'sm'+g.smId:'t'+g.t, haveL=new Set(S.logs.map(logKey));
+    for(const g of get('logs')||[]){if(!g||!g.t||haveL.has(logKey(g)))continue;S.logs.push(g);haveL.add(logKey(g));nl++}
+    const shotKey=x=>`${x.t}|${(+x.xIn).toFixed(3)}|${(+x.yIn).toFixed(3)}`, haveS=new Set(S.shots.map(shotKey));
+    for(const x of get('shots')||[]){if(!x||!x.t||haveS.has(shotKey(x)))continue;S.shots.push(x);haveS.add(shotKey(x));ns++}
+    const haveV=new Set(S.velLog.map(v=>v.t+'|'+v.fps));
+    for(const v of get('velLog')||[]){if(!v||haveV.has(v.t+'|'+v.fps))continue;S.velLog.push(v);nv++}
+    for(const p of get('shooters')||[]){if(!p||!p.name||S.shooters.some(q=>q.name===p.name&&String(q.number||'')===String(p.number||'')))continue;S.shooters.push({...p,id:'s'+Date.now()+Math.random().toString(36).slice(2,6)});nsh++}
+    for(const l of get('loads')||[]){if(l&&l.id&&!S.loads.some(q=>q.id===l.id))S.loads.push(l)}
+    S.logs.sort((a,b)=>Date.parse(a.t)-Date.parse(b.t)); S.shots.sort((a,b)=>Date.parse(a.t)-Date.parse(b.t));
+    save(); render();
+    return`Opened ${fname}: added ${nl} strings, ${ns} shots${nv?`, ${nv} velocity readings`:''}${nsh?`, ${nsh} shooters`:''}. Anything already here was skipped.`;
+}
+const isRangeDeskData=j=>j&&typeof j==='object'&&((j.items&&(j.items.frd_logs||j.items.frd_shots))||j.frd_logs||j.frd_shots);
+$('#dataOpen').onchange=async e=>{
+  const f=e.target.files[0]; if(!f)return;
+  try{const j=JSON.parse(await f.text()); if(!isRangeDeskData(j))throw new Error('no strings or shots in it'); $('#dataMsg').textContent=mergeData(j,f.name)}
+  catch(err){$('#dataMsg').textContent='That file could not be read as Range Desk data: '+err.message}
+  e.target.value='';
+};
 $('#impImport').onclick=()=>{
   if(!IMP)return;
   const td=trueDistance(), l=curLoad(), u=(l&&l.scopeUnit)||'moa'; let n=0, strings=0;
