@@ -327,7 +327,7 @@ main section.card.fv-folded > :not(h2){display:none!important}
         <div class="row">
           <label>Range<select id="rgSel"><option value="century">Century (1–128, 300–600 yd)</option><option value="stickledown">Stickledown (1–51, 800–1200 yd)</option></select></label>
           <label>Target number<input id="rgN" type="number" min="1" max="128" style="width:6em"></label>
-          <button type="button" id="rgPin">Pin it on the map</button><button type="button" id="rgUseT">Use the T pin</button>
+          <label>Distance<select id="rgDist"></select></label><button type="button" id="rgPin">Pin it on the map</button><button type="button" id="rgGps">Pin this firing point (GPS)</button><button type="button" id="rgUseT">Use the T pin</button>
           <label hidden><input type="checkbox" id="rgRev"> Numbers rise to the left</label>
         </div>
         <p class="note" id="rgMsg"></p>
@@ -840,7 +840,7 @@ main section.card.fv-folded > :not(h2){display:none!important}
     </section>
     <section id="h-plan">
       <h2>Match plan</h2>
-      <p>At the top of the full view. Set up each range once: under Ranges, choose the range, type a target number, tap <b>Pin it on the map</b> and tap that target's frame on the satellite map; do it for two targets well apart. Century already knows Saturday's target 49. Target numbers always run from 1 on the left to the highest on the right as you look downrange; target 1 is always the left-hand target as you look downrange.</p>
+      <p>At the top of the full view. Century is set up already (from Saturday's target 49 and its firing point). For Stickledown, at the range: choose the distance and target, stand at that firing point and tap <b>Pin this firing point (GPS)</b>, then do the same at another target on the same mound, well apart. Alternatively, set up any range on the map: under Ranges, choose the range, type a target number, tap <b>Pin it on the map</b> and tap that target's frame on the satellite map; do it for two targets well apart. Century already knows Saturday's target 49. Target numbers always run from 1 on the left to the highest on the right as you look downrange; target 1 is always the left-hand target as you look downrange.</p>
       <p>Then add each detail from the squadding: date, time, range, distance, target and position. Range Desk places your target and firing point, takes the forecast for that hour, and shows the opening elevation and windage and the wind bracket (lull to gust), using your trued model factor where you have one. <b>Use</b> loads a detail (distance, target, session and opening dial); range the frame on the day as usual. <b>Print plot sheets</b> gives one sheet per detail with the forecast and opening dial filled in.</p>
       <p>Each detail also records the <b>rifle</b> (add yours under Rifles: make and model, serial number) and the <b>load</b>; its forecast and opening dial use that load. The plan shows where the <b>sun</b> will be relative to your line of fire at that time. When you range the frame on a planned detail, the distance is <b>saved</b> when the string ends; later plans use it for that target, and the average for other targets at the same firing point. On the day, <b>True the forecast on live wind</b> (Range mode, Next detail) compares the Calypso or your Kestrel reading with the forecast for this hour and carries the difference into the coming details, fading out over 4 hours; the factor learned from your target plots for that source is then applied. In Range mode, <b>Check my position</b> uses the phone's GPS to confirm the range, distance and target you're standing at.</p>
     </section>
@@ -982,6 +982,7 @@ main section.card.fv-folded > :not(h2){display:none!important}
       <p class="rm-note" id="rpWhy"></p>
       <div class="rm-step" style="grid-template-columns:2fr 1fr"><button type="button" id="rpLoad" class="primary">Load this detail</button><select id="rpPick" aria-label="Choose another detail"></select></div>
       <div class="rm-step" style="grid-template-columns:1fr 1fr"><button type="button" id="rpLive">True the forecast on live wind</button><button type="button" id="rpGps">Check my position (GPS)</button></div>
+      <div class="rm-step" style="grid-template-columns:1fr"><button type="button" id="rpPinFp">Pin this firing point (GPS)</button></div>
       <p class="rm-note" id="rpGpsMsg"></p>
     </section>
     <section class="rm-card rm-sol" id="rmSolCard">
@@ -3264,18 +3265,39 @@ const RANGE_DEF={century:{name:'Century',lanes:128,dists:[300,400,500,600]},stic
 function rangesInit(){
   if(!S.ranges)S.ranges={century:{pins:[],rev:false},stickledown:{pins:[],rev:false}};
   const c=S.ranges.century;
-  // Saturday 31 Oct: Century target 49 (ShotMarker) and its 600 yd firing point
-  if(!c.pins.length&&S.tgt&&Math.abs(S.tgt.lat-51.31626)<0.002&&Math.abs(S.tgt.lng+0.65452)<0.003)c.pins.push({n:49,lat:S.tgt.lat,lng:S.tgt.lng});
+  // Saturday 31 Oct, measured: Century target 49 (ShotMarker) and its 600 yd firing point, which fix the direction of fire
+  const T49={lat:51.31626287348501,lng:-0.6545222482121639}, FP600={lat:51.31268920664141,lng:-0.6489711181449477};
+  if(!c.pins.some(p=>p.n===49))c.pins.unshift({n:49,...T49});
+  if(c.dirAz==null)c.dirAz=vincenty(FP600.lat,FP600.lng,T49.lat,T49.lng).az;
+  for(const r of Object.values(S.ranges)){r.pins=r.pins||[];r.fpPins=r.fpPins||[]}
 }
 const ENU=(o,p)=>({x:(p.lng-o.lng)*111320*Math.cos(o.lat*D2R),y:(p.lat-o.lat)*110540});
 const LL=(o,v)=>({lat:o.lat+v.y/110540,lng:o.lng+v.x/(111320*Math.cos(o.lat*D2R))});
+// The range layout from whichever is known, best first: two pinned targets; two GPS firing points on one mound;
+// or one target plus the direction of fire (positions then use a standard spacing, which never affects the ballistics).
+const STD_SPACING=2.75;
 function rangeGeo(id){
-  const r=S.ranges&&S.ranges[id]; if(!r||r.pins.length<2)return null;
-  const [a,b]=r.pins, v=ENU(a,b), dn=b.n-a.n; if(!dn)return null;
-  const step={x:v.x/dn,y:v.y/dn}, L=Math.hypot(step.x,step.y); if(L<0.3||L>15)return null;
-  // looking downrange, numbers rise to the right (or left): downrange is the lane direction turned 90°
-  const u={x:step.x/L,y:step.y/L}, down=r.rev?{x:u.y,y:-u.x}:{x:-u.y,y:u.x};
-  return{a,step,down,spacing:L};
+  const r=S.ranges&&S.ranges[id]; if(!r)return null;
+  const fromLine=(a,b,dn)=>{const v=ENU(a,b), step={x:v.x/dn,y:v.y/dn}, L=Math.hypot(step.x,step.y); if(L<0.3||L>15)return null;
+    const u={x:step.x/L,y:step.y/L}; return{step,down:{x:-u.y,y:u.x},spacing:L}};      // numbers rise to the right looking downrange
+  if(r.pins.length>=2){const [a,b]=r.pins.slice(-2), g=b.n!==a.n&&fromLine(a,b,b.n-a.n); if(g)return{a,...g,how:'two pinned targets'}}
+  const fp=(r.fpPins||[]); if(fp.length>=2){const [p,q]=fp.slice(-2); if(q.n!==p.n&&q.dist===p.dist){const g=fromLine(p,q,q.n-p.n);
+    if(g){const a={n:p.n,...LL(p,{x:g.down.x*p.dist*M_PER_YD,y:g.down.y*p.dist*M_PER_YD})}; return{a,...g,how:'two GPS firing points'}}}}
+  const az=r.dirAz; if(az!=null&&(r.pins.length||fp.length)){const t=az*D2R, down={x:Math.sin(t),y:Math.cos(t)}, right={x:down.y,y:-down.x};
+    const a=r.pins.length?r.pins[r.pins.length-1]:(()=>{const p=fp[fp.length-1];return{n:p.n,...LL(p,{x:down.x*p.dist*M_PER_YD,y:down.y*p.dist*M_PER_YD})}})();
+    return{a,step:{x:right.x*STD_SPACING,y:right.y*STD_SPACING},down,spacing:STD_SPACING,how:'one known target and the direction of fire (positions approximate)'}}
+  return null;
+}
+// At the range: stand at a firing point and record it by GPS. Two on the same mound, well apart, set up the whole range.
+function pinFpGps(id,n,dist,msgEl){
+  if(!navigator.geolocation){msgEl.textContent='This device has no location service.';return}
+  msgEl.textContent='Finding your position…';
+  navigator.geolocation.getCurrentPosition(p=>{rangesInit(); const r=S.ranges[id];
+    r.fpPins=r.fpPins.filter(x=>!(x.n===n&&x.dist===dist)); r.fpPins.push({n,dist,lat:p.coords.latitude,lng:p.coords.longitude,acc:p.coords.accuracy}); if(r.fpPins.length>2)r.fpPins=r.fpPins.slice(-2);
+    save(); planCompute(); renderPlan(); const g=rangeGeo(id), same=r.fpPins.filter(x=>x.dist===dist);
+    msgEl.textContent=same.length>=2&&g&&g.how==='two GPS firing points'?`${RANGE_DEF[id].name} set up from two firing points (targets ${same.map(x=>x.n).join(' and ')}, GPS ±${Math.round(p.coords.accuracy)} m).`
+      :`Firing point for target ${n} at ${dist} yd recorded (GPS ±${Math.round(p.coords.accuracy)} m). Now do the same at another target on this ${dist} yd mound, well apart, e.g. 30 or more targets along.`;
+  },e=>{msgEl.textContent='Position not available: '+(e.message||'permission refused')+'.'},{enableHighAccuracy:true,timeout:20000,maximumAge:0});
 }
 // Distances trued with the rangefinder are kept per range, distance and target; other targets use that firing point's average offset
 function truedYd(d){
@@ -3344,9 +3366,10 @@ function clockFrom(az,brg){const rel=norm360(az-brg);let h=Math.round(rel/30)%12
 function renderPlan(){
   rangesInit();
   const id=$('#rgSel').value, r=S.ranges[id]; $('#rgRev').checked=!!r.rev;
-  const st=k=>{const g=rangeGeo(k);return g?`${RANGE_DEF[k].name} ready (targets about ${g.spacing.toFixed(1)} m apart)`:`${RANGE_DEF[k].name}: ${S.ranges[k].pins.length} of 2 targets pinned`};
+  const st=k=>{const g=rangeGeo(k);return g?`${RANGE_DEF[k].name} ready (${g.how})`:`${RANGE_DEF[k].name}: not set up yet`};
+  { const ds=$('#rgDist'), o=RANGE_DEF[id].dists.map(v=>`<option>${v}</option>`).join(''); if(ds.dataset.h!==o){ds.innerHTML=o;ds.dataset.h=o} }
   $('#rgStat').textContent=`· ${st('century')} · ${st('stickledown')}`;
-  $('#rgMsg').textContent=r.pins.length?`Pinned: ${r.pins.map(p=>'target '+p.n).join(' and ')}.${r.pins.length<2?' Pin one more, well apart from it.':''}`:'No targets pinned yet.';
+  if(!$('#rgMsg').dataset.keep)$('#rgMsg').textContent=[r.pins.length?`Targets pinned: ${r.pins.map(p=>p.n).join(', ')}.`:'',(r.fpPins||[]).length?`GPS firing points: ${r.fpPins.map(p=>`T${p.n} at ${p.dist} yd`).join(', ')}.`:''].filter(Boolean).join(' ')||'Nothing set up yet. At the range: choose the distance and target, stand at that firing point and tap Pin this firing point (GPS); then do it at another target on the same mound.';
   const dsel=$('#plDist'), rd=RANGE_DEF[$('#plRange').value], cur=dsel.value;
   const opts=rd.dists.map(v=>`<option ${String(v)===cur?'selected':''}>${v}</option>`).join(''); if(dsel.dataset.h!==opts){dsel.innerHTML=opts;dsel.dataset.h=opts}
   $('#plTgt').max=rd.lanes;
@@ -3382,6 +3405,8 @@ $('#rgSel').onchange=renderPlan;
 function rangePinAt(id,n,ll){rangesInit(); const r=S.ranges[id]; r.pins=r.pins.filter(p=>p.n!==n); r.pins.push({n,lat:ll.lat,lng:ll.lng}); if(r.pins.length>2)r.pins=r.pins.slice(-2);
   S.mode=null; S.pinFor=null; $('#mapnote').hidden=true; save(); planCompute(); renderPlan();
   const g=rangeGeo(id); $('#rgMsg').textContent=g?`${RANGE_DEF[id].name} ready: target ${n} pinned; targets about ${g.spacing.toFixed(1)} m apart.`:`Target ${n} pinned. Pin one more target, well apart from it.`}
+$('#rgGps').onclick=()=>{const n=parseInt($('#rgN').value,10), id=$('#rgSel').value; if(!(n>=1&&n<=RANGE_DEF[id].lanes)){$('#rgMsg').textContent=`Enter the target number for this firing point (1 to ${RANGE_DEF[id].lanes}) first.`;return}
+  $('#rgMsg').dataset.keep='1'; pinFpGps(id,n,+$('#rgDist').value,$('#rgMsg')); setTimeout(()=>{delete $('#rgMsg').dataset.keep},20000)};
 $('#rgUseT').onclick=()=>{const n=parseInt($('#rgN').value,10), id=$('#rgSel').value; if(!(n>=1&&n<=RANGE_DEF[id].lanes)){$('#rgMsg').textContent=`Enter the number of the target the T pin is on (1 to ${RANGE_DEF[id].lanes}) first.`;return}
   rangePinAt(id,n,S.tgt)};
 $('#rfAdd').onclick=()=>{const n=$('#rfName').value.trim(); if(!n){$('#plMsg').textContent='Enter the rifle make and model first.';return}
@@ -3448,6 +3473,7 @@ function whereOnRange(pos){
     const c={id,n:Math.round(n),back,dn,off:Math.abs(back-dn)}; if(!best||c.off<best.off)best=c}
   return best;
 }
+$('#rpPinFp').onclick=()=>{const d=S.plan.find(x=>x.id===$('#rpPick').value); if(!d)return; pinFpGps(d.range,d.target,d.dist,$('#rpGpsMsg'))};
 $('#rpGps').onclick=()=>{
   if(!navigator.geolocation){$('#rpGpsMsg').textContent='This device has no location service.';return}
   $('#rpGpsMsg').textContent='Finding your position…';
