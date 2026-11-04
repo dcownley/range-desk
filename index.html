@@ -328,7 +328,7 @@ main section.card.fv-folded > :not(h2){display:none!important}
           <label>Range<select id="rgSel"><option value="century">Century (1–128, 300–600 yd)</option><option value="stickledown">Stickledown (1–51, 800–1200 yd)</option></select></label>
           <label>Target number<input id="rgN" type="number" min="1" max="128" style="width:6em"></label>
           <button type="button" id="rgPin">Pin it on the map</button>
-          <label><input type="checkbox" id="rgRev"> Numbers rise to the left</label>
+          <label hidden><input type="checkbox" id="rgRev"> Numbers rise to the left</label>
         </div>
         <p class="note" id="rgMsg"></p>
         <p class="note" id="rgTrued"></p>
@@ -840,7 +840,7 @@ main section.card.fv-folded > :not(h2){display:none!important}
     </section>
     <section id="h-plan">
       <h2>Match plan</h2>
-      <p>At the top of the full view. Set up each range once: under Ranges, choose the range, type a target number, tap <b>Pin it on the map</b> and tap that target's frame on the satellite map; do it for two targets well apart. Century already knows Saturday's target 49. Century's numbers rise to the right as you look downrange (from the range regulations); if a range runs the other way, tick <b>Numbers rise to the left</b>.</p>
+      <p>At the top of the full view. Set up each range once: under Ranges, choose the range, type a target number, tap <b>Pin it on the map</b> and tap that target's frame on the satellite map; do it for two targets well apart. Century already knows Saturday's target 49. Target numbers always run from 1 on the left to the highest on the right as you look downrange; target 1 is always the left-hand target as you look downrange.</p>
       <p>Then add each detail from the squadding: date, time, range, distance, target and position. Range Desk places your target and firing point, takes the forecast for that hour, and shows the opening elevation and windage and the wind bracket (lull to gust), using your trued model factor where you have one. <b>Use</b> loads a detail (distance, target, session and opening dial); range the frame on the day as usual. <b>Print plot sheets</b> gives one sheet per detail with the forecast and opening dial filled in.</p>
       <p>Each detail also records the <b>rifle</b> (add yours under Rifles: make and model, serial number) and the <b>load</b>; its forecast and opening dial use that load. The plan shows where the <b>sun</b> will be relative to your line of fire at that time. When you range the frame on a planned detail, the distance is <b>saved</b> when the string ends; later plans use it for that target, and the average for other targets at the same firing point. On the day, <b>True the forecast on live wind</b> (Range mode, Next detail) compares the Calypso or your Kestrel reading with the forecast for this hour and carries the difference into the coming details, fading out over 4 hours; the factor learned from your target plots for that source is then applied. In Range mode, <b>Check my position</b> uses the phone's GPS to confirm the range, distance and target you're standing at.</p>
     </section>
