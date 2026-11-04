@@ -43,9 +43,9 @@ h1{font:700 22px/1 var(--display);letter-spacing:.04em;text-transform:uppercase;
 h1 b{color:var(--accent)}
 .search{display:flex;gap:6px;flex:1 1 280px;max-width:520px}
 input,select,button,textarea{font:inherit;color:var(--fg)}
-input,select,textarea{background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:6px 8px;min-width:0}
+input,select,textarea{background:var(--bg);border:1px solid var(--line);border-radius:2px;padding:6px 8px;min-width:0}
 textarea{font:13px/1.4 var(--mono);width:100%}
-button{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:6px 10px;cursor:pointer}
+button{background:var(--panel);border:1px solid var(--line);border-radius:2px;padding:6px 10px;cursor:pointer}
 button:hover{border-color:var(--muted)}
 button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 button.on{outline:2px solid var(--accent);outline-offset:1px}
@@ -56,8 +56,8 @@ main{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(340px,1fr);flex:1
 #map{min-height:420px;height:100%}
 .panel{overflow-y:auto;padding:14px max(16px,env(safe-area-inset-right,0px)) 40px 16px;display:flex;flex-direction:column;gap:14px}
 @media (max-width:860px){body{display:block;height:auto}main{grid-template-columns:minmax(0,1fr);height:auto}#map{height:55vh}.panel{overflow:visible;padding-left:max(16px,env(safe-area-inset-left,0px))}}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px 14px;display:flex;flex-direction:column;gap:10px;min-width:0}
-.card h2{font:600 15px/1 var(--display);letter-spacing:.09em;text-transform:uppercase;margin:0;color:var(--muted);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:2px;padding:12px 14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.card h2{font:700 15px/1 var(--display);letter-spacing:.1em;text-transform:uppercase;margin:0;color:var(--fg);padding-bottom:9px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:8px}
 .card h2 small{font:400 12px var(--body);letter-spacing:0;text-transform:none}
 .kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:8px 14px}
 .kv div{display:flex;flex-direction:column;min-width:0}
@@ -72,7 +72,7 @@ main{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(340px,1fr);flex:1
 .chip.warn{color:var(--warn)} .chip.good{color:var(--good)} .chip.acc{color:var(--accent)}
 .wind-strip{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center}
 .dial{width:112px;height:112px}
-.seg{display:inline-flex;flex-wrap:wrap;max-width:100%;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.seg{display:inline-flex;flex-wrap:wrap;max-width:100%;border:1px solid var(--line);border-radius:2px;overflow:hidden}
 .seg button{border:0;border-radius:0;border-right:1px solid var(--line);padding:5px 9px}
 .seg button:last-child{border-right:0}
 .seg button.sel{background:var(--fg);color:var(--panel)}
@@ -113,7 +113,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
 .rm-bar button{min-height:44px;font-size:16px}
 .rm-body{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;padding-block:12px;
   padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px))}
-.rm-card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.rm-card{background:var(--panel);border:1px solid var(--line);border-radius:2px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
 .rm-card h3{margin:0;font:600 17px/1 var(--display);letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
 .rm-sol{grid-column:1/-1}
 .rm-solgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
@@ -169,16 +169,19 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
 .wt-f p{margin:0;font-size:15px}
 /* Sun mode: maximum contrast and larger type for a tablet in bright light */
 /* Range mode looks: Range (graphite, one accent), Sun (paper and ink), Dusk (red on black, keeps night vision) */
-#rm.th-range{--bg:#141617;--panel:#1d2022;--fg:#f1ede4;--muted:#a3a7a9;--line:#353a3d;--accent:#f2a53a;--wind:#63adff;--good:#5cc28a;--warn:#f2a53a;--left:#63adff;--right:#ff7262;
+body.th-range,#rm.th-range{--bg:#141617;--panel:#1d2022;--fg:#f1ede4;--muted:#a3a7a9;--line:#353a3d;--accent:#f2a53a;--wind:#63adff;--good:#5cc28a;--warn:#f2a53a;--left:#63adff;--right:#ff7262;
   --face-bg:#d9d5c9;--face-ring:#222;--face-v:#111;color-scheme:dark;color:var(--fg)}
-#rm.th-range.ac-green{--accent:#5cc28a}
-#rm.th-range button.primary,#rm.th-dusk button.primary{color:#111}
-#rm.th-dusk{--bg:#000;--panel:#0b0202;--fg:#ff5c4a;--muted:#d0473a;--line:#4a140f;--accent:#ff8f63;--wind:#ffa286;--good:#ff7a5c;--warn:#ff8f63;--left:#ffa286;--right:#e0473a;
+body.th-range.ac-green,#rm.th-range.ac-green{--accent:#5cc28a}
+#rm.th-range button.primary,#rm.th-dusk button.primary,body.th-range button.primary,body.th-dusk button.primary{color:#111}
+body.th-dusk,#rm.th-dusk{--bg:#000;--panel:#0b0202;--fg:#ff5c4a;--muted:#d0473a;--line:#4a140f;--accent:#ff8f63;--wind:#ffa286;--good:#ff7a5c;--warn:#ff8f63;--left:#ffa286;--right:#e0473a;
   --face-bg:#140302;--face-ring:#ff5c4a;--face-v:#43100a;--face-in:#ff5c4a;--shot:#ff5c4a;--shot-last:#ffb09a;--grid-lbl:#ff5c4a;color-scheme:dark;color:var(--fg)}
-#rm.th-dusk .leaflet-container,#rm.th-dusk img{filter:grayscale(1) sepia(1) hue-rotate(-50deg) saturate(5) brightness(.45)}
-#rm.th-dusk input,#rm.th-dusk select,#rm.th-dusk output,#rm.th-dusk textarea{color:var(--fg);background:var(--bg)}
+body.th-dusk .leaflet-container,#rm.th-dusk .leaflet-container,#rm.th-dusk img{filter:grayscale(1) sepia(1) hue-rotate(-50deg) saturate(5) brightness(.45)}
+body.th-dusk input,body.th-dusk select,body.th-dusk output,body.th-dusk textarea,#rm.th-dusk input,#rm.th-dusk select,#rm.th-dusk output,#rm.th-dusk textarea{color:var(--fg);background:var(--bg)}
 #rm.hc{--bg:#f4f1e8;--panel:#fffdf7;--fg:#000;--muted:#2a2723;--line:#000;--accent:#8f4c00;--good:#00701f;--warn:#8f4c00;--wind:#0a58b5;--left:#0a58b5;--right:#b42318;color-scheme:light;background:#f4f1e8;color:#000;font-size:18px}
 #rm.hc.ac-green{--accent:#1d6640}
+body.th-sun{--bg:#f4f1e8;--panel:#fffdf7;--fg:#111;--muted:#45413b;--line:#bdb6a6;--accent:#8f4c00;--good:#00701f;--warn:#8f4c00;--wind:#0a58b5;--left:#0a58b5;--right:#b42318;--face-bg:#f2efe6;--face-ring:#2a2a2a;--face-v:#1b201c;color-scheme:light}
+body.th-sun.ac-green{--accent:#1d6640}
+body.th-range,body.th-dusk{color-scheme:dark}
 .rm-theme{display:inline-flex;border:1px solid var(--line);border-radius:4px;overflow:hidden}
 .rm-theme button{border:0;border-radius:0;border-right:1px solid var(--line);min-height:40px;padding:0 12px}
 .rm-theme button:last-child{border-right:0}
@@ -230,6 +233,8 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
 #rm:not(.tbl-all) #psTbl tr:nth-child(n+5){display:none}
 #rm.ph-pre:not(.show-all) #rmWT:not(.opened),#rm.ph-str:not(.show-all) #rmWT{display:none}
 .rm-more{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}
+.rp-tools button{min-height:40px;font-size:15px}
+#rmPlan label.rm-note{margin:0}
 .rm-more button{min-height:44px}
 .rm-menu{position:relative}
 .rm-menu-pop{position:absolute;right:0;top:calc(100% + 6px);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px;display:flex;flex-direction:column;gap:6px;z-index:5;min-width:160px}
@@ -239,6 +244,14 @@ main section.card > h2{cursor:pointer}
 main section.card > h2::after{content:'▾';float:right;color:var(--muted);font-size:13px;margin-left:8px}
 main section.card.fv-folded > h2::after{content:'▸'}
 main section.card.fv-folded > :not(h2){display:none!important}
+main section.card.fv-folded > h2{padding-bottom:0;border-bottom:0}
+#plTbl{width:100%;table-layout:fixed} #plTbl td,#plTbl th{white-space:normal;vertical-align:top;text-align:left;font-size:13px;line-height:1.4}
+#plTbl th:nth-child(1),#plTbl td:nth-child(1){width:38%} #plTbl th:nth-child(3),#plTbl td:nth-child(3){width:86px}
+#plTbl .pl-act{display:flex;flex-direction:column;gap:6px} #plTbl .pl-act button{min-height:36px}
+/* matching header buttons in both views */
+header .row button,header > .row > button{min-height:44px;font-size:16px;padding:0 14px}
+.card h2 small{color:var(--muted)}
+.btnlink{border-radius:2px!important}
 .rm-cols > .rm-card{break-inside:avoid;margin-bottom:12px;width:100%}
 .fold-sum{display:none;margin:0;font-size:15px;color:var(--muted)}
 .rm-card.folded > .fold-sum{display:block}
@@ -309,6 +322,7 @@ main section.card.fv-folded > :not(h2){display:none!important}
     <button id="btnFP" type="button">Place firing point</button>
     <button id="btnT" type="button">Place target</button>
     <button id="btnRM" type="button" class="primary">Range mode</button>
+    <button id="btnLook" type="button">Look: Range</button>
     <button id="btnLoad" type="button">Load</button>
     <button id="btnRec" type="button">Records</button>
     <button id="btnHelp" type="button">Help</button>
@@ -995,8 +1009,7 @@ main section.card.fv-folded > :not(h2){display:none!important}
       <div id="rpWhat" style="font:700 26px/1.15 var(--display)"></div>
       <p class="rm-note" id="rpWhy"></p>
       <div class="rm-step" style="grid-template-columns:2fr 1fr"><button type="button" id="rpLoad" class="primary">Load this detail</button><select id="rpPick" aria-label="Choose another detail"></select></div>
-      <div class="rm-step" style="grid-template-columns:1fr 1fr"><button type="button" id="rpLive">True the forecast on live wind</button><button type="button" id="rpGps">Check my position (GPS)</button></div>
-      <div class="rm-step" style="grid-template-columns:1fr"><button type="button" id="rpPinFp">Pin this firing point (GPS)</button></div>
+      <div class="rm-step rp-tools" style="grid-template-columns:1.4fr 1fr 1fr"><button type="button" id="rpLive">True on live wind</button><button type="button" id="rpGps">Check my position</button><button type="button" id="rpPinFp">Pin this firing point</button></div>
       <p class="rm-note" id="rpGpsMsg"></p>
       <label class="rm-note" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="rpDayOn" style="width:22px;height:22px"> <span id="rpDay">Use today's wind factor</span></label>
     </section>
@@ -3414,23 +3427,24 @@ function renderPlan(){
   const l=curLoad(), u=(l&&l.scopeUnit)||'moa', R=RAD_PER[u], ck=(l&&+l.click)||0.125;
   const fe=v=>v==null?'–':(Math.round(v/R/ck)*ck).toFixed(ck<0.25?3:2), fw=v=>v==null?'–':(Math.abs(v)<1e-9?'0':`${(Math.abs(Math.round(v/R/ck)*ck)).toFixed(ck<0.25?3:2)} ${v>0?'R':'L'}`);
   const P=[...S.plan].sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
-  $('#plTbl').innerHTML=P.length?`<tr><th>When</th><th>Where</th><th>Forecast wind</th><th>Opening elev</th><th>Opening wind</th><th>Bracket</th><th></th></tr>`+P.map(d=>{
+  $('#plTbl').innerHTML=P.length?`<tr><th>Detail</th><th>Plan</th><th></th></tr>`+P.map(d=>{
     const x=PLRES[d.id]||{}, when=new Date(d.date+'T'+d.time).toLocaleDateString([], {weekday:'short',day:'numeric',month:'short'})+' '+d.time;
     const ld=S.loads.find(z=>z.id===d.loadId), rf=S.rifles.find(z=>z.id===d.rifleId);
     const where=`${RANGE_DEF[d.range].name} ${d.dist} · T${d.target}${d.pos?' '+d.pos:''}${d.label?' · '+esc(d.label):''}${rf||ld?`<br><small>${[rf&&esc(rf.name),ld&&esc(ld.name)].filter(Boolean).join(' · ')}</small>`:''}${x.pts?`<br><small>${x.pts.yd.toFixed(1)} yd: ${esc(x.pts.ydSrc)}</small>`:''}`;
     const wind=x.err?esc(x.err):x.spd!=null?`${x.spd.toFixed(0)} mph (gust ${x.gust.toFixed(0)}) from ${clockFrom(x.dir,geomAz(x.pts))}; ${Math.abs(x.cross).toFixed(1)} mph ${x.cross>=0?'R':'L'} across${x.fm!==1?` (${x.fToday?'today\'s factor':'trued'} ×${x.fm.toFixed(2)})`:''}${x.live?`<br><small>trued on live ${esc(x.live.src)} at ${hm(x.live.t)} (forecast ${x.fcSpd.toFixed(0)} mph from ${clockFrom(x.fcDir,geomAz(x.pts))})</small>`:''}${x.sun?`<br><small>${esc(sunText(x))}</small>`:''}`:'…';
-    return`<tr><td>${when}</td><td>${where}</td><td>${wind}</td><td>${fe(x.e)}</td><td>${fw(x.w)}</td><td>${x.wl!=null?`${fw(x.wl)} to ${fw(x.wh)}`:'–'}</td><td><button type="button" data-use="${d.id}">Use</button> <button type="button" data-del="${d.id}">Delete</button></td></tr>`}).join(''):'<tr><td>No details yet. Add them from the squadding.</td></tr>';
+    return`<tr class="pl-row"><td><b>${when}</b><br>${where}</td><td>${x.e!=null?`<b>Opening ${fe(x.e)} / ${fw(x.w)}</b> · bracket ${x.wl!=null?`${fw(x.wl)} to ${fw(x.wh)}`:'–'}<br>`:''}${wind}</td><td class="pl-act"><button type="button" data-use="${d.id}">Use</button><button type="button" data-del="${d.id}">Delete</button></td></tr>`}).join(''):'<tr><td>No details yet. Add them from the squadding.</td></tr>';
   planMapDraw(); if(typeof renderRmPlan==='function')renderRmPlan();
 }
 function geomAz(pts){return pts?vincenty(pts.fp.lat,pts.fp.lng,pts.tgt.lat,pts.tgt.lng).az:0}
 let planLayer=null;
 function planMapDraw(){
   if(typeof L==='undefined'||!L.layerGroup)return;
+  const cs=getComputedStyle(document.body), cA=(cs.getPropertyValue('--accent')||'#ee6a3c').trim(), cW=(cs.getPropertyValue('--wind')||'#62b2e8').trim();
   if(!planLayer){planLayer=L.layerGroup().addTo(map)} planLayer.clearLayers();
   for(const id of Object.keys(RANGE_DEF)){const g=rangeGeo(id); if(!g)continue;
     const p1=LL(g.a,{x:g.step.x*(1-g.a.n),y:g.step.y*(1-g.a.n)}), pN=LL(g.a,{x:g.step.x*(RANGE_DEF[id].lanes-g.a.n),y:g.step.y*(RANGE_DEF[id].lanes-g.a.n)});
-    if(L.polyline)L.polyline([p1,pN],{color:'#ee6a3c',weight:3,opacity:.8}).addTo(planLayer)}
-  for(const d of S.plan){const pt=planPoints(d); if(pt&&L.circleMarker){L.circleMarker(pt.tgt,{radius:5,color:'#ee6a3c'}).addTo(planLayer);L.circleMarker(pt.fp,{radius:5,color:'#62b2e8'}).addTo(planLayer)}}
+    if(L.polyline)L.polyline([p1,pN],{color:cA,weight:3,opacity:.8}).addTo(planLayer)}
+  for(const d of S.plan){const pt=planPoints(d); if(pt&&L.circleMarker){L.circleMarker(pt.tgt,{radius:6,color:cA,weight:3}).addTo(planLayer);L.circleMarker(pt.fp,{radius:6,color:cW,weight:3}).addTo(planLayer)}}
 }
 $('#rgSel').onchange=renderPlan;
 function rangePinAt(id,n,ll){rangesInit(); const r=S.ranges[id]; r.pins=r.pins.filter(p=>p.n!==n); r.pins.push({n,lat:ll.lat,lng:ll.lng}); if(r.pins.length>2)r.pins=r.pins.slice(-2);
@@ -4307,16 +4321,19 @@ $('#wtFactors').addEventListener('click',e=>{
 });
 function setTheme(th){
   if(!['range','sun','dusk'].includes(th))th='range'; S.rmTheme=th; S.hc=th==='sun';
+  const bd=document.body; bd.classList.toggle('th-range',th==='range'); bd.classList.toggle('th-sun',th==='sun'); bd.classList.toggle('th-dusk',th==='dusk'); bd.classList.toggle('ac-green',S.rmAccent==='green');
   const rm=$('#rm'); rm.classList.toggle('hc',th==='sun'); rm.classList.toggle('th-range',th==='range'); rm.classList.toggle('th-dusk',th==='dusk');
   rm.classList.toggle('ac-green',S.rmAccent==='green'); $('#rmAccLbl').textContent=S.rmAccent==='green'?'Green':'Amber'; $('#rmAcc').hidden=true;
   document.querySelectorAll('#rmTheme button').forEach(b=>{b.classList.toggle('sel',b.dataset.v===th);b.setAttribute('aria-pressed',b.dataset.v===th?'true':'false')});
   $('#rmSun').setAttribute('aria-pressed',th==='sun'?'true':'false'); save(); if(typeof render==='function'&&S._themed)render(); S._themed=true;
 }
 function setSun(on){setTheme(on?'sun':'range')}
+const _setTheme=setTheme; setTheme=function(th){_setTheme(th); if(typeof planMapDraw==='function')try{planMapDraw()}catch(e){}};
 const LOOKS=[['range','amber','Range'],['range','green','Range green'],['sun',null,'Sun'],['dusk',null,'Dusk']];
 function lookIdx(){const th=S.rmTheme||'range';return th==='range'?(S.rmAccent==='green'?1:0):th==='sun'?2:3}
-function lookLabel(){$('#rmLook').textContent='Look: '+LOOKS[lookIdx()][2]}
+function lookLabel(){const t='Look: '+LOOKS[lookIdx()][2]; $('#rmLook').textContent=t; const b=$('#btnLook'); if(b)b.textContent=t}
 $('#rmLook').onclick=()=>{const n=LOOKS[(lookIdx()+1)%LOOKS.length]; if(n[1])S.rmAccent=n[1]; setTheme(n[0]); lookLabel()};
+$('#btnLook').onclick=()=>$('#rmLook').click();
 $('#rmMenu').onclick=e=>{e.stopPropagation();const p=$('#rmMenuPop');p.hidden=!p.hidden;$('#rmMenu').setAttribute('aria-expanded',String(!p.hidden))};
 document.addEventListener('click',e=>{const p=$('#rmMenuPop'); if(p&&!p.hidden&&!e.target.closest('.rm-menu')){p.hidden=true;$('#rmMenu').setAttribute('aria-expanded','false')}});
 ['rmRec','rmHelp'].forEach(id=>$('#'+id).addEventListener('click',()=>{$('#rmMenuPop').hidden=true}));
