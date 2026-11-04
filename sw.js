@@ -3,10 +3,10 @@
    - Libraries and fonts from the CDNs: saved copy first.
    - Map tiles: saved copy first; tiles seen while online, or saved with "Save this range for offline", work with no signal.
    - Weather, relay and other live data: always from the network (the app keeps its own last good copy). */
-const APP_CACHE = 'rd-app-v1';
+const APP_CACHE = 'rd-app-v2';
 const LIB_CACHE = 'rd-lib-v1';
 const TILE_CACHE = 'rd-tiles-v1';
-const APP_FILES = ['./', './index.html', './backup.html', './bt-explorer.html'];
+const APP_FILES = ['./', './index.html', './backup.html', './bt-explorer.html', './Range-Desk-user-manual.pdf', './Range-Desk-daily-inputs.pdf'];
 const LIB_HOSTS = ['cdnjs.cloudflare.com', 'fonts.googleapis.com', 'fonts.gstatic.com'];
 const TILE_HOSTS = ['server.arcgisonline.com'];
 
@@ -60,7 +60,7 @@ self.addEventListener('fetch', e => {
   if (req.method !== 'GET') return;
   const u = new URL(req.url);
   if (u.origin === self.location.origin) {
-    if (req.mode === 'navigate' || /\.(html|js)$/.test(u.pathname) || u.pathname.endsWith('/')) e.respondWith(networkFirst(req));
+    if (req.mode === 'navigate' || /\.(html|js|pdf)$/.test(u.pathname) || u.pathname.endsWith('/')) e.respondWith(networkFirst(req));
     return;
   }
   if (LIB_HOSTS.includes(u.hostname)) { e.respondWith(cacheFirst(req, LIB_CACHE)); return; }

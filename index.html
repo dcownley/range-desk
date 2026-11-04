@@ -267,6 +267,7 @@ main section.card.fv-folded > :not(h2){display:none!important}
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));font-size:16px;line-height:1.55}
 .help-body h2{font:600 19px/1.2 var(--display);letter-spacing:.06em;text-transform:uppercase;margin:0 0 6px;color:var(--fg)}
 .help-body ol,.help-body ul{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:6px}
+.btnlink{display:inline-flex;align-items:center;min-height:48px;padding:0 18px;border:1px solid var(--line);border-radius:6px;background:var(--accent);color:#fff;font-weight:600;text-decoration:none}
 .help-body section{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px;scroll-margin-top:70px}
 .help-body table{font-family:var(--body);font-size:14px}
 .help-body td,.help-body th{white-space:normal;text-align:left;vertical-align:top}
@@ -790,6 +791,11 @@ main section.card.fv-folded > :not(h2){display:none!important}
     <button type="button" id="helpClose">Close</button>
   </div>
   <div class="help-body">
+    <section id="h-manuals">
+      <h2>Manuals</h2>
+      <p>The full user manual and the one-page daily inputs sheet, to read here or print. They are kept on the device for use without signal.</p>
+      <div class="row" style="display:flex;gap:10px;flex-wrap:wrap"><a class="btnlink" href="Range-Desk-user-manual.pdf" target="_blank" rel="noopener">User manual (PDF)</a><a class="btnlink" href="Range-Desk-daily-inputs.pdf" target="_blank" rel="noopener">Daily inputs sheet (PDF)</a></div>
+    </section>
     <nav class="help-nav">
       <a href="#h-start">Getting started</a><a href="#h-range">At the range</a><a href="#h-true">Truing</a><a href="#h-offline">No signal</a><a href="#h-sess">Session</a><a href="#h-plot">Plot sheet</a><a href="#h-wind">Wind truing</a><a href="#h-plan">Match plan</a><a href="#h-rec">Records</a><a href="#h-barrel">Barrel</a><a href="#h-fix">When something goes wrong</a><a href="#h-update">Updating</a>
     </nav>
@@ -835,6 +841,7 @@ main section.card.fv-folded > :not(h2){display:none!important}
         <li><b>Called a poor shot?</b> Tap <b>Last shot: called poor</b>. It still scores, but it is left out of Next shot, the wind bracket, wind truing and Correct from impact, and shows ✗ in the table.</li>
         <li><b>Aiming off?</b> Open <b>Point of aim</b> and step it in ½ MOA before the shot; an AIM mark shows on the face. Shots are judged from where you aimed until you choose Centre.</li>
         <li>Below the reason, Next shot breaks the elevation into its parts: the solver (load, today's air, Coriolis), any truing (today's velocity or BC) and the string's trend.</li>
+        <li><b>Today's wind factor:</b> after each detail, the crosswind your counting shots met is compared with what the forecast, the Calypso and your Kestrel said over the same time. The ratio for each source is carried into the next detail's opening windage, Next shot and the Match plan, worked out at that detail's own distance. Each detail refines it (one odd detail moves it only part of the way); it starts afresh each day and can be switched off on the Next detail card.</li>
         <li>A ShotMarker import afterwards replaces the tapped positions with ShotMarker's, and those strings then feed the trued factor for next time.</li>
       </ul>
     </section>
@@ -984,6 +991,7 @@ main section.card.fv-folded > :not(h2){display:none!important}
       <div class="rm-step" style="grid-template-columns:1fr 1fr"><button type="button" id="rpLive">True the forecast on live wind</button><button type="button" id="rpGps">Check my position (GPS)</button></div>
       <div class="rm-step" style="grid-template-columns:1fr"><button type="button" id="rpPinFp">Pin this firing point (GPS)</button></div>
       <p class="rm-note" id="rpGpsMsg"></p>
+      <label class="rm-note" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="rpDayOn" style="width:22px;height:22px"> <span id="rpDay">Use today's wind factor</span></label>
     </section>
     <section class="rm-card rm-sol" id="rmSolCard">
       <div class="rm-solgrid">
@@ -1446,14 +1454,14 @@ const S={
   light:store.get('light','Full sun'),
   mirage:store.get('mirage',{dir:'none',str:'',focus:'mid'}), obs:store.get('obs',[]),
   stn:store.get('stn','auto'), metars:[],
-  str:store.get('str',null), viewLog:store.get('viewLog','all'), sess:store.get('sess',{type:'practice',event:'',match:'',coach:'',shooterId:null}), shooters:store.get('shooters',[]), dayMv:store.get('dayMv',null), velLog:store.get('velLog',[]), folded:store.get('folded',null), ps:store.get('ps',{sight:2,cnt:15}), ciKind:store.get('ciKind','auto'), wdotScale:store.get('wdotScale','ms100'), kestrelT:store.get('kestrelT',null), manualT:store.get('manualT',null), hc:store.get('hc',false), aim:store.get('aim',{x:0,y:0}), planLive:store.get('planLive',null), rifles:store.get('rifles',[]), planLoaded:store.get('planLoaded',null), ranges:store.get('ranges',null), plan:store.get('plan',[]), rmTheme:store.get('rmTheme',null), rmAccent:store.get('rmAccent','amber'), windTrue:store.get('windTrue',{}),
+  str:store.get('str',null), viewLog:store.get('viewLog','all'), sess:store.get('sess',{type:'practice',event:'',match:'',coach:'',shooterId:null}), shooters:store.get('shooters',[]), dayMv:store.get('dayMv',null), velLog:store.get('velLog',[]), folded:store.get('folded',null), ps:store.get('ps',{sight:2,cnt:15}), ciKind:store.get('ciKind','auto'), wdotScale:store.get('wdotScale','ms100'), kestrelT:store.get('kestrelT',null), manualT:store.get('manualT',null), hc:store.get('hc',false), dayWind:store.get('dayWind',null), dayWindOn:store.get('dayWindOn',true), aim:store.get('aim',{x:0,y:0}), planLive:store.get('planLive',null), rifles:store.get('rifles',[]), planLoaded:store.get('planLoaded',null), ranges:store.get('ranges',null), plan:store.get('plan',[]), rmTheme:store.get('rmTheme',null), rmAccent:store.get('rmAccent','amber'), windTrue:store.get('windTrue',{}),
   mode:null, wx:null, metar:null, elev:null
 };
 let sigK=JSON.stringify(S.kestrel), sigM=JSON.stringify(S.manual);
 const save=()=>{
   const k=JSON.stringify(S.kestrel), m=JSON.stringify(S.manual);          // time-stamp meter readings when they change
   if(k!==sigK){sigK=k;S.kestrelT=Date.now()} if(m!==sigM){sigM=m;S.manualT=Date.now()}
-  for(const k of ['viewLog','sess','shooters','dayMv','velLog','folded','ps','ciKind','wdotScale','str','kestrelT','manualT','hc','aim','planLive','rifles','planLoaded','ranges','plan','rmTheme','rmAccent','windTrue','fp','tgt','example','distUnit','nominal','lrf','unit','click','faces','faceId','src','model','hAdj','manual','cal','shots','light','stn','sys','relay','ticked','cmpMode','windyProd','loads','loadId','optSpin','optAJ','optCor','atmSrc','kestrel','logs','dial','rmOpen','appKey','barrel','settleK','coldMin','history','truing','corr','mirage','obs','whiteV'])store.set(k,S[k])};
+  for(const k of ['viewLog','sess','shooters','dayMv','velLog','folded','ps','ciKind','wdotScale','str','kestrelT','manualT','hc','dayWind','dayWindOn','aim','planLive','rifles','planLoaded','ranges','plan','rmTheme','rmAccent','windTrue','fp','tgt','example','distUnit','nominal','lrf','unit','click','faces','faceId','src','model','hAdj','manual','cal','shots','light','stn','sys','relay','ticked','cmpMode','windyProd','loads','loadId','optSpin','optAJ','optCor','atmSrc','kestrel','logs','dial','rmOpen','appKey','barrel','settleK','coldMin','history','truing','corr','mirage','obs','whiteV'])store.set(k,S[k])};
 
 /* ---------- Distance resolution: rangefinder > map pins > nominal ---------- */
 function geom(){ return vincenty(S.fp.lat,S.fp.lng,S.tgt.lat,S.tgt.lng); }
@@ -1867,8 +1875,8 @@ function fillLoadEditor(){
 // Wind from a source (default: the one selected), with this firing point's accepted truing factor applied unless raw.
 function windNow(src,raw){
   const w=windRaw(src||S.src); if(!w||raw)return w;
-  const key=wtKey(src||S.src), f=wtFactorOn(key);
-  return f?{...w,spd:w.spd*f.f,gust:w.gust!=null?w.gust*f.f:null,label:`${w.label} × ${f.f.toFixed(2)} (trued)`,trued:f.f}:w;
+  const key=wtKey(src||S.src), f=windFactor(key);
+  return f?{...w,spd:w.spd*f.f,gust:w.gust!=null?w.gust*f.f:null,label:`${w.label} × ${f.f.toFixed(2)} (${f.today?'today\'s factor':'trued'})`,trued:f.f}:w;
 }
 function windRaw(src){
   if(src==='calypso'){
@@ -1978,6 +1986,7 @@ function render(){
       if(was&&!now&&S.planLoaded){const d=S.plan.find(x=>x.id===S.planLoaded); if(d){
         const v=parseFloat(S.lrf); if(isFinite(v)&&Math.abs(toYd(v,S.distUnit)-d.dist)<d.dist*0.05){rangesInit(); const r=S.ranges[d.range]; r.trued=r.trued||{}; r.trued[`${d.dist}|${d.target}`]=+toYd(v,S.distUnit).toFixed(1)}
         d.done=true; S.planLoaded=null; save()}}
+      if(was&&!now&&S.plan.length&&typeof planCompute==='function')setTimeout(planCompute,50);
       if(now!==was){rm.classList.remove('show-all'); document.querySelectorAll('#rm .opened').forEach(e=>e.classList.remove('opened'))}
       const sa=$('#rmShowAll'); if(sa)sa.textContent=rm.classList.contains('show-all')?'Hide the set-up cards':(now?'More: mirage, wind, dial, barrel…':'All set-up cards');
       const ta=$('#rmTblAll'); if(ta){ta.hidden=!now; ta.textContent=rm.classList.contains('tbl-all')?'Last 3 shots only':'All shots in the table'}}}
@@ -3342,11 +3351,11 @@ function planSolve(d,wx){
     Object.assign(S,{fp:pts.fp,tgt:pts.tgt,lrf:'',nominal:d.dist,loadId:d.loadId&&S.loads.some(x=>x.id===d.loadId)?d.loadId:S.loadId,distUnit:'yd',src:'manual',atmSrc:'model',elev:null,
       wx:{...(S.wx||{}),current:{temperature_2m:h.temperature_2m[i],relative_humidity_2m:h.relative_humidity_2m[i],surface_pressure:h.surface_pressure[i]}}});
     // step 3: the factor learned from target plots: for the live source when the forecast has been trued to it, else for the model
-    const f=wgt>0?wtFactorOn(lv.key):wtFactorOn('model'), fm=f?f.f:1, yd=geom().m/M_PER_YD;
+    const f=windFactor(wgt>0?lv.key:'model',d.date), fm=f?f.f:1, fToday=!!(f&&f.today), yd=geom().m/M_PER_YD;
     const at=sp=>{S.manual={spd:sp*fm,dir};const so=computeSolution(yd,{rowsYd:[yd]});return so&&so.rows[0]};
     const r0=at(spd), rl=at(lull), rh=at(hi), cr=resolve({spd:spd*fm,dir},geom().az);
     const sun=sunPos(new Date(d.date+'T'+d.time),pts.fp.lat,pts.fp.lng), lineAz=geom().az;
-    out={pts,yd,sun,lineAz,spd,dir,gust,fm,fcSpd,fcDir,live:wgt>0?{wgt,src:lv.src,t:lv.t}:null,T:h.temperature_2m[i],P:h.surface_pressure[i],cross:cr.cross,e:r0&&r0.elevRad,w:r0&&r0.windRad,wl:rl&&rl.windRad,wh:rh&&rh.windRad,lull,hi};
+    out={pts,yd,sun,lineAz,spd,dir,gust,fm,fToday,fcSpd,fcDir,live:wgt>0?{wgt,src:lv.src,t:lv.t}:null,T:h.temperature_2m[i],P:h.surface_pressure[i],cross:cr.cross,e:r0&&r0.elevRad,w:r0&&r0.windRad,wl:rl&&rl.windRad,wh:rh&&rh.windRad,lull,hi};
   }finally{Object.assign(S,keep)}
   return out;
 }
@@ -3387,7 +3396,7 @@ function renderPlan(){
     const x=PLRES[d.id]||{}, when=new Date(d.date+'T'+d.time).toLocaleDateString([], {weekday:'short',day:'numeric',month:'short'})+' '+d.time;
     const ld=S.loads.find(z=>z.id===d.loadId), rf=S.rifles.find(z=>z.id===d.rifleId);
     const where=`${RANGE_DEF[d.range].name} ${d.dist} · T${d.target}${d.pos?' '+d.pos:''}${d.label?' · '+esc(d.label):''}${rf||ld?`<br><small>${[rf&&esc(rf.name),ld&&esc(ld.name)].filter(Boolean).join(' · ')}</small>`:''}${x.pts?`<br><small>${x.pts.yd.toFixed(1)} yd: ${esc(x.pts.ydSrc)}</small>`:''}`;
-    const wind=x.err?esc(x.err):x.spd!=null?`${x.spd.toFixed(0)} mph (gust ${x.gust.toFixed(0)}) from ${clockFrom(x.dir,geomAz(x.pts))}; ${Math.abs(x.cross).toFixed(1)} mph ${x.cross>=0?'R':'L'} across${x.fm!==1?` (trued ×${x.fm.toFixed(2)})`:''}${x.live?`<br><small>trued on live ${esc(x.live.src)} at ${hm(x.live.t)} (forecast ${x.fcSpd.toFixed(0)} mph from ${clockFrom(x.fcDir,geomAz(x.pts))})</small>`:''}${x.sun?`<br><small>${esc(sunText(x))}</small>`:''}`:'…';
+    const wind=x.err?esc(x.err):x.spd!=null?`${x.spd.toFixed(0)} mph (gust ${x.gust.toFixed(0)}) from ${clockFrom(x.dir,geomAz(x.pts))}; ${Math.abs(x.cross).toFixed(1)} mph ${x.cross>=0?'R':'L'} across${x.fm!==1?` (${x.fToday?'today\'s factor':'trued'} ×${x.fm.toFixed(2)})`:''}${x.live?`<br><small>trued on live ${esc(x.live.src)} at ${hm(x.live.t)} (forecast ${x.fcSpd.toFixed(0)} mph from ${clockFrom(x.fcDir,geomAz(x.pts))})</small>`:''}${x.sun?`<br><small>${esc(sunText(x))}</small>`:''}`:'…';
     return`<tr><td>${when}</td><td>${where}</td><td>${wind}</td><td>${fe(x.e)}</td><td>${fw(x.w)}</td><td>${x.wl!=null?`${fw(x.wl)} to ${fw(x.wh)}`:'–'}</td><td><button type="button" data-use="${d.id}">Use</button> <button type="button" data-del="${d.id}">Delete</button></td></tr>`}).join(''):'<tr><td>No details yet. Add them from the squadding.</td></tr>';
   planMapDraw(); if(typeof renderRmPlan==='function')renderRmPlan();
 }
@@ -3447,10 +3456,13 @@ function renderRmPlan(){
   const loaded=S.planLoaded===want.id;
   $('#rpTitle').textContent=loaded?'This detail (loaded)':'Next detail';
   $('#rpWhat').textContent=`${want.time} · ${RANGE_DEF[want.range].name} ${want.dist} yd · target ${want.target}${want.pos?' '+(want.pos==='L'?'left':'right'):''}${want.label?' · '+want.label:''}`;
-  $('#rpWhy').textContent=x.spd!=null?`${x.live?`Trued on live ${x.live.src} at ${hm(x.live.t)} (forecast said ${x.fcSpd.toFixed(0)} mph from ${clockFrom(x.fcDir,geomAz(x.pts))}): now`:'Forecast'} ${x.spd.toFixed(0)} mph (gusts ${x.gust.toFixed(0)}) from ${clockFrom(x.dir,geomAz(x.pts))}. Opening ${fe(x.e)} ${UNIT_LBL[u]} / ${fw(x.w)}; bracket ${fw(x.wl)} to ${fw(x.wh)}. ${sunText(x)}.`:(x.err||'Forecast loading…');
+  $('#rpWhy').textContent=x.spd!=null?`${x.live?`Trued on live ${x.live.src} at ${hm(x.live.t)} (forecast said ${x.fcSpd.toFixed(0)} mph from ${clockFrom(x.fcDir,geomAz(x.pts))}): now`:'Forecast'} ${x.spd.toFixed(0)} mph (gusts ${x.gust.toFixed(0)}) from ${clockFrom(x.dir,geomAz(x.pts))}${x.fToday?`, × today's factor ${x.fm.toFixed(2)}`:''}. Opening ${fe(x.e)} ${UNIT_LBL[u]} / ${fw(x.w)}; bracket ${fw(x.wl)} to ${fw(x.wh)}. ${sunText(x)}.`:(x.err||'Forecast loading…');
   $('#rpLoad').textContent=loaded?'Loaded ✓ (load again)':'Load this detail';
+  $('#rpDayOn').checked=S.dayWindOn!==false; const dl=(()=>{const o=S.dayWindOn;S.dayWindOn=true;const t=dayWindLine();S.dayWindOn=o;return t})();
+  $('#rpDay').textContent=dl?`Use today's wind factor: ${dl.replace(/^Today's wind factor: /,'')}`:"Use today's wind factor (learned after your first detail)";
 }
 $('#rpPick').onchange=renderRmPlan;
+$('#rpDayOn').onchange=e=>{S.dayWindOn=e.target.checked; save(); planCompute(); render()};
 $('#rpLive').onclick=async()=>{
   const d=S.plan.find(x=>x.id===$('#rpPick').value); if(!d){return}
   const src=S.src==='calypso'||S.src==='manual'?S.src:(windRaw('calypso')?'calypso':'manual'), live=windRaw(src);
@@ -3838,7 +3850,7 @@ function renderStr(){
   if(g&&!open){
     const w=v=>v==null?'–':(v>=0?'R ':'L ')+Math.abs(v/RAD_PER[u]).toFixed(2);
     const src=[g.calCross!=null?`Calypso ${fmtX(g.calCross)}`:null,g.modelCross!=null?`model ${fmtX(g.modelCross)}`:null].filter(Boolean).join(', ');
-    lb.innerHTML=`<b>String ${g.n} logged ✓ ${hm(g.t)}–${hm(g.tEnd)}${g.detail&&g.detail.plotted?` · ${g.detail.score} from ${g.detail.counted} counting`:''}</b><span>Your call ${w(g.dialW)}${g.group?`; group centred ${Math.abs(g.group.wRad)<1e-9?'0':w(g.group.wRad)}, ${Math.abs(g.group.eRad)<1e-9?'level':`${Math.abs(g.group.eRad/RAD_PER[u]).toFixed(2)} ${g.group.eRad>0?'high':'low'}`}`:''}.${src?` Wind: ${src}.`:''}${g.missing&&g.missing.length?` Logged without: ${g.missing.join(', ')}.`:''}</span><span>Now: save the ShotMarker series, and photograph the Garmin summary (or import both later).</span>${g.bracket?`<div class="ps-wind">${g.bracket.html}</div>`:''}`;
+    lb.innerHTML=`${dayWindLine()?`<span class="rm-note"><b>${esc(dayWindLine())}</b> Carried into the next detail.</span>`:''}<b>String ${g.n} logged ✓ ${hm(g.t)}–${hm(g.tEnd)}${g.detail&&g.detail.plotted?` · ${g.detail.score} from ${g.detail.counted} counting`:''}</b><span>Your call ${w(g.dialW)}${g.group?`; group centred ${Math.abs(g.group.wRad)<1e-9?'0':w(g.group.wRad)}, ${Math.abs(g.group.eRad)<1e-9?'level':`${Math.abs(g.group.eRad/RAD_PER[u]).toFixed(2)} ${g.group.eRad>0?'high':'low'}`}`:''}.${src?` Wind: ${src}.`:''}${g.missing&&g.missing.length?` Logged without: ${g.missing.join(', ')}.`:''}</span><span>Now: save the ShotMarker series, and photograph the Garmin summary (or import both later).</span>${g.bracket?`<div class="ps-wind">${g.bracket.html}</div>`:''}`;
     lb.hidden=false;
   }else lb.hidden=true;
 }
@@ -4029,9 +4041,9 @@ function nextShot(){
   let w, why;
   const k=r&&r.w10>0?r.w10/10:null, s0=r?r.parts.spin+r.parts.cor:0;
   if(k&&cNow!=null){
-    const stored=wtFactorOn('calypso'), f0=stored?stored.f:1;
+    const stored=windFactor('calypso'), f0=stored?stored.f:1;
     const withC=q.filter(s=>s.calX!=null);
-    let f=f0, fNote=stored?`your trued factor ${f0.toFixed(2)}`:'factor 1.00 (not trued yet)';
+    let f=f0, fNote=stored?(stored.today?`today's factor ${f0.toFixed(2)}`:`your trued factor ${f0.toFixed(2)}`):'factor 1.00 (not trued yet)';
     const cs=withC.map(s=>s.calX), span=cs.length?Math.max(...cs)-Math.min(...cs):0;
     if(withC.length>=4&&span>=1.5){
       const nw=withC.map(s=>s.dialW-ANG_IN(AX(s),s.yd)-s0), sxy=withC.reduce((a,s,i)=>a+nw[i]*s.calX,0), sxx=withC.reduce((a,s)=>a+k*s.calX*s.calX,0);
@@ -4121,9 +4133,37 @@ function strEnd(missing){
     group:(!q.length&&(st.gE||st.gW))?{eRad:(st.gE||0)*ck*RAD_PER[u],wRad:(st.gW||0)*ck*RAD_PER[u]}:null,
     kWind:here?here.w10/10:null,spinCor:here?here.parts.spin+here.parts.cor:null,
     load:p?p.load:'',mvFps:p?p.mvFps:null,dayFps:S.dayMv&&S.dayMv.on&&sameDayTs(S.dayMv.t)?S.dayMv.fps:null,light:S.light,mirage:{...S.mirage},missing,trued:w&&w.trued?w.trued:null});
+  dayWindLearn(S.logs[S.logs.length-1], q.filter(x=>x.role==='count').map(x=>x.s));
+  if(S.plan.length&&typeof planCompute==='function')setTimeout(planCompute,50);
   S.str=null; save(); render();
 }
 
+/* ---------- Today's wind factor: what each detail's shots say about the wind, carried pro rata into the next ----------
+   After each string: the crosswind the counting shots met (from their dial and where they landed) against what each
+   source said over the same time (the forecast model, the Calypso average, your Kestrel reading). Per source, weighted by
+   shots and drawn towards 1 by the equivalent of 10 shots, so one odd detail moves it only part of the way. Kept for the day. */
+const todayStr=()=>new Date().toLocaleDateString('en-CA');
+function dayWindLearn(g,shots){
+  const m=g&&shots.length>=3?windMet(g,shots):null; if(!m)return;
+  const met=m.mean, n=trueShots(shots).length, refs={model:g.modelCross,calypso:g.calN>=5?g.calCross:null,manual:g.manualCross};
+  if(!S.dayWind||S.dayWind.date!==todayStr())S.dayWind={date:todayStr(),entries:[]};
+  for(const [k,ref] of Object.entries(refs)){ if(ref==null||Math.abs(ref)<1)continue;
+    S.dayWind.entries.push({t:g.tEnd,k,met,ref,n,detail:(g.meta&&g.meta.match)||`string ${g.n}`}) }
+}
+function dayFactor(key,dateStr){
+  const d=S.dayWind; if(!S.dayWindOn||!d||d.date!==(dateStr||todayStr()))return null;
+  const e=d.entries.filter(x=>x.k===key); if(!e.length)return null;
+  const sxy=e.reduce((a,x)=>a+x.n*x.met*x.ref,0), sxx=e.reduce((a,x)=>a+x.n*x.ref*x.ref,0), N=e.reduce((a,x)=>a+x.n,0);
+  const raw=sxy/sxx, f=Math.min(2,Math.max(0.3,(raw*N+10)/(N+10)));
+  return{f,raw,n:N,details:e.length,last:e[e.length-1]};
+}
+// The factor to apply to a source: today's from your shots first, else the firing point's adopted one
+function windFactor(key,dateStr){const dy=dayFactor(key,dateStr); if(dy)return{f:dy.f,today:dy}; const st=wtFactorOn(key); return st?{f:st.f}:null}
+function dayWindLine(){
+  const parts=['model','calypso','manual'].map(k=>{const f=dayFactor(k);return f?`${{model:'forecast',calypso:'Calypso',manual:'Kestrel'}[k]} ×${f.f.toFixed(2)}`:null}).filter(Boolean);
+  if(!parts.length)return''; const l=S.dayWind.entries[S.dayWind.entries.length-1];
+  return`Today's wind factor: ${parts.join(', ')} (from ${new Set(S.dayWind.entries.map(x=>x.t)).size} detail${new Set(S.dayWind.entries.map(x=>x.t)).size>1?'s':''}; last met ${fmtX(l.met)} against ${fmtX(l.ref)}).`;
+}
 /* ---------- Wind truing: effective crosswind from the call and the group, against each source ---------- */
 function rangeKey(){return `${S.fp.lat.toFixed(3)},${S.fp.lng.toFixed(3)}`}
 function wtKey(src){return src==='calypso'?'calypso':src==='consensus'?'consensus':src==='metar'?'metar':src==='manual'?'manual':'model'}
