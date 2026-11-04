@@ -234,6 +234,8 @@ body.th-range,body.th-dusk{color-scheme:dark}
 #rm.ph-pre:not(.show-all) #rmWT:not(.opened),#rm.ph-str:not(.show-all) #rmWT{display:none}
 .rm-more{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}
 .rp-tools button{min-height:40px;font-size:15px}
+.fc-ok{min-height:40px;align-self:flex-start}
+.fc-ok.sel{border-color:var(--good);color:var(--good)}
 #rm.ph-str #strBack{display:none}
 .str-back summary{cursor:pointer;min-height:40px;display:flex;align-items:center;color:var(--muted)}
 .str-back input{min-height:44px;font-size:17px}
@@ -793,12 +795,13 @@ header .row button,header > .row > button{min-height:44px;font-size:16px;padding
           <label>Rifle<input id="reRifle"></label>
           <label>Note<input id="reNote"></label>
         </div>
-        <div class="rec-act" style="margin-top:8px"><button type="button" id="reSave" class="primary">Save tags</button><button type="button" id="reShow">Show on target</button><button type="button" id="reClose">Close</button></div>
+        <div class="rec-act" style="margin-top:8px"><button type="button" id="reSave" class="primary">Save tags</button><button type="button" id="reShow">Show on target</button><button type="button" id="reReport">Report</button><button type="button" id="reClose">Close</button></div>
       </div>
     </section>
     <section>
       <h2>Reports and data</h2>
       <div class="rec-act">
+        <button type="button" id="recReport" class="primary">Report on these strings</button>
         <button type="button" id="recCsv">Export these strings (CSV)</button>
         <button type="button" id="recShotCsv">Export their shots (CSV)</button>
         <button type="button" id="recArchive">Save these as a data file</button>
@@ -1124,6 +1127,7 @@ header .row button,header > .row > button{min-height:44px;font-size:16px;padding
 
     <section class="rm-card" id="rmCardAtm">
       <h3>Atmosphere</h3>
+      <button type="button" class="fc-ok" data-fc="atm">Use the forecast today</button>
       <div class="rm-seg" id="rmAtmSeg">
         <button type="button" data-asrc="model">Model</button>
         <button type="button" data-asrc="kestrel">Kestrel / Weatherdot</button>
@@ -1170,6 +1174,7 @@ header .row button,header > .row > button{min-height:44px;font-size:16px;padding
 
     <section class="rm-card" id="rmCardWind">
       <h3>Wind</h3>
+      <button type="button" class="fc-ok" data-fc="wind">Use the forecast today</button>
       <div class="rm-seg" id="rmSrc">
         <button type="button" data-src="manual">Kestrel / mine</button>
         <button type="button" data-src="calypso">Calypso</button>
@@ -1482,14 +1487,14 @@ const S={
   light:store.get('light','Full sun'),
   mirage:store.get('mirage',{dir:'none',str:'',focus:'mid'}), obs:store.get('obs',[]),
   stn:store.get('stn','auto'), metars:[],
-  str:store.get('str',null), viewLog:store.get('viewLog','all'), sess:store.get('sess',{type:'practice',event:'',match:'',coach:'',shooterId:null}), shooters:store.get('shooters',[]), dayMv:store.get('dayMv',null), velLog:store.get('velLog',[]), folded:store.get('folded',null), ps:store.get('ps',{sight:2,cnt:15}), ciKind:store.get('ciKind','auto'), wdotScale:store.get('wdotScale','ms100'), kestrelT:store.get('kestrelT',null), manualT:store.get('manualT',null), hc:store.get('hc',false), dayWind:store.get('dayWind',null), dayWindOn:store.get('dayWindOn',true), aim:store.get('aim',{x:0,y:0}), planLive:store.get('planLive',null), rifles:store.get('rifles',[]), planLoaded:store.get('planLoaded',null), ranges:store.get('ranges',null), plan:store.get('plan',[]), rmTheme:store.get('rmTheme',null), rmAccent:store.get('rmAccent','amber'), windTrue:store.get('windTrue',{}),
+  str:store.get('str',null), viewLog:store.get('viewLog','all'), sess:store.get('sess',{type:'practice',event:'',match:'',coach:'',shooterId:null}), shooters:store.get('shooters',[]), dayMv:store.get('dayMv',null), velLog:store.get('velLog',[]), folded:store.get('folded',null), ps:store.get('ps',{sight:2,cnt:15}), ciKind:store.get('ciKind','auto'), wdotScale:store.get('wdotScale','ms100'), kestrelT:store.get('kestrelT',null), manualT:store.get('manualT',null), hc:store.get('hc',false), fcOk:store.get('fcOk',null), dayWind:store.get('dayWind',null), dayWindOn:store.get('dayWindOn',true), aim:store.get('aim',{x:0,y:0}), planLive:store.get('planLive',null), rifles:store.get('rifles',[]), planLoaded:store.get('planLoaded',null), ranges:store.get('ranges',null), plan:store.get('plan',[]), rmTheme:store.get('rmTheme',null), rmAccent:store.get('rmAccent','amber'), windTrue:store.get('windTrue',{}),
   mode:null, wx:null, metar:null, elev:null
 };
 let sigK=JSON.stringify(S.kestrel), sigM=JSON.stringify(S.manual);
 const save=()=>{
   const k=JSON.stringify(S.kestrel), m=JSON.stringify(S.manual);          // time-stamp meter readings when they change
   if(k!==sigK){sigK=k;S.kestrelT=Date.now()} if(m!==sigM){sigM=m;S.manualT=Date.now()}
-  for(const k of ['viewLog','sess','shooters','dayMv','velLog','folded','ps','ciKind','wdotScale','str','kestrelT','manualT','hc','dayWind','dayWindOn','aim','planLive','rifles','planLoaded','ranges','plan','rmTheme','rmAccent','windTrue','fp','tgt','example','distUnit','nominal','lrf','unit','click','faces','faceId','src','model','hAdj','manual','cal','shots','light','stn','sys','relay','ticked','cmpMode','windyProd','loads','loadId','optSpin','optAJ','optCor','atmSrc','kestrel','logs','dial','rmOpen','appKey','barrel','settleK','coldMin','history','truing','corr','mirage','obs','whiteV'])store.set(k,S[k])};
+  for(const k of ['viewLog','sess','shooters','dayMv','velLog','folded','ps','ciKind','wdotScale','str','kestrelT','manualT','hc','fcOk','dayWind','dayWindOn','aim','planLive','rifles','planLoaded','ranges','plan','rmTheme','rmAccent','windTrue','fp','tgt','example','distUnit','nominal','lrf','unit','click','faces','faceId','src','model','hAdj','manual','cal','shots','light','stn','sys','relay','ticked','cmpMode','windyProd','loads','loadId','optSpin','optAJ','optCor','atmSrc','kestrel','logs','dial','rmOpen','appKey','barrel','settleK','coldMin','history','truing','corr','mirage','obs','whiteV'])store.set(k,S[k])};
 
 /* ---------- Distance resolution: rangefinder > map pins > nominal ---------- */
 function geom(){ return vincenty(S.fp.lat,S.fp.lng,S.tgt.lat,S.tgt.lng); }
@@ -2021,6 +2026,8 @@ function fixSvgVars(root){
 try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>render())}catch(e){}
 /* ---------- Rendering ---------- */
 function render(){
+  document.querySelectorAll('.fc-ok').forEach(b=>{const on=fcAccepted(b.dataset.fc), m=b.dataset.fc==='atm'?S.atmSrc!=='kestrel':!['calypso','manual'].includes(S.src);
+    b.hidden=!m; b.classList.toggle('sel',on); b.textContent=on?'Forecast accepted for today ✓ (tap to undo)':'Use the forecast today'});
   { const rm=$('#rm'); if(rm){const was=rm.classList.contains('ph-str'), now=!!S.str; rm.classList.toggle('ph-str',now); rm.classList.toggle('ph-pre',!now);
       if(was&&!now&&S.planLoaded){const d=S.plan.find(x=>x.id===S.planLoaded); if(d){
         const v=parseFloat(S.lrf); if(isFinite(v)&&Math.abs(toYd(v,S.distUnit)-d.dist)<d.dist*0.05){rangesInit(); const r=S.ranges[d.range]; r.trued=r.trued||{}; r.trued[`${d.dist}|${d.target}`]=+toYd(v,S.distUnit).toFixed(1)}
@@ -3266,6 +3273,9 @@ $('#btnRec').onclick=()=>setRecords(true); $('#rmRec').onclick=()=>setRecords(tr
 $('#rfClear').onclick=()=>{['rfFrom','rfTo','rfShooter','rfType','rfEvent','rfDist','rfLoad','rfCoach','rfBatch'].forEach(id=>$('#'+id).value='');renderRecords()};
 $('#recTbl').addEventListener('click',e=>{const r=e.target.closest('[data-t]');if(!r)return;REC.sel=REC.sel===r.dataset.t?null:r.dataset.t;renderRecords();if(REC.sel)$('#recEdit').scrollIntoView({behavior:'smooth',block:'nearest'})});
 $('#reClose').onclick=()=>{REC.sel=null;renderRecords()};
+$('#reReport').onclick=()=>{const g=S.logs.find(x=>x.t===REC.sel); if(g)openReport([g],logLabel(g))};
+$('#recReport').onclick=()=>{const F=recFiltered().slice().sort((a,b)=>Date.parse(a.t)-Date.parse(b.t)); if(!F.length)return;
+  const days=[...new Set(F.map(g=>new Date(g.t).toDateString()))]; openReport(F,days.length===1?`Day report · ${new Date(F[0].t).toLocaleDateString([], {weekday:'long',day:'numeric',month:'long'})}`:`Report · ${F.length} strings`)};
 $('#reSave').onclick=()=>{const g=S.logs.find(x=>x.t===REC.sel);if(!g)return;g.meta=g.meta||{};
   g.meta.type=$('#reType').value;[['reEvent','event'],['reMatch','match'],['reShooter','shooter'],['reNumber','number'],['reCoach','coach'],['reRifle','rifle'],['reBatch','batch']].forEach(([id,k])=>{g.meta[k]=$('#'+id).value.trim()});
   g.note=$('#reNote').value.trim(); S.shots.filter(s=>logFor(s.t)===g).forEach(s=>{s.shooter=g.meta.shooter});
@@ -3536,6 +3546,8 @@ function renderRmPlan(){
   $('#rpDay').textContent=dl?`Use today's wind factor: ${dl.replace(/^Today's wind factor: /,'')}`:"Use today's wind factor (learned after your first detail)";
 }
 $('#rpPick').onchange=renderRmPlan;
+document.addEventListener('click',e=>{if(e.target.id==='strReport'){const g=[...S.logs].reverse().find(x=>x.guided); if(g)openReport([g],logLabel(g))}});
+document.addEventListener('click',e=>{const b=e.target.closest('.fc-ok'); if(b)fcToggle(b.dataset.fc)});
 $('#rpDayOn').onchange=e=>{S.dayWindOn=e.target.checked; save(); planCompute(); render()};
 $('#rpLive').onclick=async()=>{
   const d=S.plan.find(x=>x.id===$('#rpPick').value); if(!d){return}
@@ -3618,6 +3630,58 @@ $('#plPrint').onclick=()=>{
 };
 rangesInit(); if(!$('#plDate').value){const t=new Date(Date.now()+864e5);$('#plDate').value=t.toISOString().slice(0,10)}
 renderPlan(); if(S.plan.length)setTimeout(planCompute,1500);
+
+/* ---------- Reports: one page per string, and a day report with a summary on top ---------- */
+function strShotsFor(g){return S.shots.filter(x=>logFor(x.t)===g).sort((a,b)=>Date.parse(a.t)-Date.parse(b.t))}
+function reportPage(g){
+  const l=curLoad(), u=(l&&l.scopeUnit)||'moa', U=UNIT_LBL[u], R=RAD_PER[u], m=g.meta||{}, sh=strShotsFor(g);
+  const f3=v=>v==null?'–':(v/R).toFixed(3), w3=v=>v==null?'–':(Math.abs(v/R)<5e-4?'0':`${v>0?'R':'L'} ${Math.abs(v/R).toFixed(3)}`), sg=v=>v==null?'–':`${v>=0?'+':'−'}${Math.abs(v/R).toFixed(3)}`;
+  const ns=g.detail?g.detail.sighters:0, cv=g.detail?g.detail.conv||0:0;
+  const lab=i=>i<ns&&i<ns-cv?'S'+(i+1):String(i-(ns-cv)+1);
+  const v=recStats(g), b=v.bc, gn=sh.length?groupNeed(g,sh):null, wm=v.wm, dw=(S.dayWind&&S.dayWind.entries||[]).filter(x=>x.t===g.tEnd);
+  // face to scale for this distance
+  const fc=faceForLog(g)||faceForYd(g.yd), dias=fc?fc.dias:[5,10,20,30,44], rr=dias.map(d=>d/2/(g.yd*36)/RAD_PER.moa);
+  const pts=sh.map(x=>({x:ANG_IN(x.xIn,x.yd)/RAD_PER.moa,y:ANG_IN(x.yIn,x.yd)/RAD_PER.moa}));
+  const ext=Math.max(rr[Math.min(1,rr.length-1)]*1.25,1,...pts.map(q=>Math.max(Math.abs(q.x),Math.abs(q.y))*1.25+0.2)), sc=140/ext;
+  let svg=`<svg viewBox="-150 -150 300 300" width="300" height="300"><rect x="-150" y="-150" width="300" height="300" fill="#f3f1ea"/>`;
+  for(let i=rr.length-1;i>=0;i--)svg+=`<circle r="${(rr[i]*sc).toFixed(1)}" fill="${i%2?'#d4d8dc':'#fff'}" stroke="#222" stroke-width="0.8"/>`;
+  for(let k=-Math.floor(ext);k<=ext;k++){const q=(k*sc).toFixed(1);svg+=`<line x1="${q}" y1="-150" x2="${q}" y2="150" stroke="#999" stroke-width="0.4" stroke-dasharray="3 3"/><line y1="${q}" x1="-150" y2="${q}" x2="150" stroke="#999" stroke-width="0.4" stroke-dasharray="3 3"/>`}
+  pts.forEach((q,i)=>{const X=(q.x*sc).toFixed(1),Y=(-q.y*sc).toFixed(1), s2=sh[i]; svg+=`<circle cx="${X}" cy="${Y}" r="4.5" fill="${s2.called?'#999':i<ns-cv?'#9aa39c':'#e8a33a'}" stroke="#111" stroke-width="1"/><text x="${(+X+6).toFixed(1)}" y="${(+Y-5).toFixed(1)}" font-size="9" font-family="Arial" font-weight="700">${lab(i)}</text>`});
+  svg+=`<text x="-146" y="146" font-size="8" font-family="Arial">grid 1 ${U} · ${g.yd.toFixed(1)} yd</text></svg>`;
+  const rows=sh.map((x,i)=>{const dE=x.dialE??g.dialE, dW=x.dialW??g.dialW, yE=ANG_IN(AY(x),x.yd), xW=ANG_IN(AX(x),x.yd), nE=x.called||dE==null?null:dE-yE, nW=x.called||dW==null?null:dW-xW, aE=x.nsE??x.predE, aW=x.nsW??x.predW;
+    return`<tr><td>${lab(i)}${x.called?' ✗':''}${x.aimX||x.aimY?' ⌖':''}</td><td>${scoreShot(x)}</td><td>${f3(aE)} / ${w3(aW)}</td><td>${f3(x.dialE??g.dialE)} / ${w3(x.dialW??g.dialW)}</td><td>${(yE/R>=0?'↑':'↓')+Math.abs(yE/R).toFixed(2)} ${(xW/R>=0?'→':'←')+Math.abs(xW/R).toFixed(2)}</td><td>${f3(nE)} / ${w3(nW)}</td><td>${nW!=null&&dW!=null?sg(dW-nW):'–'} · ${nW!=null&&aW!=null?sg(aW-nW):'–'}</td><td>${x.vFps!=null?x.vFps.toFixed(0):''}${x.vTgt!=null?' → '+x.vTgt:''}</td></tr>`}).join('');
+  const kv=(k,vv)=>vv==null||vv===''?'':`<tr><th>${k}</th><td>${vv}</td></tr>`, mph=c=>c==null?null:`${Math.abs(c).toFixed(1)} mph ${c>=0?'from right':'from left'}`;
+  return`<section><h1>${esc(m.match||g.name||'String')} · ${fromYd(g.yd,'yd').toFixed(0)} yd</h1>
+  <p class="sub">${new Date(g.t).toLocaleDateString([], {weekday:'long',day:'numeric',month:'long',year:'numeric'})} · ${hm(g.t)}${g.tEnd?'–'+hm(g.tEnd):''}${g.enteredLater?' (entered afterwards from the plot sheet)':''} · ${esc([SESS_LBL[m.type]||m.type,m.event].filter(Boolean).join(' · '))}</p>
+  <div class="cols"><div>${svg}<p class="sm">${v.pts!=null&&v.n?`<b>${v.pts}.${v.b}</b> from ${v.n} shots`:''}${v.es!=null?` · group ${(v.es/R).toFixed(2)} ${U} extreme spread`:''}${gn&&gn.needW!=null?` · centre ${w3(gn.needW-(g.dialW||0))} / ${sg(gn.needE-(g.dialE||0))}`:''}</p></div>
+  <table class="kv"><tbody>${kv('Shooter',esc([m.shooter,m.number&&'No. '+m.number].filter(Boolean).join(' ')))}${kv('Rifle',esc(m.rifle||''))}${kv('Load / batch',esc([m.load||g.load,m.batch].filter(Boolean).join(' · ')))}${kv('Coach',esc(m.coach||''))}
+  ${kv('Distance',`${g.yd.toFixed(1)} yd (${esc(g.distSrc||'')})`)}${kv('Atmosphere',g.Tc!=null?`${g.Tc.toFixed(1)} °C, ${g.PhPa.toFixed(1)} hPa, ${g.RH!=null?g.RH.toFixed(0)+'%':''} (${esc(g.atmSrc||'')})`:'')}
+  ${kv('Wind used',esc(g.windSrc||''))}${kv('Calypso over the string',g.calN?`${mph(g.calCross)} (${g.calN} readings)`:'')}${kv('Forecast',mph(g.modelCross))}${kv('Your Kestrel',mph(g.manualCross))}
+  ${kv('Wind the shots met',wm?`${mph(wm.mean)} (range ${Math.abs(wm.min).toFixed(1)}–${Math.abs(wm.max).toFixed(1)})`:'')}${kv("Today's wind factor from this string",dw.length?dw.map(x=>`${{model:'forecast',calypso:'Calypso',manual:'Kestrel'}[x.k]} ${(x.met/x.ref).toFixed(2)}`).join(', '):'')}
+  ${kv('Light / mirage',esc([g.light,g.mirage&&[g.mirage.dir,g.mirage.str].filter(Boolean).join(' ')].filter(Boolean).join(' · ')))}
+  ${kv('Solution',g.predE!=null?`${f3(g.predE)} ${U} / ${w3(g.predW)}`:'')}${kv('Elevation needed vs solution',v.dEclk!=null?`${(v.dEclk*((l&&+l.click)||0.125)).toFixed(2)} ${U}`:'')}
+  ${kv('Garmin',g.chrono?`${g.chrono.avg.toFixed(0)} fps, SD ${g.chrono.sd!=null?g.chrono.sd.toFixed(1):'–'}, ES ${g.chrono.es!=null?g.chrono.es.toFixed(0):'–'} (${g.chrono.n} shots)`:'')}${kv('BC from velocity',b?`G7 ${b.g7.toFixed(3)} (G1 ${b.g1.toFixed(3)}), ${b.mv.toFixed(0)} → ${b.vt.toFixed(0)} fps`:'')}
+  ${kv('Note',esc(g.note||''))}</tbody></table></div>
+  <table class="shots"><tr><th>Shot</th><th>Score</th><th>App suggests</th><th>Wind call</th><th>Landed</th><th>True</th><th>Wind off: call · app</th><th>fps</th></tr>${rows||'<tr><td colspan="8">No shots plotted for this string.</td></tr>'}</table>
+  ${g.bracket&&g.bracket.html?`<div class="br">${g.bracket.html}</div>`:''}</section>`;
+}
+function openReport(logs,title){
+  if(!logs.length)return;
+  const l=curLoad(), u=(l&&l.scopeUnit)||'moa', U=UNIT_LBL[u], R=RAD_PER[u], ck=(l&&+l.click)||0.125;
+  let sum='';
+  if(logs.length>1){const rows=logs.map(g=>{const v=recStats(g), m=g.meta||{};
+      return`<tr><td>${hm(g.t)}</td><td>${esc(m.match||g.name||'')}</td><td>${g.yd.toFixed(0)}</td><td>${v.pts!=null&&v.n?`${v.pts}.${v.b}`:'–'}</td><td>${v.es!=null?(v.es/R).toFixed(2):'–'}</td><td>${v.dEclk!=null?(v.dEclk*ck).toFixed(2):'–'}</td><td>${v.wm?`${Math.abs(v.wm.mean).toFixed(1)} ${v.wm.mean>=0?'R':'L'}`:'–'}</td><td>${v.mv?v.mv.toFixed(0):'–'}</td><td>${v.bc?v.bc.g7.toFixed(3):'–'}</td></tr>`}).join('');
+    sum=`<section><h1>${esc(title)}</h1><p class="sub">${logs.length} strings · ${esc(curLoad()?curLoad().name:'')}</p><table class="shots"><tr><th>Time</th><th>Match / detail</th><th>yd</th><th>Score</th><th>Group ${U}</th><th>Elev vs solution ${U}</th><th>Wind met mph</th><th>Garmin fps</th><th>BC G7</th></tr>${rows}</table>${dayWindLine()?`<p class="sub">${esc(dayWindLine())}</p>`:''}</section>`}
+  const html=`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>
+@page{size:A4;margin:12mm}body{font:10px Arial,sans-serif;color:#111;margin:0}section{page-break-after:always;padding:4mm 0}
+h1{font:700 18px Arial;margin:0 0 2px}.sub{color:#444;margin:0 0 8px}.sm{margin:4px 0 0}.cols{display:flex;gap:12px;align-items:flex-start}
+table{border-collapse:collapse}.kv{flex:1}.kv th{text-align:left;color:#555;font-weight:600;padding:2px 8px 2px 0;vertical-align:top;white-space:nowrap}.kv td{padding:2px 0}
+.shots{width:100%;margin-top:8px}.shots th,.shots td{border:1px solid #999;padding:3px 5px;text-align:left}.shots th{background:#eee}
+.br{margin-top:8px;border:1px solid #999;padding:6px}.br table td,.br table th{padding:2px 6px}
+.bar{position:sticky;top:0;background:#fff;padding:6px 0;border-bottom:1px solid #ccc}@media print{.bar{display:none}}
+</style></head><body><div class="bar"><button onclick="print()">Print or save as PDF</button></div>${sum}${logs.map(reportPage).join('')}</body></html>`;
+  const w=window.open('','_blank'); if(w){w.document.write(html);w.document.close()}else{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([html],{type:'text/html'}));a.download='range-desk-report.html';a.click()}
+}
 /* Help */
 function setHelp(open){$('#help').hidden=!open; if(open)$('#help').scrollTop=0}
 $('#btnHelp').onclick=()=>setHelp(true); $('#rmHelp').onclick=()=>setHelp(true); $('#helpClose').onclick=()=>setHelp(false);
@@ -3885,6 +3949,9 @@ const sameDay=(a,b)=>new Date(a).toDateString()===new Date(b).toDateString();
 const minsAgo=t=>t?(Date.now()-t)/60000:Infinity;
 function strNumber(){return S.logs.filter(g=>sameDay(g.t,Date.now())&&!g.imported).length+1}
 function calConnected(){return !!(CAL.dev&&CAL.dev.gatt&&CAL.dev.gatt.connected&&CAL.samples.length&&Date.now()-CAL.samples[CAL.samples.length-1].t<15000)}
+// Accepting the forecast for the day: the checklist line turns green, labelled as accepted, until tomorrow
+function fcAccepted(k){const f=S.fcOk; return !!(f&&f.date===new Date().toLocaleDateString('en-CA')&&f[k])}
+function fcToggle(k){const d=new Date().toLocaleDateString('en-CA'); if(!S.fcOk||S.fcOk.date!==d)S.fcOk={date:d}; S.fcOk[k]=!S.fcOk[k]; save(); render()}
 function strChecks(){
   const l=curLoad(), u=(l&&l.scopeUnit)||'moa', ck=(l&&+l.click)||0.125, td=trueDistance(), out=[];
   { const sh=curShooter(), comp=S.sess.type==='competition', coach=S.sess.type==='coached';
@@ -3895,10 +3962,10 @@ function strChecks(){
   const an=atmNow(), kOk=an&&an.src==='kestrel', kAge=minsAgo(S.kestrelT);
   const wdLive=WD.dev&&WD.dev.gatt&&WD.dev.gatt.connected&&WD.last;
   out.push(kOk?{k:'atm',st:(kAge<=45||wdLive)?'ok':'warn',label:'Atmosphere',v:`${wdLive?'Weatherdot live':'Kestrel'} ${an.Tc.toFixed(1)} °C, ${an.PhPa.toFixed(1)} hPa${kAge<=45||wdLive?'':`, ${isFinite(kAge)?`entered ${Math.round(kAge)} min ago`:'time not known'}: read it again`}`,go:'rmCardAtm'}
-    :{k:'atm',st:'bad',label:'Atmosphere',v:'still the forecast model: enter the Kestrel reading',go:'rmCardAtm'});
+    :(fcAccepted('atm')?{k:'atm',st:'ok',label:'Atmosphere',v:'forecast, accepted for today',go:'rmCardAtm'}:{k:'atm',st:'bad',label:'Atmosphere',v:'still the forecast model: enter the Kestrel reading, or accept the forecast for today',go:'rmCardAtm'}));
   if(S.src==='calypso')out.push(calConnected()?{k:'wind',st:'ok',label:'Wind',v:'Calypso live; averaged over the string',go:'rmCardWind'}:{k:'wind',st:'bad',label:'Wind',v:'Calypso chosen but not sending: connect it, or use Kestrel / mine',go:'rmCardWind'});
   else if(S.src==='manual'){const a=minsAgo(S.manualT);out.push({k:'wind',st:a<=10?'ok':'warn',label:'Wind',v:`your reading ${(+S.manual.spd||0).toFixed(1)} mph from ${Math.round(norm360((+S.manual.dir||0)-geom().az)/30)%12||12} o'clock${a<=10?'':`, set ${isFinite(a)?Math.round(a)+' min ago':'earlier'}: update it`}`,go:'rmCardWind'})}
-  else out.push({k:'wind',st:'bad',label:'Wind',v:'forecast only: measure it (Calypso, or Kestrel / mine)',go:'rmCardWind'});
+  else out.push(fcAccepted('wind')?{k:'wind',st:'ok',label:'Wind',v:'forecast, accepted for today',go:'rmCardWind'}:{k:'wind',st:'bad',label:'Wind',v:'forecast only: measure it (Calypso, or Kestrel / mine), or accept the forecast for today',go:'rmCardWind'});
   const o=S.obs[S.obs.length-1], oAge=o?minsAgo(Date.parse(o.t)):Infinity;
   out.push({k:'mir',st:oAge<=20||(S.str&&o&&Date.parse(o.t)>=Date.parse(S.str.t))?'ok':'warn',label:'Mirage and light',v:o?`${o.light||S.light}, mirage ${o.mDir||'none'}${oAge<=20?'':`, set ${Math.round(oAge)} min ago: still right?`}`:'not set yet',go:'rmMirage'});
   const p=S.lastSol, dE=parseFloat(S.dial.e);
@@ -3928,7 +3995,7 @@ function renderStr(){
   if(g&&!open){
     const w=v=>v==null?'–':(v>=0?'R ':'L ')+Math.abs(v/RAD_PER[u]).toFixed(2);
     const src=[g.calCross!=null?`Calypso ${fmtX(g.calCross)}`:null,g.modelCross!=null?`model ${fmtX(g.modelCross)}`:null].filter(Boolean).join(', ');
-    lb.innerHTML=`${dayWindLine()?`<span class="rm-note"><b>${esc(dayWindLine())}</b> Carried into the next detail.</span>`:''}<b>String ${g.n} logged ✓ ${hm(g.t)}–${hm(g.tEnd)}${g.detail&&g.detail.plotted?` · ${g.detail.score} from ${g.detail.counted} counting`:''}</b><span>Your call ${w(g.dialW)}${g.group?`; group centred ${Math.abs(g.group.wRad)<1e-9?'0':w(g.group.wRad)}, ${Math.abs(g.group.eRad)<1e-9?'level':`${Math.abs(g.group.eRad/RAD_PER[u]).toFixed(2)} ${g.group.eRad>0?'high':'low'}`}`:''}.${src?` Wind: ${src}.`:''}${g.missing&&g.missing.length?` Logged without: ${g.missing.join(', ')}.`:''}</span><span>Now: save the ShotMarker series, and photograph the Garmin summary (or import both later).</span>${g.bracket?`<div class="ps-wind">${g.bracket.html}</div>`:''}`;
+    lb.innerHTML=`<button type="button" id="strReport" style="float:right">Report</button>${dayWindLine()?`<span class="rm-note"><b>${esc(dayWindLine())}</b> Carried into the next detail.</span>`:''}<b>String ${g.n} logged ✓ ${hm(g.t)}–${hm(g.tEnd)}${g.detail&&g.detail.plotted?` · ${g.detail.score} from ${g.detail.counted} counting`:''}</b><span>Your call ${w(g.dialW)}${g.group?`; group centred ${Math.abs(g.group.wRad)<1e-9?'0':w(g.group.wRad)}, ${Math.abs(g.group.eRad)<1e-9?'level':`${Math.abs(g.group.eRad/RAD_PER[u]).toFixed(2)} ${g.group.eRad>0?'high':'low'}`}`:''}.${src?` Wind: ${src}.`:''}${g.missing&&g.missing.length?` Logged without: ${g.missing.join(', ')}.`:''}</span><span>Now: save the ShotMarker series, and photograph the Garmin summary (or import both later).</span>${g.bracket?`<div class="ps-wind">${g.bracket.html}</div>`:''}`;
     lb.hidden=false;
   }else lb.hidden=true;
 }
