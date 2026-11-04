@@ -327,7 +327,7 @@ main section.card.fv-folded > :not(h2){display:none!important}
         <div class="row">
           <label>Range<select id="rgSel"><option value="century">Century (1–128, 300–600 yd)</option><option value="stickledown">Stickledown (1–51, 800–1200 yd)</option></select></label>
           <label>Target number<input id="rgN" type="number" min="1" max="128" style="width:6em"></label>
-          <button type="button" id="rgPin">Pin it on the map</button>
+          <button type="button" id="rgPin">Pin it on the map</button><button type="button" id="rgUseT">Use the T pin</button>
           <label hidden><input type="checkbox" id="rgRev"> Numbers rise to the left</label>
         </div>
         <p class="note" id="rgMsg"></p>
@@ -1492,7 +1492,7 @@ function setMode(m){
 }
 $('#btnFP').onclick=()=>setMode('fp');$('#btnT').onclick=()=>setMode('t');
 map.on('click',e=>{
-  if(!S.mode)return;
+  if(!S.mode||S.mode==='rpin')return;     // range pinning is handled by its own listener
   if(S.mode==='fp'){S.fp=e.latlng;mFP.setLatLng(e.latlng)}else{S.tgt=e.latlng;mT.setLatLng(e.latlng)}
   setMode(S.mode); onPinsMoved(true);
 });
@@ -3379,6 +3379,11 @@ function planMapDraw(){
   for(const d of S.plan){const pt=planPoints(d); if(pt&&L.circleMarker){L.circleMarker(pt.tgt,{radius:5,color:'#ee6a3c'}).addTo(planLayer);L.circleMarker(pt.fp,{radius:5,color:'#62b2e8'}).addTo(planLayer)}}
 }
 $('#rgSel').onchange=renderPlan;
+function rangePinAt(id,n,ll){rangesInit(); const r=S.ranges[id]; r.pins=r.pins.filter(p=>p.n!==n); r.pins.push({n,lat:ll.lat,lng:ll.lng}); if(r.pins.length>2)r.pins=r.pins.slice(-2);
+  S.mode=null; S.pinFor=null; $('#mapnote').hidden=true; save(); planCompute(); renderPlan();
+  const g=rangeGeo(id); $('#rgMsg').textContent=g?`${RANGE_DEF[id].name} ready: target ${n} pinned; targets about ${g.spacing.toFixed(1)} m apart.`:`Target ${n} pinned. Pin one more target, well apart from it.`}
+$('#rgUseT').onclick=()=>{const n=parseInt($('#rgN').value,10), id=$('#rgSel').value; if(!(n>=1&&n<=RANGE_DEF[id].lanes)){$('#rgMsg').textContent=`Enter the number of the target the T pin is on (1 to ${RANGE_DEF[id].lanes}) first.`;return}
+  rangePinAt(id,n,S.tgt)};
 $('#rfAdd').onclick=()=>{const n=$('#rfName').value.trim(); if(!n){$('#plMsg').textContent='Enter the rifle make and model first.';return}
   S.rifles.push({id:'r'+Date.now(),name:n,serial:$('#rfSerial').value.trim()}); $('#rfName').value='';$('#rfSerial').value=''; save(); renderPlan()};
 $('#rfList').addEventListener('click',e=>{const b=e.target.closest('[data-rfdel]'); if(!b)return; S.rifles=S.rifles.filter(x=>x.id!==b.dataset.rfdel); save(); renderPlan()});
@@ -3386,9 +3391,7 @@ $('#rgRev').onchange=e=>{rangesInit();S.ranges[$('#rgSel').value].rev=e.target.c
 $('#rgPin').onclick=()=>{const n=parseInt($('#rgN').value,10), id=$('#rgSel').value; if(!(n>=1&&n<=RANGE_DEF[id].lanes)){$('#rgMsg').textContent=`Enter a target number from 1 to ${RANGE_DEF[id].lanes} first.`;return}
   S.mode='rpin'; S.pinFor={id,n}; const nt=$('#mapnote'); nt.hidden=false; nt.textContent=`Tap the map at ${RANGE_DEF[id].name} target ${n} (the target frame in the butts)`;
   $('#rgMsg').textContent=`Now tap target ${n} on the map.`; $('#mapbox').scrollIntoView({behavior:'smooth',block:'start'})};
-map.on('click',e=>{ if(S.mode!=='rpin'||!S.pinFor)return; rangesInit();
-  const r=S.ranges[S.pinFor.id]; r.pins=r.pins.filter(p=>p.n!==S.pinFor.n); r.pins.push({n:S.pinFor.n,lat:e.latlng.lat,lng:e.latlng.lng}); if(r.pins.length>2)r.pins=r.pins.slice(-2);
-  S.mode=null; S.pinFor=null; $('#mapnote').hidden=true; save(); planCompute(); renderPlan(); $('#cardPlan').scrollIntoView({behavior:'smooth',block:'start'})});
+map.on('click',e=>{ if(S.mode!=='rpin'||!S.pinFor)return; rangePinAt(S.pinFor.id,S.pinFor.n,e.latlng); $('#cardPlan').scrollIntoView({behavior:'smooth',block:'start'})});
 $('#plRange').onchange=renderPlan;
 $('#plAdd').onclick=()=>{
   const d={id:'d'+Date.now(),date:$('#plDate').value,time:$('#plTime').value||'09:00',range:$('#plRange').value,dist:+$('#plDist').value,target:parseInt($('#plTgt').value,10),pos:$('#plPos').value,label:$('#plLbl').value.trim(),rifleId:$('#plRifle').value||null,loadId:$('#plLoad').value||S.loadId};
