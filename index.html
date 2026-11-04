@@ -234,6 +234,9 @@ body.th-range,body.th-dusk{color-scheme:dark}
 #rm.ph-pre:not(.show-all) #rmWT:not(.opened),#rm.ph-str:not(.show-all) #rmWT{display:none}
 .rm-more{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}
 .rp-tools button{min-height:40px;font-size:15px}
+#rm.ph-str #strBack{display:none}
+.str-back summary{cursor:pointer;min-height:40px;display:flex;align-items:center;color:var(--muted)}
+.str-back input{min-height:44px;font-size:17px}
 #rmPlan label.rm-note{margin:0}
 .rm-more button{min-height:44px}
 .rm-menu{position:relative}
@@ -439,6 +442,7 @@ header .row button,header > .row > button{min-height:44px;font-size:16px;padding
         <div><span>Energy</span><b id="sEn">–</b></div>
         <div><span>Stability (Sg)</span><b id="sSg">–</b></div>
         <div><span>Muzzle velocity used</span><b id="sMv">–</b></div>
+        <div><span>Highest point of flight</span><b id="sOrd">–</b></div>
       </div>
       <p class="note" id="sCond"></p>
       <p class="note" id="sTrue" hidden></p>
@@ -1091,6 +1095,10 @@ header .row button,header > .row > button{min-height:44px;font-size:16px;padding
         </div>
         <p class="rm-note" id="strCal"></p>
       </div>
+      <details id="strBack" class="str-back"><summary>Entering a detail shot earlier?</summary>
+        <div class="rm-step" style="grid-template-columns:1fr 1fr"><label class="rm-lab">Started<input type="time" id="sbT0"></label><label class="rm-lab">Finished<input type="time" id="sbT1"></label></div>
+        <p class="rm-note">For entering a detail from your plot sheet afterwards. The string is dated to these times: it takes the forecast for that hour and, if this device was connected to the Calypso then, the Calypso average for exactly those minutes.</p>
+      </details>
       <button type="button" class="primary rm-big" id="strBtn">Start string</button>
       <p class="str-warn" id="strWarn" hidden></p>
       <div class="rm-step" style="grid-template-columns:1fr 1fr" id="strOpenActs" hidden>
@@ -1846,6 +1854,15 @@ function computeSolution(trueYd,opt){
   return{rows:out,atm,L,Sg,cross:r.cross,head:r.head,wLabel:w?w.label:null,angle,haveWx:!!c,atmLabel:an?an.label:'Standard',l,sessionMv:sMv,sessionBc:sBc,dayMv:dMv};
 }
 const fmtAng=(rad,u,dp)=>(rad/RAD_PER[u]).toFixed(dp??(u==='mil'?2:3));
+/* The highest point of the trajectory with the scope dialled for this distance: how far downrange, and how high above the
+   line of sight. Height at range x is x × (angle dialled for the target − angle dialled for x). */
+function maxOrdinate(trueYd){
+  const n=40, steps=Array.from({length:n},(_,i)=>trueYd*(i+1)/(n+1)), sol=computeSolution(trueYd,{rowsYd:[...steps,trueYd],fast:true});
+  if(!sol)return null; const rows=sol.rows, tD=rows[rows.length-1]&&rows[rows.length-1].elevRad; if(tD==null)return null;
+  let best=null; rows.slice(0,-1).forEach((r,i)=>{if(!r)return; const xm=steps[i]*M_PER_YD, h=xm*(tD-r.elevRad); if(!best||h>best.h)best={h,yd:steps[i]}});
+  if(!best)return null;
+  return{inch:best.h/INCH,yd:best.yd,ground:null};
+}
 function renderSolution(trueYd){
   const sol=computeSolution(trueYd), l=curLoad();
   { const ll=$('#loadCardLbl'); if(ll)ll.textContent=l.name||''; }
@@ -1876,6 +1893,7 @@ function renderSolution(trueYd){
   }
   $('#sSg').textContent=sol.Sg!=null?sol.Sg.toFixed(2):'–';
   $('#sMv').textContent=`${sol.L.mvFps.toFixed(0)} fps${sol.sessionMv!=null?' (trued)':sol.dayMv!=null?' (today)':''}`;
+  { const o=maxOrdinate(trueYd); $('#sOrd').textContent=o?`${o.inch.toFixed(0)} in at ${o.yd.toFixed(0)} yd`:'–'; $('#sOrd').title=o?`${(o.inch*2.54).toFixed(0)} cm above the line of sight, ${(o.yd/trueYd*100).toFixed(0)}% of the way to the target${o.ground!=null?`; about ${o.ground.toFixed(1)} m above the ground if it slopes evenly between firing point and target`:''}`:''; }
   $('#sTrue').hidden=sol.sessionMv==null&&sol.sessionBc==null;
   { const parts=[]; if(sol.sessionMv!=null)parts.push(`muzzle velocity ${Math.round(sol.sessionMv)} fps (load ${l.mvFps} fps, both at ${l.mvTempC} °C)`); if(sol.sessionBc!=null)parts.push(`BC ${sol.sessionBc.toFixed(3)} (load ${(+l.bc).toFixed(3)})`);
     if(parts.length)$('#sTrue').textContent=`Session truing is on: solutions use a trued ${parts.join(' and ')}. Turn it off or save it in Range mode, Correct from impact.`; }
@@ -2342,6 +2360,11 @@ function totalScore(list){
   return f.system==='uk'?`${pts}.${b}`:`${pts}-${b}X`;
 }
 function svgPoint(e){const svg=$('#face'),pt=svg.createSVGPoint();pt.x=e.clientX;pt.y=e.clientY;return pt.matrixTransform(svg.getScreenCTM().inverse())}
+function shotTimeNow(){
+  const st=S.str; if(!st||!st.back)return new Date().toISOString();
+  const t0=Date.parse(st.back.t0), t1=Date.parse(st.back.t1), done=S.shots.filter(x=>x.str===st.t).length, total=Math.max(2,(st.sight??2)-(st.conv||0)+(st.cnt??15));
+  return new Date(Math.min(t1,t0+done*(t1-t0)/(total-1))).toISOString();
+}
 function plotAt(e){
   if(viewedLog()){$('#clearConfirm').textContent='You are looking at a logged string. Choose All shots under Show to plot new shots.';$('#clearConfirm').hidden=false;setTimeout(()=>{$('#clearConfirm').hidden=true},5000);return}
   const p=svgPoint(e), td=trueDistance(), ipu=inPerUnit(S.unit,td.yd);
@@ -2349,7 +2372,7 @@ function plotAt(e){
   const r=w&&w.dir!=null?resolve(w,geom().az):null;
   const l=curLoad(), u=(l&&l.scopeUnit)||'moa', dE=parseFloat(S.dial.e), sol=S.lastSol, ca=typeof calAvg==='function'&&S.str&&S.src==='calypso'?calAvg():null;
   const nsx=S.str?nextShot():null;   // what the app would have advised for this shot, kept to judge the call afterwards
-  S.shots.push({t:new Date().toISOString(),xIn,yIn,yd:td.yd,nomYd:toYd(S.nominal,S.distUnit),distSrc:td.src,
+  S.shots.push({t:shotTimeNow(),xIn,yIn,yd:td.yd,nomYd:toYd(S.nominal,S.distUnit),distSrc:td.src,
     cross:r?r.cross:null,head:r?r.head:null,windSrc:w?w.label:null,light:S.light,src:'tap',
     shooter:(curShooter()||{}).name||'',...(S.str?{str:S.str.t,dialE:isFinite(dE)?dE*RAD_PER[u]:null,dialW:dialSigned()*RAD_PER[u],predE:sol?sol.elevRad:null,predW:sol?sol.windRad:null,calX:ca?ca.spd*Math.sin(ca.rel*D2R):null,nsE:nsx?nsx.e:null,nsW:nsx?nsx.w:null,...(S.aim&&(S.aim.x||S.aim.y)?{aimX:S.aim.x*RAD_PER.moa*td.yd*36,aimY:S.aim.y*RAD_PER.moa*td.yd*36}:{})}:{})});
   save(); render();
@@ -2715,22 +2738,29 @@ const stepView=d=>{const opts=[...$('#viewStr').options].map(o=>o.value), i=opts
 $('#viewPrev').onclick=()=>stepView(-1); $('#viewNext').onclick=()=>stepView(1);
 $('#impImport').onclick=()=>{
   if(!IMP)return;
-  const td=trueDistance(), l=curLoad(), u=(l&&l.scopeUnit)||'moa'; let n=0, strings=0;
+  const td=trueDistance(), l=curLoad(), u=(l&&l.scopeUnit)||'moa'; let n=0, strings=0, replaced=0; const mism=[];
   for(const r of IMP){
     if(!r.on)continue; strings++;
     if($('#impReplace').checked)S.shots=S.shots.filter(x=>x.smId!==r.s.id);
+    const added=[];
     const smYd=r.s.dist!=null?(r.s.dunit==='m'?r.s.dist/M_PER_YD:+r.s.dist):null, useApp=td.src!=='Nominal'||smYd==null, yd=useApp?td.yd:smYd;
     const vOf=new Map(r.m?r.m.pairs.map(([s,q])=>[s,q.v]):[]);
     for(const s of r.s.shots){
-      S.shots.push({t:new Date(s.t).toISOString(),xIn:s.xMm/25.4,yIn:s.yMm/25.4,yd,nomYd:smYd??toYd(S.nominal,S.distUnit),distSrc:useApp?td.src:'ShotMarker setting',
+      S.shots.push({t0ms:+s.t,t:new Date(s.t).toISOString(),xIn:s.xMm/25.4,yIn:s.yMm/25.4,yd,nomYd:smYd??toYd(S.nominal,S.distUnit),distSrc:useApp?td.src:'ShotMarker setting',
         cross:null,head:null,windSrc:null,light:'',src:'ShotMarker',session:r.s.name,smId:r.s.id,smScore:s.score,vFps:vOf.get(s)??null,vTgt:s.vTgt??null});
-      snapToScore(S.shots[S.shots.length-1]);
+      snapToScore(S.shots[S.shots.length-1]); added.push(S.shots[S.shots.length-1]);
       n++;
     }
     // One log per string, just before its first shot: the dial, the Garmin summary, and the load.
     const first=r.s.shots[0].t, e=parseFloat(r.dE), w=parseFloat(r.dW);
     const chrono=r.m?{avg:r.m.g.avg,sd:r.m.g.sd,es:r.m.g.es,n:r.m.g.shots.length,src:r.m.g.name}:null;
-    const ex=S.logs.find(g=>g.smId===r.s.id)||S.logs.find(g=>{const lt=Date.parse(g.t);return lt<=first+60000&&first-lt<45*60000&&!g.smId&&!S.logs.some(o=>o!==g&&Date.parse(o.t)>lt&&Date.parse(o.t)<=first)});
+    // the string you logged for it: same ShotMarker id, else the guided string nearest in time (device clocks can differ by minutes)
+    const ex=S.logs.find(g=>g.smId===r.s.id)||S.logs.filter(g=>!g.smId&&Math.abs(Date.parse(g.t)-first)<45*60000).sort((a,b)=>(b.guided?1:0)-(a.guided?1:0)||Math.abs(Date.parse(a.t)-first)-Math.abs(Date.parse(b.t)-first))[0];
+    if(ex){const taps=S.shots.filter(x=>x.src==='tap'&&x.str===ex.t).sort((a,b)=>Date.parse(a.t)-Date.parse(b.t));
+      if(taps.length){const dt=Date.parse(taps[0].t)-added[0].t0ms;
+        added.forEach((a,i)=>{a.smT=a.t; a.t=new Date(Date.parse(a.t)+dt).toISOString(); a.str=ex.t; const tp=taps[i];
+          if(tp)['dialE','dialW','called','aimX','aimY','nsE','nsW','predE','predW','calX','shooter'].forEach(k=>{if(tp[k]!==undefined)a[k]=tp[k]})});
+        S.shots=S.shots.filter(x=>!taps.includes(x)); replaced+=Math.min(taps.length,added.length); if(taps.length!==added.length)mism.push(`${r.s.name}: ${taps.length} tapped, ${added.length} from ShotMarker`)}}
     const rec={dialE:isFinite(e)?e*RAD_PER[u]:null,dialW:isFinite(w)?(r.dWd==='L'?-1:1)*w*RAD_PER[u]:null};
     if(ex){Object.assign(ex,{smId:r.s.id},chrono?{chrono}:{},ex.dialE==null?{dialE:rec.dialE}:{},ex.dialW==null?{dialW:rec.dialW}:{})}
     else S.logs.push({t:new Date(first-60000).toISOString(),yd,distSrc:useApp?td.src:'ShotMarker setting',Tc:null,PhPa:null,RH:null,atmSrc:'none',
@@ -2740,7 +2770,8 @@ $('#impImport').onclick=()=>{
   S.logs.sort((a,b)=>Date.parse(a.t)-Date.parse(b.t));
   S.shots.sort((a,b)=>Date.parse(a.t)-Date.parse(b.t));
   save(); render();
-  $('#impMsg').textContent=`Imported ${n} shots from ${strings} string${strings!==1?'s':''}, each with a string log. See the validation table below.`;
+  S.shots.forEach(x=>{delete x.t0ms});
+  $('#impMsg').textContent=`Imported ${n} shots from ${strings} string${strings!==1?'s':''}, each with a string log.${replaced?` ShotMarker's positions replaced ${replaced} shots you had tapped, keeping your dial, calls and aim.`:''}${mism.length?` Check: ${mism.join('; ')}.`:''} See the validation table below.`;
 };
 $('#refreshNow').onclick=()=>{refreshAll();scheduleRefresh()};
 document.querySelectorAll('#cmpMode button').forEach(b=>b.onclick=()=>{S.cmpMode=b.dataset.mode;save();renderCmp()});
@@ -3665,9 +3696,13 @@ function calAvg(){
   let u=0,v=0,g=0; for(const s of w){u+=s.spd*Math.sin(s.rel*D2R);v+=s.spd*Math.cos(s.rel*D2R);g=Math.max(g,s.spd)}
   u/=w.length;v/=w.length; return{spd:Math.hypot(u,v),rel:norm360(Math.atan2(u,v)*R2D),gust:g,n:w.length};
 }
+const CALLOG=(()=>{try{return JSON.parse(localStorage.getItem('frd_calLog')||'{}')}catch(e){return{}}})(); let calLogTimer=null;
+function calLogAdd(spd,rel){const m=Math.floor(Date.now()/60000)*60000, b=CALLOG[m]||(CALLOG[m]={n:0,c:0,h:0,s:0}); b.n++; b.c+=spd*Math.sin(rel*D2R); b.h+=spd*Math.cos(rel*D2R); b.s+=spd;
+  if(!calLogTimer)calLogTimer=setTimeout(()=>{calLogTimer=null; const cut=Date.now()-14*3600e3; for(const k of Object.keys(CALLOG))if(+k<cut)delete CALLOG[k]; try{localStorage.setItem('frd_calLog',JSON.stringify(CALLOG))}catch(e){}},15000)}
+function calBetween(t0,t1){const o={n:0,c:0,h:0,s:0}; for(const [k,b] of Object.entries(CALLOG)){const m=+k; if(m>=t0-30000&&m<=t1){o.n+=b.n;o.c+=b.c;o.h+=b.h;o.s+=b.s}} return o.n?o:null}
 function calPush(spd,rel){                 // spd in mph, rel = wind-from angle relative to the orientation mark
-  CAL.live={spd,rel}; CAL.samples.push({t:Date.now(),spd,rel});
-  if(S.str){const c=S.str.cal||(S.str.cal={n:0,c:0,h:0,s:0}); c.n++; c.c+=spd*Math.sin(rel*D2R); c.h+=spd*Math.cos(rel*D2R); c.s+=spd}  // whole-string Calypso average
+  CAL.live={spd,rel}; CAL.samples.push({t:Date.now(),spd,rel}); calLogAdd(spd,rel);
+  if(S.str&&!S.str.back){const c=S.str.cal||(S.str.cal={n:0,c:0,h:0,s:0}); c.n++; c.c+=spd*Math.sin(rel*D2R); c.h+=spd*Math.cos(rel*D2R); c.s+=spd}  // whole-string Calypso average
   const cut=Date.now()-60000; while(CAL.samples.length&&CAL.samples[0].t<cut)CAL.samples.shift();
   if(!calRenderTimer)calRenderTimer=setTimeout(()=>{calRenderTimer=null;render()},1000);
 }
@@ -4148,7 +4183,13 @@ $('#rmStr').addEventListener('click',e=>{
   if(b.dataset.gw&&S.str){S.str.gW=(S.str.gW||0)+ +b.dataset.gw; save(); render(); return}
 });
 $('#strBtn').onclick=()=>{
-  if(!S.str){ S.str={t:new Date().toISOString(),n:strNumber(),gE:0,gW:0,cal:{n:0,c:0,h:0,s:0},sight:S.ps.sight??2,cnt:S.ps.cnt??15,conv:0}; strArmed=false; VIEW.z=1;VIEW.cx=0;VIEW.cy=0; save(); render(); return }
+  if(!S.str){
+    let t=new Date().toISOString(), back=null;
+    if($('#strBack').open){const a=$('#sbT0').value, z=$('#sbT1').value, d=new Date().toLocaleDateString('en-CA');
+      if(!a||!z){$('#strWarn').hidden=false;$('#strWarn').textContent='Enter the time the detail started and finished, or close "Entering a detail shot earlier?".';return}
+      const t0=new Date(`${d}T${a}`), t1=new Date(`${d}T${z}`); if(!(t1>t0)||t1>new Date(Date.now()+60000)){$('#strWarn').hidden=false;$('#strWarn').textContent='The finish must be after the start, and not in the future.';return}
+      t=t0.toISOString(); back={t0:t0.toISOString(),t1:t1.toISOString()}; $('#strWarn').hidden=true}
+    S.str={t,back,n:strNumber(),gE:0,gW:0,cal:{n:0,c:0,h:0,s:0},sight:S.ps.sight??2,cnt:S.ps.cnt??15,conv:0}; strArmed=false; VIEW.z=1;VIEW.cx=0;VIEW.cy=0; save(); render(); return }
   const miss=strChecks().filter(c=>c.st==='bad');
   if(miss.length&&!strArmed){
     strArmed=true; const w=$('#strWarn'); w.hidden=false;
@@ -4161,14 +4202,18 @@ $('#strCancel').onclick=()=>{S.str=null;save();render()};
 function strEnd(missing){
   const st=S.str, l=curLoad(), u=(l&&l.scopeUnit)||'moa', ck=(l&&+l.click)||0.125, td=trueDistance(), brg=geom().az, p=S.lastSol;
   const an=atmNow(), w=windNow(), r=w&&w.dir!=null?resolve(w,brg):null;
-  const cross=src=>{const x=windNow(src,true);return x&&x.dir!=null?resolve(x,brg).cross:null};
+  const back=st.back, modelAt=tIso=>{const h=S.wx&&S.wx.hourly; if(!h)return null; const d=new Date(tIso), k=`${d.toLocaleDateString('en-CA')}T${String(d.getHours()).padStart(2,'0')}:00`, i=h.time.indexOf(k);
+    return i<0?null:{spd:h.wind_speed_10m[i]*(S.hAdj?H_FACTOR:1),dir:h.wind_direction_10m[i]}};
+  const cross=src=>{if(back&&src==='model'){const m=modelAt(new Date((Date.parse(back.t0)+Date.parse(back.t1))/2).toISOString()); if(m)return resolve(m,brg).cross}
+    const x=windNow(src,true);return x&&x.dir!=null?resolve(x,brg).cross:null};
+  if(back){const cb=calBetween(Date.parse(back.t0),Date.parse(back.t1)); st.cal=cb||{n:0,c:0,h:0,s:0}}
   const sol=computeSolution(td.yd,{rowsYd:[td.yd]}), here=sol&&sol.rows[0];
   const c=st.cal&&st.cal.n>=5?st.cal:null, q=psShots(st), tot=psTotals(st), wb=windBracket(st);
   const dE=parseFloat(S.dial.e), ws=dialSigned();
-  S.logs.push({t:st.t,tEnd:new Date().toISOString(),guided:true,n:st.n,rk:rangeKey(),meta:sessMeta(),yd:td.yd,distSrc:td.src,
+  S.logs.push({t:st.t,tEnd:back?back.t1:new Date().toISOString(),enteredLater:!!back,guided:true,n:st.n,rk:rangeKey(),meta:sessMeta(),yd:td.yd,distSrc:td.src,
     Tc:an?an.Tc:null,PhPa:an?an.PhPa:null,RH:an?an.RH:null,atmSrc:an?an.src:'none',
     windSrc:w?w.label:null,spd:w?w.spd:null,dir:w?w.dir:null,cross:r?r.cross:null,head:r?r.head:null,
-    calCross:c?c.c/c.n:(S.src==='calypso'&&r?r.cross:null),calN:c?c.n:0,modelCross:cross('model'),consCross:cross('consensus'),
+    calCross:c?c.c/c.n:(!back&&S.src==='calypso'&&r?r.cross:null),calN:c?c.n:0,modelCross:cross('model'),consCross:cross('consensus'),
     manualCross:S.src==='manual'?cross('manual'):null,
     predE:p?p.elevRad:null,predW:p?p.windRad:null,dialE:isFinite(dE)?dE*RAD_PER[u]:null,dialW:ws*RAD_PER[u],
     detail:{sighters:st.sight??2,count:st.cnt??15,conv:st.conv||0,plotted:q.length,score:tot.txt,counted:tot.n},
