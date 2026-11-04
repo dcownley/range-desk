@@ -224,6 +224,21 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
 .rm-card.folded > :not(h3):not(.fold-sum){display:none!important}
 .rm-body{align-items:start}
 .rm-cols{grid-column:1/-1;columns:3 320px;column-gap:12px}
+/* Show only what the moment needs: before a string, the checklist (Set / Change opens one card); during a string, the shoot */
+#rm.ph-pre:not(.show-all) .rm-cols > .rm-card:not(.opened){display:none}
+#rm.ph-str #rmPlan,#rm.ph-str:not(.show-all) .rm-cols,#rm.ph-str #rmSess,#rm.ph-str #rmSolCard,#rm.ph-str #strChk{display:none}
+#rm:not(.tbl-all) #psTbl tr:nth-child(n+5){display:none}
+#rm.ph-pre:not(.show-all) #rmWT:not(.opened),#rm.ph-str:not(.show-all) #rmWT{display:none}
+.rm-more{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}
+.rm-more button{min-height:44px}
+.rm-menu{position:relative}
+.rm-menu-pop{position:absolute;right:0;top:calc(100% + 6px);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px;display:flex;flex-direction:column;gap:6px;z-index:5;min-width:160px}
+.rm-menu-pop button{min-height:44px;text-align:left}
+/* Full view: every card folds to its title */
+main section.card > h2{cursor:pointer}
+main section.card > h2::after{content:'▾';float:right;color:var(--muted);font-size:13px;margin-left:8px}
+main section.card.fv-folded > h2::after{content:'▸'}
+main section.card.fv-folded > :not(h2){display:none!important}
 .rm-cols > .rm-card{break-inside:avoid;margin-bottom:12px;width:100%}
 .fold-sum{display:none;margin:0;font-size:15px;color:var(--muted)}
 .rm-card.folded > .fold-sum{display:block}
@@ -316,6 +331,11 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
           <label><input type="checkbox" id="rgRev"> Numbers rise to the left</label>
         </div>
         <p class="note" id="rgMsg"></p>
+        <p class="note" id="rgTrued"></p>
+      </details>
+      <details id="rfSetup"><summary><b>Rifles</b> <span id="rfStat" class="note"></span></summary>
+        <div class="row"><label>Make and model<input id="rfName" placeholder="e.g. KW Precision 7/6.5 PRC"></label><label>Serial number<input id="rfSerial" style="width:9em"></label><button type="button" id="rfAdd">Add rifle</button></div>
+        <div id="rfList" class="note"></div>
       </details>
       <div class="row" style="margin-top:8px">
         <label>Date<input id="plDate" type="date"></label>
@@ -325,6 +345,8 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
         <label>Target<input id="plTgt" type="number" min="1" style="width:5em"></label>
         <label>Position<select id="plPos"><option value="">–</option><option value="L">Left</option><option value="R">Right</option></select></label>
         <label>Match or detail<input id="plLbl" placeholder="e.g. Match 2, 2 + 15" style="width:12em"></label>
+        <label>Rifle<select id="plRifle"></select></label>
+        <label>Load<select id="plLoad"></select></label>
         <button type="button" id="plAdd" class="primary">Add detail</button>
       </div>
       <div class="scroll"><table id="plTbl"></table></div>
@@ -810,6 +832,9 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
         <li><b>Elevation</b> centres on your recent shots, the latest weighted most. It offers a change only when it comes to a whole click, so one wide shot isn't chased.</li>
         <li><b>Windage with the Calypso live</b>: the wind now × this range's trued factor, plus spin drift, plus the string's own recent trend. Once the wind has varied during the string, the factor is refined on the string itself.</li>
         <li><b>Without a live wind</b>, it follows where your recent shots needed the wind; watch the flags for a change.</li>
+        <li><b>Called a poor shot?</b> Tap <b>Last shot: called poor</b>. It still scores, but it is left out of Next shot, the wind bracket, wind truing and Correct from impact, and shows ✗ in the table.</li>
+        <li><b>Aiming off?</b> Open <b>Point of aim</b> and step it in ½ MOA before the shot; an AIM mark shows on the face. Shots are judged from where you aimed until you choose Centre.</li>
+        <li>Below the reason, Next shot breaks the elevation into its parts: the solver (load, today's air, Coriolis), any truing (today's velocity or BC) and the string's trend.</li>
         <li>A ShotMarker import afterwards replaces the tapped positions with ShotMarker's, and those strings then feed the trued factor for next time.</li>
       </ul>
     </section>
@@ -817,6 +842,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
       <h2>Match plan</h2>
       <p>At the top of the full view. Set up each range once: under Ranges, choose the range, type a target number, tap <b>Pin it on the map</b> and tap that target's frame on the satellite map; do it for two targets well apart. Century already knows Saturday's target 49. Century's numbers rise to the right as you look downrange (from the range regulations); if a range runs the other way, tick <b>Numbers rise to the left</b>.</p>
       <p>Then add each detail from the squadding: date, time, range, distance, target and position. Range Desk places your target and firing point, takes the forecast for that hour, and shows the opening elevation and windage and the wind bracket (lull to gust), using your trued model factor where you have one. <b>Use</b> loads a detail (distance, target, session and opening dial); range the frame on the day as usual. <b>Print plot sheets</b> gives one sheet per detail with the forecast and opening dial filled in.</p>
+      <p>Each detail also records the <b>rifle</b> (add yours under Rifles: make and model, serial number) and the <b>load</b>; its forecast and opening dial use that load. The plan shows where the <b>sun</b> will be relative to your line of fire at that time. When you range the frame on a planned detail, the distance is <b>saved</b> when the string ends; later plans use it for that target, and the average for other targets at the same firing point. On the day, <b>True the forecast on live wind</b> (Range mode, Next detail) compares the Calypso or your Kestrel reading with the forecast for this hour and carries the difference into the coming details, fading out over 4 hours; the factor learned from your target plots for that source is then applied. In Range mode, <b>Check my position</b> uses the phone's GPS to confirm the range, distance and target you're standing at.</p>
     </section>
     <section id="h-rec">
       <h2>Records</h2>
@@ -941,15 +967,24 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
     <b>Range mode</b>
     <span class="rm-sub" id="rmClock"></span>
     <span class="offchip" id="offChip2" hidden>Offline</span>
-    <span class="rm-theme" id="rmTheme" role="group" aria-label="Screen look"><button type="button" data-v="range">Range</button><button type="button" data-v="sun">Sun</button><button type="button" data-v="dusk">Dusk</button></span>
-    <button type="button" id="rmAcc" title="Accent colour"><span class="acc-dot"></span><span id="rmAccLbl">Amber</span></button>
+    <button type="button" id="rmLook" title="Change the screen look">Look: Range</button>
+    <span class="rm-theme" id="rmTheme" role="group" aria-label="Screen look" hidden><button type="button" data-v="range">Range</button><button type="button" data-v="sun">Sun</button><button type="button" data-v="dusk">Dusk</button></span>
+    <button type="button" id="rmAcc" title="Accent colour" hidden><span class="acc-dot"></span><span id="rmAccLbl">Amber</span></button>
     <button type="button" id="rmSun" aria-pressed="false" hidden>Sun mode</button>
-    <button type="button" id="rmRec">Records</button>
-    <button type="button" id="rmHelp">Help</button>
+    <span class="rm-menu"><button type="button" id="rmMenu" aria-expanded="false">Menu ▾</button>
+      <span class="rm-menu-pop" id="rmMenuPop" hidden><button type="button" id="rmRec">Records</button><button type="button" id="rmHelp">Help</button></span></span>
     <button type="button" id="rmExit">Full view</button>
   </div>
   <div class="rm-body">
-    <section class="rm-card rm-sol">
+    <section class="rm-card rm-sol" id="rmPlan" hidden>
+      <div class="rm-lab"><span id="rpTitle">Next detail</span></div>
+      <div id="rpWhat" style="font:700 26px/1.15 var(--display)"></div>
+      <p class="rm-note" id="rpWhy"></p>
+      <div class="rm-step" style="grid-template-columns:2fr 1fr"><button type="button" id="rpLoad" class="primary">Load this detail</button><select id="rpPick" aria-label="Choose another detail"></select></div>
+      <div class="rm-step" style="grid-template-columns:1fr 1fr"><button type="button" id="rpLive">True the forecast on live wind</button><button type="button" id="rpGps">Check my position (GPS)</button></div>
+      <p class="rm-note" id="rpGpsMsg"></p>
+    </section>
+    <section class="rm-card rm-sol" id="rmSolCard">
       <div class="rm-solgrid">
         <div><span>Elevation</span><b id="rmElev">–</b><small id="rmElevC"></small></div>
         <div><span>Windage</span><b id="rmWind">–</b><small id="rmWindC"></small></div>
@@ -1009,7 +1044,11 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
               <div class="rm-step"><button type="button" data-pw="-1">◄ L <span class="ckLbl">⅛</span></button><output id="psW">0</output><button type="button" data-pw="1">R <span class="ckLbl">⅛</span> ►</button></div>
               <p class="rm-note" id="psSol"></p>
               <p class="rm-note">Set the scope as it was, then tap where the shot landed. Each shot keeps the dial it was fired on.</p>
-              <div class="rm-step" style="grid-template-columns:1fr 1fr"><button type="button" id="psUndo">Undo last shot</button><button type="button" id="psFit">Zoom to bull</button></div>
+              <div class="rm-step" style="grid-template-columns:1fr 1fr"><button type="button" id="psUndo">Undo last shot</button><button type="button" id="psCalled" aria-pressed="false">Last shot: called poor</button></div>
+              <details id="psAimBox"><summary class="rm-lab" style="cursor:pointer"><span>Point of aim: <b id="psAimLbl">centre</b></span></summary>
+                <div class="rm-step" style="grid-template-columns:repeat(5,1fr)"><button type="button" data-aim="-1,0">◄ ½</button><button type="button" data-aim="0,1">▲ ½</button><button type="button" data-aim="0,0">Centre</button><button type="button" data-aim="0,-1">▼ ½</button><button type="button" data-aim="1,0">½ ►</button></div>
+                <p class="rm-note">Set this before the shot when you aim off the centre; it stays until you choose Centre. Shots are then judged from where you aimed.</p>
+              </details>
               <div class="ps-score" id="psScore"></div>
             </div>
           </div>
@@ -1132,15 +1171,15 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
       <h3>Dial and log</h3>
       <label class="rm-lab" for="rmDE"><span>Elevation dialled (<span class="sUnit">MOA</span>)</span></label>
       <div class="rm-step">
-        <button type="button" data-de="-1">−1 click</button>
+        <button type="button" data-de="-1">▼ <span class="ckLbl">⅛</span></button>
         <input id="rmDE" inputmode="decimal">
-        <button type="button" data-de="1">+1 click</button>
+        <button type="button" data-de="1">▲ <span class="ckLbl">⅛</span></button>
       </div>
       <div class="rm-lab"><span>Windage dialled (<span class="sUnit">MOA</span>)</span></div>
       <div class="rm-step">
-        <button type="button" data-dw="-1">◄ L 1 click</button>
+        <button type="button" data-dw="-1">◄ L <span class="ckLbl">⅛</span></button>
         <output id="rmDW">0</output>
-        <button type="button" data-dw="1">R 1 click ►</button>
+        <button type="button" data-dw="1">R <span class="ckLbl">⅛</span> ►</button>
       </div>
       <button type="button" id="rmCopy" class="rm-big">Copy solution to the dial</button>
       <button type="button" class="rm-big" id="rmLog">Quick log, without the checklist</button>
@@ -1173,9 +1212,9 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
       <p class="rm-note" id="ciKindMsg"></p>
       <div class="rm-lab"><span>The group needed, compared with what was dialled</span></div>
       <div class="rm-step">
-        <button type="button" data-ci="-1">Down 1 click</button>
+        <button type="button" data-ci="-1">Down <span class="ckLbl">⅛</span></button>
         <output id="ciClicks">0</output>
-        <button type="button" data-ci="1">Up 1 click</button>
+        <button type="button" data-ci="1">Up <span class="ckLbl">⅛</span></button>
       </div>
       <div class="rm-step" style="grid-template-columns:1fr 1fr">
         <button type="button" id="ciAdd" class="primary">Add correction</button>
@@ -1406,14 +1445,14 @@ const S={
   light:store.get('light','Full sun'),
   mirage:store.get('mirage',{dir:'none',str:'',focus:'mid'}), obs:store.get('obs',[]),
   stn:store.get('stn','auto'), metars:[],
-  str:store.get('str',null), viewLog:store.get('viewLog','all'), sess:store.get('sess',{type:'practice',event:'',match:'',coach:'',shooterId:null}), shooters:store.get('shooters',[]), dayMv:store.get('dayMv',null), velLog:store.get('velLog',[]), folded:store.get('folded',null), ps:store.get('ps',{sight:2,cnt:15}), ciKind:store.get('ciKind','auto'), wdotScale:store.get('wdotScale','ms100'), kestrelT:store.get('kestrelT',null), manualT:store.get('manualT',null), hc:store.get('hc',false), ranges:store.get('ranges',null), plan:store.get('plan',[]), rmTheme:store.get('rmTheme',null), rmAccent:store.get('rmAccent','amber'), windTrue:store.get('windTrue',{}),
+  str:store.get('str',null), viewLog:store.get('viewLog','all'), sess:store.get('sess',{type:'practice',event:'',match:'',coach:'',shooterId:null}), shooters:store.get('shooters',[]), dayMv:store.get('dayMv',null), velLog:store.get('velLog',[]), folded:store.get('folded',null), ps:store.get('ps',{sight:2,cnt:15}), ciKind:store.get('ciKind','auto'), wdotScale:store.get('wdotScale','ms100'), kestrelT:store.get('kestrelT',null), manualT:store.get('manualT',null), hc:store.get('hc',false), aim:store.get('aim',{x:0,y:0}), planLive:store.get('planLive',null), rifles:store.get('rifles',[]), planLoaded:store.get('planLoaded',null), ranges:store.get('ranges',null), plan:store.get('plan',[]), rmTheme:store.get('rmTheme',null), rmAccent:store.get('rmAccent','amber'), windTrue:store.get('windTrue',{}),
   mode:null, wx:null, metar:null, elev:null
 };
 let sigK=JSON.stringify(S.kestrel), sigM=JSON.stringify(S.manual);
 const save=()=>{
   const k=JSON.stringify(S.kestrel), m=JSON.stringify(S.manual);          // time-stamp meter readings when they change
   if(k!==sigK){sigK=k;S.kestrelT=Date.now()} if(m!==sigM){sigM=m;S.manualT=Date.now()}
-  for(const k of ['viewLog','sess','shooters','dayMv','velLog','folded','ps','ciKind','wdotScale','str','kestrelT','manualT','hc','ranges','plan','rmTheme','rmAccent','windTrue','fp','tgt','example','distUnit','nominal','lrf','unit','click','faces','faceId','src','model','hAdj','manual','cal','shots','light','stn','sys','relay','ticked','cmpMode','windyProd','loads','loadId','optSpin','optAJ','optCor','atmSrc','kestrel','logs','dial','rmOpen','appKey','barrel','settleK','coldMin','history','truing','corr','mirage','obs','whiteV'])store.set(k,S[k])};
+  for(const k of ['viewLog','sess','shooters','dayMv','velLog','folded','ps','ciKind','wdotScale','str','kestrelT','manualT','hc','aim','planLive','rifles','planLoaded','ranges','plan','rmTheme','rmAccent','windTrue','fp','tgt','example','distUnit','nominal','lrf','unit','click','faces','faceId','src','model','hAdj','manual','cal','shots','light','stn','sys','relay','ticked','cmpMode','windyProd','loads','loadId','optSpin','optAJ','optCor','atmSrc','kestrel','logs','dial','rmOpen','appKey','barrel','settleK','coldMin','history','truing','corr','mirage','obs','whiteV'])store.set(k,S[k])};
 
 /* ---------- Distance resolution: rangefinder > map pins > nominal ---------- */
 function geom(){ return vincenty(S.fp.lat,S.fp.lng,S.tgt.lat,S.tgt.lng); }
@@ -1934,6 +1973,14 @@ function fixSvgVars(root){
 try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>render())}catch(e){}
 /* ---------- Rendering ---------- */
 function render(){
+  { const rm=$('#rm'); if(rm){const was=rm.classList.contains('ph-str'), now=!!S.str; rm.classList.toggle('ph-str',now); rm.classList.toggle('ph-pre',!now);
+      if(was&&!now&&S.planLoaded){const d=S.plan.find(x=>x.id===S.planLoaded); if(d){
+        const v=parseFloat(S.lrf); if(isFinite(v)&&Math.abs(toYd(v,S.distUnit)-d.dist)<d.dist*0.05){rangesInit(); const r=S.ranges[d.range]; r.trued=r.trued||{}; r.trued[`${d.dist}|${d.target}`]=+toYd(v,S.distUnit).toFixed(1)}
+        d.done=true; S.planLoaded=null; save()}}
+      if(now!==was){rm.classList.remove('show-all'); document.querySelectorAll('#rm .opened').forEach(e=>e.classList.remove('opened'))}
+      const sa=$('#rmShowAll'); if(sa)sa.textContent=rm.classList.contains('show-all')?'Hide the set-up cards':(now?'More: mirage, wind, dial, barrel…':'All set-up cards');
+      const ta=$('#rmTblAll'); if(ta){ta.hidden=!now; ta.textContent=rm.classList.contains('tbl-all')?'Last 3 shots only':'All shots in the table'}}}
+  {const l=curLoad(), ck=(l&&+l.click)||0.125, t=ck===0.125?'⅛':ck===0.25?'¼':ck===0.5?'½':String(ck); document.querySelectorAll('.ckLbl').forEach(e=>{if(e.textContent!==t)e.textContent=t})}
   const g=geom(), brg=g.az, td=trueDistance();
   // Distance truing
   const nomYd=toYd(S.nominal,S.distUnit), mapYd=g.m/M_PER_YD;
@@ -2172,15 +2219,17 @@ function renderFace(yd){
   vis.forEach((s,i)=>{
     const ip=inPerUnit(S.unit,s.yd), x=s.xIn/ip, y=-s.yIn/ip, r=Math.max(br,minR);
     const last=i===vis.length-1, sighter=roles&&roles[i]&&roles[i].role==='sighter';
-    const ring=last?'var(--shot-last,#ee6a3c)':sighter?'#9aa39c':'var(--shot,#ffd23f)';
+    const ring=s.called?'#9aa39c':last?'var(--shot-last,#ee6a3c)':sighter?'#9aa39c':'var(--shot,#ffd23f)';
     h+=`<circle cx="${x}" cy="${y}" r="${r*1.75}" fill="${ring}" fill-opacity="${sighter?.55:.85}"/>`;
     h+=`<circle cx="${x}" cy="${y}" r="${r}" fill="#121212" stroke="#f4efe3" stroke-opacity=".7" stroke-width="${sw*0.9}"/>`;
     if(last)h+=`<circle cx="${x}" cy="${y}" r="${r*2.4}" fill="none" stroke="${ring}" stroke-width="${sw*1.6}"><animate attributeName="r" from="${r*1.6}" to="${r*4.5}" dur="1.1s" repeatCount="2" fill="freeze"/><animate attributeName="stroke-opacity" from=".9" to="0" dur="1.1s" repeatCount="2" fill="freeze"/></circle><circle cx="${x}" cy="${y}" r="${r*2.4}" fill="none" stroke="${ring}" stroke-width="${sw*1.4}"/>`;
     const lab=plotting&&roles[i]?roles[i].lab:i+1;
     if(r>half/45) h+=`<text x="${x+r*1.9}" y="${y-r*1.9}" font-size="${Math.min(Math.max(r*1.7,half/21),half/11)}" fill="var(--face-in,#fff)" stroke="var(--face-v,#111)" stroke-width="${sw*2.2}" paint-order="stroke" font-family="var(--display)" font-weight="700">${lab}</text>`;
   });
+  if(plotting&&S.aim&&(S.aim.x||S.aim.y)){const ipn=inPerUnit(S.unit,yd), ax=S.aim.x*RAD_PER.moa*yd*36/ipn, ay=-S.aim.y*RAD_PER.moa*yd*36/ipn, k=half/30;
+    h+=`<g stroke="var(--accent,#c23f1b)" stroke-width="${sw*2}"><path d="M${ax-k},${ay}H${ax+k}M${ax},${ay-k}V${ay+k}"/><circle cx="${ax}" cy="${ay}" r="${k*0.7}" fill="none"/></g><text x="${ax+k*1.2}" y="${ay-k*0.9}" font-size="${half/26}" fill="var(--accent,#c23f1b)" font-family="var(--display)" font-weight="700">AIM</text>`}
   // group centre: a reticle, with a faint circle at the group's mean radius
-  const cnt=vis.filter((s,i)=>!(roles&&roles[i]&&roles[i].role==='sighter'));
+  const cnt=vis.filter((s,i)=>!s.called&&!(roles&&roles[i]&&roles[i].role==='sighter'));
   if(cnt.length>1){const mn=meanShot(cnt), ip=inPerUnit(S.unit,yd), mx=mn.x/ip, my=-mn.y/ip, k=half/22, g=k*0.35;
     const mr=cnt.reduce((a,s)=>{const q=inPerUnit(S.unit,s.yd);return a+Math.hypot(s.xIn/q-mx,-s.yIn/q-my)},0)/cnt.length;
     h+=`<circle cx="${mx}" cy="${my}" r="${mr}" fill="none" stroke="var(--wind,#1b6a9c)" stroke-opacity=".45" stroke-width="${sw*1.2}" stroke-dasharray="${sw*5} ${sw*4}"/>`;
@@ -2271,7 +2320,7 @@ function plotAt(e){
   const nsx=S.str?nextShot():null;   // what the app would have advised for this shot, kept to judge the call afterwards
   S.shots.push({t:new Date().toISOString(),xIn,yIn,yd:td.yd,nomYd:toYd(S.nominal,S.distUnit),distSrc:td.src,
     cross:r?r.cross:null,head:r?r.head:null,windSrc:w?w.label:null,light:S.light,src:'tap',
-    shooter:(curShooter()||{}).name||'',...(S.str?{str:S.str.t,dialE:isFinite(dE)?dE*RAD_PER[u]:null,dialW:dialSigned()*RAD_PER[u],predE:sol?sol.elevRad:null,predW:sol?sol.windRad:null,calX:ca?ca.spd*Math.sin(ca.rel*D2R):null,nsE:nsx?nsx.e:null,nsW:nsx?nsx.w:null}:{})});
+    shooter:(curShooter()||{}).name||'',...(S.str?{str:S.str.t,dialE:isFinite(dE)?dE*RAD_PER[u]:null,dialW:dialSigned()*RAD_PER[u],predE:sol?sol.elevRad:null,predW:sol?sol.windRad:null,calX:ca?ca.spd*Math.sin(ca.rel*D2R):null,nsE:nsx?nsx.e:null,nsW:nsx?nsx.w:null,...(S.aim&&(S.aim.x||S.aim.y)?{aimX:S.aim.x*RAD_PER.moa*td.yd*36,aimY:S.aim.y*RAD_PER.moa*td.yd*36}:{})}:{})});
   save(); render();
 }
 // Zoom by factor k about a point given in inches (face coords, y up)
@@ -3228,11 +3277,19 @@ function rangeGeo(id){
   const u={x:step.x/L,y:step.y/L}, down=r.rev?{x:u.y,y:-u.x}:{x:-u.y,y:u.x};
   return{a,step,down,spacing:L};
 }
+// Distances trued with the rangefinder are kept per range, distance and target; other targets use that firing point's average offset
+function truedYd(d){
+  const t=(S.ranges&&S.ranges[d.range]&&S.ranges[d.range].trued)||{}, k=`${d.dist}|${d.target}`;
+  if(t[k])return{yd:t[k],src:'rangefinder, this target'};
+  const same=Object.entries(t).filter(([kk])=>kk.split('|')[0]===String(d.dist)).map(([,v])=>v-d.dist);
+  if(same.length)return{yd:d.dist+same.reduce((a,b)=>a+b,0)/same.length,src:`average of ${same.length} trued target${same.length>1?'s':''} at this firing point`};
+  return{yd:d.dist,src:'nominal (not yet trued)'};
+}
 function planPoints(d){
   const g=rangeGeo(d.range); if(!g)return null;
   const off={x:g.step.x*(d.target-g.a.n),y:g.step.y*(d.target-g.a.n)}, tgt=LL(g.a,off);
-  const back=d.dist*M_PER_YD, fp=LL(tgt,{x:-g.down.x*back,y:-g.down.y*back});
-  return{tgt,fp};
+  const tr=truedYd(d), back=tr.yd*M_PER_YD, fp=LL(tgt,{x:-g.down.x*back,y:-g.down.y*back});
+  return{tgt,fp,yd:tr.yd,ydSrc:tr.src};
 }
 const PLWX={};
 async function planWx(id){
@@ -3251,17 +3308,23 @@ function planSolve(d,wx){
   const h=wx.hourly, key=`${d.date}T${(d.time||'09:00').slice(0,2)}:00`, i=h.time.indexOf(key);
   if(i<0)return{pts,err:'Outside the forecast (up to 4 days ahead).'};
   const adj=S.hAdj?H_FACTOR:1, rng=[i-1,i,i+1].filter(j=>j>=0&&j<h.time.length);
-  const spd=h.wind_speed_10m[i]*adj, dir=h.wind_direction_10m[i], gust=h.wind_gusts_10m[i]*adj;
+  let spd=h.wind_speed_10m[i]*adj, dir=h.wind_direction_10m[i], gust=h.wind_gusts_10m[i]*adj;
+  // Wind accurizer, step 2: the forecast trued against a live reading taken closer to the time; the correction fades over 4 hours
+  const lv=S.planLive, dtH=lv?Math.abs(Date.parse(d.date+'T'+d.time)-lv.t)/3600e3:99, wgt=lv&&lv.range===d.range?Math.max(0,1-dtH/4):0;
+  const fcSpd=spd, fcDir=dir;
+  if(wgt>0){const r=1+wgt*(lv.ratio-1); spd*=r; gust*=r; dir=norm360(dir+wgt*lv.dDir)}
   const lull=Math.min(...rng.map(j=>h.wind_speed_10m[j]))*adj*0.6, hi=Math.max(gust,...rng.map(j=>h.wind_speed_10m[j]*adj));
-  const keep={fp:S.fp,tgt:S.tgt,lrf:S.lrf,nominal:S.nominal,distUnit:S.distUnit,src:S.src,manual:S.manual,atmSrc:S.atmSrc,wx:S.wx,elev:S.elev};
+  const keep={fp:S.fp,tgt:S.tgt,lrf:S.lrf,nominal:S.nominal,distUnit:S.distUnit,src:S.src,manual:S.manual,atmSrc:S.atmSrc,wx:S.wx,elev:S.elev,loadId:S.loadId};
   let out;
   try{
-    Object.assign(S,{fp:pts.fp,tgt:pts.tgt,lrf:'',nominal:d.dist,distUnit:'yd',src:'manual',atmSrc:'model',elev:null,
+    Object.assign(S,{fp:pts.fp,tgt:pts.tgt,lrf:'',nominal:d.dist,loadId:d.loadId&&S.loads.some(x=>x.id===d.loadId)?d.loadId:S.loadId,distUnit:'yd',src:'manual',atmSrc:'model',elev:null,
       wx:{...(S.wx||{}),current:{temperature_2m:h.temperature_2m[i],relative_humidity_2m:h.relative_humidity_2m[i],surface_pressure:h.surface_pressure[i]}}});
-    const f=wtFactorOn('model'), fm=f?f.f:1, yd=geom().m/M_PER_YD;
+    // step 3: the factor learned from target plots: for the live source when the forecast has been trued to it, else for the model
+    const f=wgt>0?wtFactorOn(lv.key):wtFactorOn('model'), fm=f?f.f:1, yd=geom().m/M_PER_YD;
     const at=sp=>{S.manual={spd:sp*fm,dir};const so=computeSolution(yd,{rowsYd:[yd]});return so&&so.rows[0]};
     const r0=at(spd), rl=at(lull), rh=at(hi), cr=resolve({spd:spd*fm,dir},geom().az);
-    out={pts,yd,spd,dir,gust,fm,T:h.temperature_2m[i],P:h.surface_pressure[i],cross:cr.cross,e:r0&&r0.elevRad,w:r0&&r0.windRad,wl:rl&&rl.windRad,wh:rh&&rh.windRad,lull,hi};
+    const sun=sunPos(new Date(d.date+'T'+d.time),pts.fp.lat,pts.fp.lng), lineAz=geom().az;
+    out={pts,yd,sun,lineAz,spd,dir,gust,fm,fcSpd,fcDir,live:wgt>0?{wgt,src:lv.src,t:lv.t}:null,T:h.temperature_2m[i],P:h.surface_pressure[i],cross:cr.cross,e:r0&&r0.elevRad,w:r0&&r0.windRad,wl:rl&&rl.windRad,wh:rh&&rh.windRad,lull,hi};
   }finally{Object.assign(S,keep)}
   return out;
 }
@@ -3270,6 +3333,12 @@ async function planCompute(){
   const ids=[...new Set(S.plan.map(d=>d.range))];
   for(const id of ids){const wx=await planWx(id); S.plan.filter(d=>d.range===id).forEach(d=>{PLRES[d.id]=planSolve(d,wx)})}
   renderPlan();
+}
+function sunText(x){
+  if(!x||!x.sun)return''; const el=x.sun.el; if(el<-0.5)return'Sun down (dark or dusk)';
+  const rel=norm360(x.sun.az-x.lineAz), c=clockFrom(x.sun.az,x.lineAz), low=el<15?'low':el<35?'mid-height':'high';
+  const where=rel<45||rel>315?'ahead, towards the target':rel>135&&rel<225?'behind you':rel<180?'to your right':'to your left';
+  return`Sun ${low} (${el.toFixed(0)}°) at ${c}, ${where}${(rel<45||rel>315)&&el<20?': glare likely':''}`;
 }
 function clockFrom(az,brg){const rel=norm360(az-brg);let h=Math.round(rel/30)%12;return(h===0?12:h)+" o'clock"}
 function renderPlan(){
@@ -3281,15 +3350,23 @@ function renderPlan(){
   const dsel=$('#plDist'), rd=RANGE_DEF[$('#plRange').value], cur=dsel.value;
   const opts=rd.dists.map(v=>`<option ${String(v)===cur?'selected':''}>${v}</option>`).join(''); if(dsel.dataset.h!==opts){dsel.innerHTML=opts;dsel.dataset.h=opts}
   $('#plTgt').max=rd.lanes;
+  { const rs=$('#plRifle'), ls=$('#plLoad'), rc=rs.value, lc=ls.value||S.loadId;
+    const ro='<option value="">–</option>'+S.rifles.map(x=>`<option value="${x.id}">${esc(x.name)}${x.serial?' ('+esc(x.serial)+')':''}</option>`).join(''); if(rs.dataset.h!==ro){rs.innerHTML=ro;rs.dataset.h=ro} rs.value=rc;
+    const lo=S.loads.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join(''); if(ls.dataset.h!==lo){ls.innerHTML=lo;ls.dataset.h=lo} ls.value=lc;
+    $('#rfStat').textContent=`· ${S.rifles.length} rifle${S.rifles.length===1?'':'s'}`;
+    $('#rfList').innerHTML=S.rifles.map(x=>`${esc(x.name)}${x.serial?' · serial '+esc(x.serial):''} <button type="button" data-rfdel="${x.id}">Remove</button>`).join('<br>')||'No rifles yet.';
+    const tr=Object.entries((S.ranges[id]||{}).trued||{});
+    $('#rgTrued').textContent=tr.length?`Trued with the rangefinder: ${tr.map(([k,v])=>{const [ds,t]=k.split('|');return`${ds} yd T${t} = ${(+v).toFixed(1)}`}).join('; ')}.`:'No trued distances yet: they are saved automatically when you range the frame on a planned detail.'; }
   const l=curLoad(), u=(l&&l.scopeUnit)||'moa', R=RAD_PER[u], ck=(l&&+l.click)||0.125;
   const fe=v=>v==null?'–':(Math.round(v/R/ck)*ck).toFixed(ck<0.25?3:2), fw=v=>v==null?'–':(Math.abs(v)<1e-9?'0':`${(Math.abs(Math.round(v/R/ck)*ck)).toFixed(ck<0.25?3:2)} ${v>0?'R':'L'}`);
   const P=[...S.plan].sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
   $('#plTbl').innerHTML=P.length?`<tr><th>When</th><th>Where</th><th>Forecast wind</th><th>Opening elev</th><th>Opening wind</th><th>Bracket</th><th></th></tr>`+P.map(d=>{
     const x=PLRES[d.id]||{}, when=new Date(d.date+'T'+d.time).toLocaleDateString([], {weekday:'short',day:'numeric',month:'short'})+' '+d.time;
-    const where=`${RANGE_DEF[d.range].name} ${d.dist} · T${d.target}${d.pos?' '+d.pos:''}${d.label?' · '+esc(d.label):''}`;
-    const wind=x.err?esc(x.err):x.spd!=null?`${x.spd.toFixed(0)} mph (gust ${x.gust.toFixed(0)}) from ${clockFrom(x.dir,geomAz(x.pts))}; ${Math.abs(x.cross).toFixed(1)} mph ${x.cross>=0?'R':'L'} across${x.fm!==1?` (trued ×${x.fm.toFixed(2)})`:''}`:'…';
+    const ld=S.loads.find(z=>z.id===d.loadId), rf=S.rifles.find(z=>z.id===d.rifleId);
+    const where=`${RANGE_DEF[d.range].name} ${d.dist} · T${d.target}${d.pos?' '+d.pos:''}${d.label?' · '+esc(d.label):''}${rf||ld?`<br><small>${[rf&&esc(rf.name),ld&&esc(ld.name)].filter(Boolean).join(' · ')}</small>`:''}${x.pts?`<br><small>${x.pts.yd.toFixed(1)} yd: ${esc(x.pts.ydSrc)}</small>`:''}`;
+    const wind=x.err?esc(x.err):x.spd!=null?`${x.spd.toFixed(0)} mph (gust ${x.gust.toFixed(0)}) from ${clockFrom(x.dir,geomAz(x.pts))}; ${Math.abs(x.cross).toFixed(1)} mph ${x.cross>=0?'R':'L'} across${x.fm!==1?` (trued ×${x.fm.toFixed(2)})`:''}${x.live?`<br><small>trued on live ${esc(x.live.src)} at ${hm(x.live.t)} (forecast ${x.fcSpd.toFixed(0)} mph from ${clockFrom(x.fcDir,geomAz(x.pts))})</small>`:''}${x.sun?`<br><small>${esc(sunText(x))}</small>`:''}`:'…';
     return`<tr><td>${when}</td><td>${where}</td><td>${wind}</td><td>${fe(x.e)}</td><td>${fw(x.w)}</td><td>${x.wl!=null?`${fw(x.wl)} to ${fw(x.wh)}`:'–'}</td><td><button type="button" data-use="${d.id}">Use</button> <button type="button" data-del="${d.id}">Delete</button></td></tr>`}).join(''):'<tr><td>No details yet. Add them from the squadding.</td></tr>';
-  planMapDraw();
+  planMapDraw(); if(typeof renderRmPlan==='function')renderRmPlan();
 }
 function geomAz(pts){return pts?vincenty(pts.fp.lat,pts.fp.lng,pts.tgt.lat,pts.tgt.lng).az:0}
 let planLayer=null;
@@ -3302,6 +3379,9 @@ function planMapDraw(){
   for(const d of S.plan){const pt=planPoints(d); if(pt&&L.circleMarker){L.circleMarker(pt.tgt,{radius:5,color:'#ee6a3c'}).addTo(planLayer);L.circleMarker(pt.fp,{radius:5,color:'#62b2e8'}).addTo(planLayer)}}
 }
 $('#rgSel').onchange=renderPlan;
+$('#rfAdd').onclick=()=>{const n=$('#rfName').value.trim(); if(!n){$('#plMsg').textContent='Enter the rifle make and model first.';return}
+  S.rifles.push({id:'r'+Date.now(),name:n,serial:$('#rfSerial').value.trim()}); $('#rfName').value='';$('#rfSerial').value=''; save(); renderPlan()};
+$('#rfList').addEventListener('click',e=>{const b=e.target.closest('[data-rfdel]'); if(!b)return; S.rifles=S.rifles.filter(x=>x.id!==b.dataset.rfdel); save(); renderPlan()});
 $('#rgRev').onchange=e=>{rangesInit();S.ranges[$('#rgSel').value].rev=e.target.checked;save();planCompute()};
 $('#rgPin').onclick=()=>{const n=parseInt($('#rgN').value,10), id=$('#rgSel').value; if(!(n>=1&&n<=RANGE_DEF[id].lanes)){$('#rgMsg').textContent=`Enter a target number from 1 to ${RANGE_DEF[id].lanes} first.`;return}
   S.mode='rpin'; S.pinFor={id,n}; const nt=$('#mapnote'); nt.hidden=false; nt.textContent=`Tap the map at ${RANGE_DEF[id].name} target ${n} (the target frame in the butts)`;
@@ -3311,17 +3391,70 @@ map.on('click',e=>{ if(S.mode!=='rpin'||!S.pinFor)return; rangesInit();
   S.mode=null; S.pinFor=null; $('#mapnote').hidden=true; save(); planCompute(); renderPlan(); $('#cardPlan').scrollIntoView({behavior:'smooth',block:'start'})});
 $('#plRange').onchange=renderPlan;
 $('#plAdd').onclick=()=>{
-  const d={id:'d'+Date.now(),date:$('#plDate').value,time:$('#plTime').value||'09:00',range:$('#plRange').value,dist:+$('#plDist').value,target:parseInt($('#plTgt').value,10),pos:$('#plPos').value,label:$('#plLbl').value.trim()};
+  const d={id:'d'+Date.now(),date:$('#plDate').value,time:$('#plTime').value||'09:00',range:$('#plRange').value,dist:+$('#plDist').value,target:parseInt($('#plTgt').value,10),pos:$('#plPos').value,label:$('#plLbl').value.trim(),rifleId:$('#plRifle').value||null,loadId:$('#plLoad').value||S.loadId};
   if(!d.date||!(d.target>=1&&d.target<=RANGE_DEF[d.range].lanes)){$('#plMsg').textContent=`Enter a date and a target from 1 to ${RANGE_DEF[d.range].lanes}.`;return}
   S.plan.push(d); save(); $('#plMsg').textContent='Detail added.'; renderPlan(); planCompute()};
 $('#plTbl').addEventListener('click',e=>{const b=e.target.closest('button'); if(!b)return;
   if(b.dataset.del){S.plan=S.plan.filter(d=>d.id!==b.dataset.del);save();renderPlan();return}
-  const d=S.plan.find(x=>x.id===b.dataset.use); const pt=d&&planPoints(d); if(!pt){$('#plMsg').textContent='Pin two targets for this range first.';return}
+  const d=S.plan.find(x=>x.id===b.dataset.use); const r=planUse(d); $('#plMsg').textContent=r;});
+function planUse(d){
+  const pt=d&&planPoints(d); if(!pt)return'Pin two targets for this range first (Match plan, Ranges, in the full view).';
   S.fp=pt.fp; S.tgt=pt.tgt; mFP.setLatLng(pt.fp); mT.setLatLng(pt.tgt); S.nominal=d.dist; S.distUnit='yd'; S.lrf='';
+  if(d.loadId&&S.loads.some(x=>x.id===d.loadId))S.loadId=d.loadId; const rf=S.rifles.find(x=>x.id===d.rifleId); S.sess.rifle=rf?`${rf.name}${rf.serial?' ('+rf.serial+')':''}`:'';
   S.sess.event=`Bisley ${RANGE_DEF[d.range].name}, target ${d.target}${d.pos?' '+(d.pos==='L'?'left':'right'):''}`; if(d.label)S.sess.match=d.label;
   const x=PLRES[d.id]; if(x&&x.e!=null){const l=curLoad(),u=(l&&l.scopeUnit)||'moa',ck=(l&&+l.click)||0.125,R=RAD_PER[u];S.dial.e=String(Math.round(x.e/R/ck)*ck);const w=Math.round(x.w/R/ck)*ck;S.dial.w=Math.abs(w).toFixed(3);S.dial.wd=w<0?'L':'R'}
-  if(typeof fillNominal==='function')fillNominal(); onPinsMoved(true);
-  $('#plMsg').textContent=`Loaded: ${RANGE_DEF[d.range].name} ${d.dist} yd, target ${d.target}. Distance, session and the opening dial are set; range the frame on the day.`});
+  if(typeof fillNominal==='function')fillNominal(); S.planLoaded=d.id; onPinsMoved(true);
+  return`Loaded: ${RANGE_DEF[d.range].name} ${d.dist} yd, target ${d.target}. Distance, session and the opening dial are set; range the frame on the day.`;
+}
+/* Range mode: the next detail from the plan, loaded in one tap; after End string the following one is offered */
+function planUpcoming(){const now=Date.now()-45*60e3;
+  return [...S.plan].filter(d=>!d.done&&Date.parse(d.date+'T'+d.time)>=now).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time))}
+function renderRmPlan(){
+  const box=$('#rmPlan'); if(!box)return; const up=planUpcoming(); box.hidden=!up.length; if(!up.length)return;
+  const sel=$('#rpPick'), want=up.find(d=>d.id===sel.value)||up[0];
+  const opts=up.map(d=>`<option value="${d.id}">${new Date(d.date+'T'+d.time).toLocaleDateString([], {weekday:'short'})} ${d.time} · ${RANGE_DEF[d.range].name} ${d.dist} · T${d.target}</option>`).join('');
+  if(sel.dataset.h!==opts){sel.innerHTML=opts;sel.dataset.h=opts} sel.value=want.id;
+  const x=PLRES[want.id]||{}, l=curLoad(), u=(l&&l.scopeUnit)||'moa', R=RAD_PER[u], ck=(l&&+l.click)||0.125, dp=ck<0.25?3:2;
+  const fe=v=>(Math.round(v/R/ck)*ck).toFixed(dp), fw=v=>`${Math.abs(Math.round(v/R/ck)*ck).toFixed(dp)} ${v>=0?'R':'L'}`;
+  const loaded=S.planLoaded===want.id;
+  $('#rpTitle').textContent=loaded?'This detail (loaded)':'Next detail';
+  $('#rpWhat').textContent=`${want.time} · ${RANGE_DEF[want.range].name} ${want.dist} yd · target ${want.target}${want.pos?' '+(want.pos==='L'?'left':'right'):''}${want.label?' · '+want.label:''}`;
+  $('#rpWhy').textContent=x.spd!=null?`${x.live?`Trued on live ${x.live.src} at ${hm(x.live.t)} (forecast said ${x.fcSpd.toFixed(0)} mph from ${clockFrom(x.fcDir,geomAz(x.pts))}): now`:'Forecast'} ${x.spd.toFixed(0)} mph (gusts ${x.gust.toFixed(0)}) from ${clockFrom(x.dir,geomAz(x.pts))}. Opening ${fe(x.e)} ${UNIT_LBL[u]} / ${fw(x.w)}; bracket ${fw(x.wl)} to ${fw(x.wh)}. ${sunText(x)}.`:(x.err||'Forecast loading…');
+  $('#rpLoad').textContent=loaded?'Loaded ✓ (load again)':'Load this detail';
+}
+$('#rpPick').onchange=renderRmPlan;
+$('#rpLive').onclick=async()=>{
+  const d=S.plan.find(x=>x.id===$('#rpPick').value); if(!d){return}
+  const src=S.src==='calypso'||S.src==='manual'?S.src:(windRaw('calypso')?'calypso':'manual'), live=windRaw(src);
+  if(!live||!(live.spd>0.3)){$('#rpWhy').textContent='No live wind yet: connect the Calypso, or enter your Kestrel reading under Wind (Kestrel / mine).';return}
+  const wx=await planWx(d.range), h=wx&&wx.hourly; if(!h){$('#rpWhy').textContent='No forecast to true against yet.';return}
+  const now=new Date(), key=`${now.toLocaleDateString('en-CA')}T${String(now.getHours()).padStart(2,'0')}:00`, i=h.time.indexOf(key);
+  if(i<0){$('#rpWhy').textContent='The forecast has no data for this hour.';return}
+  const adj=S.hAdj?H_FACTOR:1, mS=h.wind_speed_10m[i]*adj, mD=h.wind_direction_10m[i]; if(!(mS>0.5)){$('#rpWhy').textContent='The forecast is near calm this hour, so there is nothing to scale.';return}
+  let dd=norm360(live.dir-mD); if(dd>180)dd-=360;
+  S.planLive={t:Date.now(),range:d.range,ratio:Math.min(3,Math.max(0.3,live.spd/mS)),dDir:dd,src:src==='calypso'?'Calypso':'Kestrel',key:wtKey(src)};
+  save(); await planCompute();
+  $('#rpGpsMsg').textContent=`Live ${live.spd.toFixed(1)} mph from ${Math.round(live.dir)}° against the forecast's ${mS.toFixed(1)} mph from ${Math.round(mD)}° for this hour: the plan is scaled ×${S.planLive.ratio.toFixed(2)} and turned ${dd>=0?'+':''}${dd.toFixed(0)}°, fading out over 4 hours.`;
+};
+// Where am I? The phone's position projected onto the range layout: which target and distance, and how far from the plan
+function whereOnRange(pos){
+  let best=null;
+  for(const id of Object.keys(RANGE_DEF)){const g=rangeGeo(id); if(!g)continue;
+    const v=ENU(g.a,pos), L2=g.step.x**2+g.step.y**2, n=g.a.n+(v.x*g.step.x+v.y*g.step.y)/L2, back=-(v.x*g.down.x+v.y*g.down.y)/M_PER_YD;
+    if(n<0.5||n>RANGE_DEF[id].lanes+0.5)continue; const dn=RANGE_DEF[id].dists.reduce((a,b)=>Math.abs(b-back)<Math.abs(a-back)?b:a);
+    const c={id,n:Math.round(n),back,dn,off:Math.abs(back-dn)}; if(!best||c.off<best.off)best=c}
+  return best;
+}
+$('#rpGps').onclick=()=>{
+  if(!navigator.geolocation){$('#rpGpsMsg').textContent='This device has no location service.';return}
+  $('#rpGpsMsg').textContent='Finding your position…';
+  navigator.geolocation.getCurrentPosition(p=>{const pos={lat:p.coords.latitude,lng:p.coords.longitude}, acc=p.coords.accuracy;
+    const w=whereOnRange(pos), d=S.plan.find(x=>x.id===($('#rpPick').value||S.planLoaded)), pt=d&&planPoints(d);
+    const vsPlan=pt?` The planned firing point for ${RANGE_DEF[d.range].name} ${d.dist}, target ${d.target} is ${vincenty(pos.lat,pos.lng,pt.fp.lat,pt.fp.lng).m.toFixed(0)} m away.`:'';
+    $('#rpGpsMsg').textContent=(w&&w.off<40?`You're at about ${RANGE_DEF[w.id].name} ${w.dn} yd, target ${w.n} (GPS ±${acc.toFixed(0)} m).`:'You are not on a range the app has set up.')+vsPlan;
+  },e=>{$('#rpGpsMsg').textContent='Position not available: '+(e.message||'permission refused')+'.'},{enableHighAccuracy:true,timeout:15000,maximumAge:0});
+};
+$('#rpLoad').onclick=()=>{const d=S.plan.find(x=>x.id===$('#rpPick').value); const r=planUse(d); $('#rpWhy').textContent=r; setTimeout(renderRmPlan,2500)};
 $('#plRefresh').onclick=()=>{Object.keys(PLWX).forEach(k=>delete PLWX[k]);planCompute()};
 $('#plPrint').onclick=()=>{
   const l=curLoad(), u=(l&&l.scopeUnit)||'moa', R=RAD_PER[u], ck=(l&&+l.click)||0.125, U=UNIT_LBL[u];
@@ -3610,12 +3743,13 @@ $('#rmLog').onclick=()=>{$('#logNow').click();const b=$('#rmLog');b.textContent=
 setInterval(()=>{if(S.src==='calypso')render()},2000);
 /* Folding: setup cards fold away once they are done, so the String card and plot sheet stay near the top */
 { // masonry: the setup cards flow down columns, so folded and tall cards pack without gaps
-  const cols=document.createElement('div'); cols.className='rm-cols'; $('#rmStr').after(cols);
+  const more=document.createElement('div'); more.className='rm-more'; more.innerHTML='<button type="button" id="rmShowAll">All set-up cards</button><button type="button" id="rmTblAll">All shots in the table</button>';
+  const cols=document.createElement('div'); cols.className='rm-cols'; $('#rmStr').after(more); more.after(cols);
   ['rmCardDist','rmCardAtm','rmCardWind','rmMirage','rmCardDial','rmVel','rmCorr','rmCardBarrel'].forEach(id=>{const c=document.getElementById(id);if(c)cols.appendChild(c)}); }
 const FOLDABLE=['rmCardDist','rmCardAtm','rmMirage','rmCardWind','rmCardDial','rmVel','rmCorr','rmWT','rmCardBarrel'];
 FOLDABLE.forEach(id=>{const c=document.getElementById(id); if(!c)return; const h=c.querySelector(':scope > h3'); if(!h)return;
   const sm=document.createElement('p'); sm.className='fold-sum'; h.after(sm);
-  h.onclick=()=>{const f=!c.classList.contains('folded'); c.classList.toggle('folded',f); S.folded={...(S.folded||{}),[id]:f}; save()};
+  h.onclick=()=>{const f=!c.classList.contains('folded'); c.classList.toggle('folded',f); if(f)c.classList.remove('opened'); S.folded={...(S.folded||{}),[id]:f}; save()};
   if(S.folded&&S.folded[id]!=null)c.classList.toggle('folded',S.folded[id]);
   else if(['rmCorr','rmWT','rmCardBarrel'].includes(id))c.classList.add('folded');});
 function renderFolds(){
@@ -3661,7 +3795,7 @@ function renderStr(){
   const shN=curShooter(); const who=shN&&shN.name?` · ${shN.name}${shN.number?' '+shN.number:''}`:'';
   $('#strTitle').textContent=open?`String ${S.str.n} open${who}`:`String ${strNumber()}${who}`;
   $('#strSince').textContent=open?`since ${hm(S.str.t)} (${Math.max(0,Math.round(minsAgo(Date.parse(S.str.t))))} min)`:'Check the list, then Start string before the first sighter.';
-  $('#strChk').innerHTML=ch.map(c=>`<li class="${c.st}"><span class="dot" aria-label="${c.st==='ok'?'ready':c.st==='warn'?'check':'missing'}"></span><b>${c.label}</b><span class="v">${esc(c.v)}</span>${c.st!=='ok'?`<button type="button" data-go="${c.go}">Set</button>`:''}</li>`).join('');
+  $('#strChk').innerHTML=ch.map(c=>`<li class="${c.st}"><span class="dot" aria-label="${c.st==='ok'?'ready':c.st==='warn'?'check':'missing'}"></span><b>${c.label}</b><span class="v">${esc(c.v)}</span><button type="button" data-go="${c.go}">${c.st!=='ok'?'Set':'Change'}</button></li>`).join('');
   $('#strOpen').hidden=!open; $('#strOpenActs').hidden=!open;
   const b=$('#strBtn'); b.textContent=open?'End string and log':'Start string'; b.classList.toggle('open',open);
   if(open){
@@ -3669,7 +3803,7 @@ function renderStr(){
     $('#strGW').textContent=S.str.gW?`${(Math.abs(S.str.gW)*((curLoad()||{}).click||0.125)).toFixed(3)} MOA ${S.str.gW>0?'right':'left'}`:'centre';
     const c=S.str.cal; $('#strCal').textContent=c&&c.n?`Calypso over this string so far: ${(c.s/c.n).toFixed(1)} mph, crosswind ${Math.abs(c.c/c.n).toFixed(1)} mph ${c.c>=0?'from right':'from left'} (${c.n} readings).`:(S.src==='calypso'?'Calypso average for the string will build up here.':'');
   }
-  renderPS();
+  renderPS(); if(typeof renderRmPlan==='function')renderRmPlan();
   if(!strArmed)$('#strWarn').hidden=true;
   const g=[...S.logs].reverse().find(x=>x.guided), lb=$('#strLast');
   if(g&&!open){
@@ -3701,11 +3835,11 @@ function psTotals(st){
    Coriolis taken out), the spread of those winds across the detail, and the single windage setting that would have
    dropped the fewest points if held for every counting shot. */
 function windBracket(st){
-  const q=psShots(st).filter(x=>x.s.dialW!=null); if(q.length<4)return null;
+  const q=psShots(st).filter(x=>x.s.dialW!=null&&!x.s.called); if(q.length<4)return null;
   const l=curLoad(), u=(l&&l.scopeUnit)||'moa', ck=(l&&+l.click)||0.125, yd=q[0].s.yd;
   const sol=computeSolution(yd,{rowsYd:[yd]}), r=sol&&sol.rows[0]; if(!r||!(r.w10>0))return null;
   const k=r.w10/10, sc=r.parts.spin+r.parts.cor, ip=yd*36;           // rad per mph; spin + Coriolis; inches per radian
-  const pts=q.map(x=>{const need=x.s.dialW-ANG_IN(x.s.xIn,x.s.yd);return{...x,need,mph:(need-sc)/k}});
+  const pts=q.map(x=>{const need=x.s.dialW-ANG_IN(AX(x.s),x.s.yd);return{...x,need,mph:(need-sc)/k}});
   const mphs=pts.map(p=>p.mph).sort((a,b)=>a-b), qt=f=>{const i=(mphs.length-1)*f, lo=Math.floor(i), hi=Math.ceil(i);return mphs[lo]+(mphs[hi]-mphs[lo])*(i-lo)};
   const dialFor=m=>sc+k*m, clicks=v=>Math.round(v/RAD_PER[u]/ck);
   // Points if one windage setting W had been held for every counting shot (elevation as fired)
@@ -3774,7 +3908,7 @@ function curShooter(){return S.shooters.find(x=>x.id===S.sess.shooterId)||null}
 function sessMeta(){
   const sh=curShooter(), l=curLoad(), td=trueDistance();
   return{date:new Date().toISOString().slice(0,10),type:S.sess.type,event:S.sess.event||'',match:S.sess.match||'',coach:S.sess.coach||'',
-    shooter:sh?sh.name:'',number:sh?sh.number||'':'',rifle:sh?sh.rifle||'':'',load:l?l.name:'',loadId:l?l.id:'',batch:curBatch(),nominal:S.nominal,unit:S.distUnit,trueYd:+td.yd.toFixed(1)};
+    shooter:sh?sh.name:'',number:sh?sh.number||'':'',rifle:S.sess.rifle||(sh?sh.rifle||'':''),load:l?l.name:'',loadId:l?l.id:'',batch:curBatch(),nominal:S.nominal,unit:S.distUnit,trueYd:+td.yd.toFixed(1)};
 }
 function renderSess(){
   const sh=curShooter(), l=curLoad();
@@ -3820,7 +3954,10 @@ function renderPS(){
   $('#psNext').textContent=next;
   const dE=parseFloat(S.dial.e), ws=dialSigned();
   $('#psE').textContent=isFinite(dE)?dE.toFixed(3):'–';
-  document.querySelectorAll('#psBox .ckLbl').forEach(e=>{e.textContent=ck===0.125?'⅛':ck===0.25?'¼':ck===0.5?'½':String(ck)});
+  { const lq=q[q.length-1], c=!!(lq&&lq.s.called); $('#psCalled').setAttribute('aria-pressed',String(c)); $('#psCalled').classList.toggle('sel',c); $('#psCalled').disabled=!lq;
+    $('#psCalled').textContent=c?'Last shot: called poor ✓ (left out of truing)':'Last shot: called poor';
+    const a=S.aim||{x:0,y:0}; $('#psAimLbl').textContent=a.x||a.y?[a.x?`${Math.abs(a.x)} MOA ${a.x>0?'right':'left'}`:'',a.y?`${Math.abs(a.y)} MOA ${a.y>0?'high':'low'}`:''].filter(Boolean).join(', '):'centre'; }
+  document.querySelectorAll('.ckLbl').forEach(e=>{e.textContent=ck===0.125?'⅛':ck===0.25?'¼':ck===0.5?'½':String(ck)});
   $('#psW').textContent=ws===0?'0':`${ws>0?'R':'L'} ${Math.abs(ws).toFixed(3)}`;
   const p=S.lastSol;
   $('#psSol').textContent=p?`Range Desk now: ${(p.elevRad/RAD_PER[u]).toFixed(3)} up, wind ${p.windRad>=0?'R':'L'} ${Math.abs(p.windRad/RAD_PER[u]).toFixed(3)} ${U}.`:'';
@@ -3829,9 +3966,9 @@ function renderPS(){
   // Per shot: what the app suggested, what was applied (the call), and the true value the shot needed; then how far each was off, in clicks.
   const clk=v=>v==null?'–':(Math.abs(v)<ck*R0/2?'0':`${(v>0?'+':'−')}${(Math.abs(Math.round(v/R0/ck))*ck).toFixed(ck<0.25?3:2)}`), R0=RAD_PER[u];
   $('#psTbl').innerHTML=q.length?`<tr><th>Shot</th><th>Score</th><th>App suggests<br><small>elev / wind</small></th><th>Wind call<br><small>elev / wind applied</small></th><th>Landed</th><th>True<br><small>elev / wind</small></th><th>Wind off, ${U}<br><small>call · app</small></th></tr>`+
-    q.map(x=>{const s=x.s, yE=ANG_IN(s.yIn,s.yd), xW=ANG_IN(s.xIn,s.yd), nE=s.dialE!=null?s.dialE-yE:null, nW=s.dialW!=null?s.dialW-xW:null;
+    q.map(x=>{const s=x.s, yE=ANG_IN(AY(s),s.yd), xW=ANG_IN(AX(s),s.yd), nE=s.called||s.dialE==null?null:s.dialE-yE, nW=s.called||s.dialW==null?null:s.dialW-xW;
       const aE=s.nsE??s.predE, aW=s.nsW??s.predW, offA=nW!=null&&s.dialW!=null?s.dialW-nW:null, offP=nW!=null&&aW!=null?aW-nW:null;
-      return`<tr class="${x.role==='sighter'?'sight':''}"><td>${x.lab}</td><td>${scoreShot(s)}</td><td>${f2(aE)} / ${w2(aW)}</td><td>${f2(s.dialE)} / ${w2(s.dialW)}</td><td>${(yE/R0)>=0?'↑':'↓'}${Math.abs(yE/R0).toFixed(2)} ${xW>=0?'→':'←'}${Math.abs(xW/R0).toFixed(2)}</td><td>${f2(nE)} / ${w2(nW)}</td><td>${clk(offA)} · ${clk(offP)}</td></tr>`}).reverse().join(''):'';
+      return`<tr class="${x.role==='sighter'?'sight':''}"><td>${x.lab}${s.called?' ✗':''}${s.aimX||s.aimY?' ⌖':''}</td><td>${scoreShot(s)}</td><td>${f2(aE)} / ${w2(aW)}</td><td>${f2(s.dialE)} / ${w2(s.dialW)}</td><td>${(yE/R0)>=0?'↑':'↓'}${Math.abs(yE/R0).toFixed(2)} ${xW>=0?'→':'←'}${Math.abs(xW/R0).toFixed(2)}</td><td>${f2(nE)} / ${w2(nW)}</td><td>${clk(offA)} · ${clk(offP)}</td></tr>`}).reverse().join(''):'';
   const plotted=q.length>0; $('#strGrp').hidden=plotted; $('#strGrpLbl').hidden=plotted;
   const wb=windBracket(); $('#psWind').hidden=!wb; if(wb)$('#psWind').innerHTML=renderBracket(wb);
   renderNextShot();
@@ -3845,7 +3982,7 @@ function renderPS(){
 function nextShot(){
   if(!S.str)return null;
   const l=curLoad(), u=(l&&l.scopeUnit)||'moa', ck=(l&&+l.click)||0.125, R=RAD_PER[u];
-  const q=psShots().map(x=>x.s).filter(s=>s.dialE!=null&&s.dialW!=null);
+  const q=psShots().map(x=>x.s).filter(s=>s.dialE!=null&&s.dialW!=null&&!s.called);
   const td=trueDistance(), sol=computeSolution(td.yd,{rowsYd:[td.yd]}), r=sol&&sol.rows[0];
   const dialE=parseFloat(S.dial.e)*R, dialW=dialSigned()*R;
   const ca=S.src==='calypso'?calAvg():null, cNow=ca?ca.spd*Math.sin(ca.rel*D2R):null;
@@ -3855,7 +3992,7 @@ function nextShot(){
   }
   const last=q.slice(-5), wts=last.map((_,i)=>Math.pow(0.6,last.length-1-i)), W=wts.reduce((a,b)=>a+b,0);
   const wm=a=>a.reduce((t,v,i)=>t+v*wts[i],0)/W;
-  const needE=last.map(s=>s.dialE-ANG_IN(s.yIn,s.yd)), needW=last.map(s=>s.dialW-ANG_IN(s.xIn,s.yd));
+  const needE=last.map(s=>s.dialE-ANG_IN(AY(s),s.yd)), needW=last.map(s=>s.dialW-ANG_IN(AX(s),s.yd));
   const shrink=q.length/(q.length+1);
   const cur=isFinite(dialE)?dialE:last[last.length-1].dialE;
   let e=cur+shrink*(wm(needE)-cur);
@@ -3868,7 +4005,7 @@ function nextShot(){
     let f=f0, fNote=stored?`your trued factor ${f0.toFixed(2)}`:'factor 1.00 (not trued yet)';
     const cs=withC.map(s=>s.calX), span=cs.length?Math.max(...cs)-Math.min(...cs):0;
     if(withC.length>=4&&span>=1.5){
-      const nw=withC.map(s=>s.dialW-ANG_IN(s.xIn,s.yd)-s0), sxy=withC.reduce((a,s,i)=>a+nw[i]*s.calX,0), sxx=withC.reduce((a,s)=>a+k*s.calX*s.calX,0);
+      const nw=withC.map(s=>s.dialW-ANG_IN(AX(s),s.yd)-s0), sxy=withC.reduce((a,s,i)=>a+nw[i]*s.calX,0), sxx=withC.reduce((a,s)=>a+k*s.calX*s.calX,0);
       if(sxx>0){const fs=sxy/sxx; if(fs>0.2&&fs<3){f=(f0*4+fs*withC.length)/(4+withC.length); fNote=`factor ${f.toFixed(2)}, refined on this string from ${f0.toFixed(2)}`}}
     }
     const res=last.map((s,i)=>s.calX!=null?needW[i]-(s0+k*f*s.calX):null), okI=res.map((v,i)=>v!=null?i:-1).filter(i=>i>=0);
@@ -3897,6 +4034,9 @@ function renderNextShot(){
   $('#nsChg').textContent=parts.join(' · ');
   $('#nsApply').disabled=dEc===0&&dWc===0;
   $('#nsWhy').textContent=ns.why;
+  { const l2=curLoad(), td=trueDistance(), raw=l2&&computeSolution(td.yd,{mvRef:+l2.mvFps,bcRef:+l2.bc,rowsYd:[td.yd],fast:true}), r0=raw&&raw.rows[0];
+    if(r0&&S.lastSol){const b0=r0.elevRad/R, tru=S.lastSol.elevRad/R-b0, tr=eV-S.lastSol.elevRad/R, sg=v=>(v>=0?'+':'−')+Math.abs(v).toFixed(dp);
+      $('#nsWhy').textContent+=` Elevation: solver ${b0.toFixed(dp)} (load, today's air, Coriolis)${Math.abs(tru)>=ck/2?` ${sg(tru)} truing (today's velocity / BC)`:''}${Math.abs(tr)>=ck/2?` ${sg(tr)} string trend`:''} = ${eV.toFixed(dp)} ${UNIT_LBL[u]}.`}}
   box.dataset.e=eV; box.dataset.w=wV;
 }
 $('#nsApply').onclick=()=>{const b=$('#nsBox'), e=+b.dataset.e, w=+b.dataset.w; if(!isFinite(e)||!isFinite(w))return;
@@ -3911,13 +4051,15 @@ $('#psBox').addEventListener('click',e=>{
   else if(b.dataset.pw){const w=dialSigned()+ +b.dataset.pw*ck;S.dial.w=Math.abs(w).toFixed(3);S.dial.wd=w<0?'L':'R'}
   else if(b.id==='psUndo'){const q=psShots();if(q.length){S.shots.splice(S.shots.indexOf(q[q.length-1].s),1)}}
   else if(b.id==='psFit'){$('#zBull').click();return}
+  else if(b.id==='psCalled'){const q=psShots(); if(q.length){const s=q[q.length-1].s; s.called=!s.called}}
+  else if(b.dataset.aim){const [ax,ay]=b.dataset.aim.split(',').map(Number); S.aim=ax===0&&ay===0?{x:0,y:0}:{x:(S.aim.x||0)+ax*0.5,y:(S.aim.y||0)+ay*0.5}}
   else return;
   save(); render();
 });
 $('#rmStr').addEventListener('click',e=>{
   const b=e.target.closest('button'); if(!b)return;
   if(b.dataset.go==='rmSess'){$('#sessForm').hidden=false;$('#sessEdit').textContent='Done'}
-  if(b.dataset.go){const el=document.getElementById(b.dataset.go); if(el&&el.classList.contains('folded'))el.querySelector(':scope > h3').click(); if(el){el.scrollIntoView({behavior:'smooth',block:'start'}); el.classList.add('flash'); setTimeout(()=>el.classList.remove('flash'),1600)} return}
+  if(b.dataset.go){const el=document.getElementById(b.dataset.go); if(el)el.classList.add('opened'); if(el&&el.classList.contains('folded'))el.querySelector(':scope > h3').click(); if(el){el.scrollIntoView({behavior:'smooth',block:'start'}); el.classList.add('flash'); setTimeout(()=>el.classList.remove('flash'),1600)} return}
   if(b.dataset.ge&&S.str){S.str.gE=(S.str.gE||0)+ +b.dataset.ge; save(); render(); return}
   if(b.dataset.gw&&S.str){S.str.gW=(S.str.gW||0)+ +b.dataset.gw; save(); render(); return}
 });
@@ -3963,11 +4105,12 @@ function srcKeyOfLabel(lb){lb=lb||'';return /^Calypso/.test(lb)?'calypso':/^Your
 // Crosswind each shot actually met (from its windage dial and where it landed, spin drift and Coriolis removed)
 const windMetCache=new Map();
 function windMet(g,sh){
+  sh=trueShots(sh);
   if(sh.length<3||(g.dialW==null&&!sh.some(s=>s.dialW!=null)))return null;
   const key=Math.round(g.yd); let r=windMetCache.get(key);
   if(!r){const sol=computeSolution(g.yd,{rowsYd:[g.yd]});r=sol&&sol.rows[0];if(!r||!(r.w10>0))return null;windMetCache.set(key,r);setTimeout(()=>windMetCache.clear(),5000)}
   const k=r.w10/10, sc=r.parts.spin+r.parts.cor;
-  const m=sh.map(s=>{const d=s.dialW!=null?s.dialW:g.dialW;return(d-ANG_IN(s.xIn,s.yd)-sc)/k}).sort((a,b)=>a-b);
+  const m=sh.map(s=>{const d=s.dialW!=null?s.dialW:g.dialW;return(d-ANG_IN(AX(s),s.yd)-sc)/k}).sort((a,b)=>a-b);
   return{mean:m.reduce((a,b)=>a+b,0)/m.length,min:m[0],max:m[m.length-1]};
 }
 /* BC from velocity: the Garmin's muzzle velocity and ShotMarker's speed at the target, over the true distance and in
@@ -3997,9 +4140,12 @@ function bcFromVel(g,sh){
   const sd=per.length>1?Math.sqrt(per.reduce((a,b)=>a+(b-m(per))**2,0)/(per.length-1)):null;
   return{g7,g1,sd,n:pairs.length,mv,vt,yd:g.yd,atmFrom,Tc:an.Tc,PhPa:an.PhPa,RH:an.RH};
 }
+const AX=s=>s.xIn-(s.aimX||0), AY=s=>s.yIn-(s.aimY||0);      // inches from the point of aim (centre unless aimed off)
+const trueShots=sh=>sh.filter(s=>!s.called);                   // a called poor shot still scores but never trues anything
 function groupNeed(g,sh){
+  sh=trueShots(sh);
   const e=[],w=[];
-  for(const s of sh){const yE=ANG_IN(s.yIn,s.yd), xW=ANG_IN(s.xIn,s.yd);
+  for(const s of sh){const yE=ANG_IN(AY(s),s.yd), xW=ANG_IN(AX(s),s.yd);
     const dE=s.dialE!=null?s.dialE:g.dialE, dW=s.dialW!=null?s.dialW:g.dialW;
     if(dE!=null)e.push(dE-yE); if(dW!=null)w.push(dW-xW)}
   const m=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
@@ -4064,15 +4210,31 @@ $('#wtFactors').addEventListener('click',e=>{
 function setTheme(th){
   if(!['range','sun','dusk'].includes(th))th='range'; S.rmTheme=th; S.hc=th==='sun';
   const rm=$('#rm'); rm.classList.toggle('hc',th==='sun'); rm.classList.toggle('th-range',th==='range'); rm.classList.toggle('th-dusk',th==='dusk');
-  rm.classList.toggle('ac-green',S.rmAccent==='green'); $('#rmAccLbl').textContent=S.rmAccent==='green'?'Green':'Amber'; $('#rmAcc').hidden=th==='dusk';
+  rm.classList.toggle('ac-green',S.rmAccent==='green'); $('#rmAccLbl').textContent=S.rmAccent==='green'?'Green':'Amber'; $('#rmAcc').hidden=true;
   document.querySelectorAll('#rmTheme button').forEach(b=>{b.classList.toggle('sel',b.dataset.v===th);b.setAttribute('aria-pressed',b.dataset.v===th?'true':'false')});
   $('#rmSun').setAttribute('aria-pressed',th==='sun'?'true':'false'); save(); if(typeof render==='function'&&S._themed)render(); S._themed=true;
 }
 function setSun(on){setTheme(on?'sun':'range')}
+const LOOKS=[['range','amber','Range'],['range','green','Range green'],['sun',null,'Sun'],['dusk',null,'Dusk']];
+function lookIdx(){const th=S.rmTheme||'range';return th==='range'?(S.rmAccent==='green'?1:0):th==='sun'?2:3}
+function lookLabel(){$('#rmLook').textContent='Look: '+LOOKS[lookIdx()][2]}
+$('#rmLook').onclick=()=>{const n=LOOKS[(lookIdx()+1)%LOOKS.length]; if(n[1])S.rmAccent=n[1]; setTheme(n[0]); lookLabel()};
+$('#rmMenu').onclick=e=>{e.stopPropagation();const p=$('#rmMenuPop');p.hidden=!p.hidden;$('#rmMenu').setAttribute('aria-expanded',String(!p.hidden))};
+document.addEventListener('click',e=>{const p=$('#rmMenuPop'); if(p&&!p.hidden&&!e.target.closest('.rm-menu')){p.hidden=true;$('#rmMenu').setAttribute('aria-expanded','false')}});
+['rmRec','rmHelp'].forEach(id=>$('#'+id).addEventListener('click',()=>{$('#rmMenuPop').hidden=true}));
+document.addEventListener('click',e=>{const b=e.target.closest('#rmShowAll,#rmTblAll'); if(!b)return; $('#rm').classList.toggle(b.id==='rmShowAll'?'show-all':'tbl-all'); render()});
+/* Full view: cards fold to their title; remembered */
+(function(){ const def=['Line of fire','Model comparison','Windy map','Airfield report','Sun and light'];
+  S.fvFold=store.get('fvFold',null)||{};
+  document.querySelectorAll('main section.card').forEach(c=>{const h=c.querySelector(':scope > h2'); if(!h)return;
+    const key=c.id||(h.firstChild&&h.firstChild.textContent||'').trim(); if(!key)return;
+    const folded=S.fvFold[key]!=null?S.fvFold[key]:def.includes(key); c.classList.toggle('fv-folded',folded);
+    h.addEventListener('click',e=>{if(e.target.closest('button,a,input,select,label'))return; const f=!c.classList.contains('fv-folded'); c.classList.toggle('fv-folded',f); S.fvFold[key]=f; store.set('fvFold',S.fvFold)})});
+})();
 $('#rmSun').onclick=()=>setSun(!S.hc);
 document.querySelectorAll('#rmTheme button').forEach(b=>b.onclick=()=>setTheme(b.dataset.v));
 $('#rmAcc').onclick=()=>{S.rmAccent=S.rmAccent==='green'?'amber':'green';setTheme(S.rmTheme)};
-setTheme(S.rmTheme||(S.hc?'sun':'range'));
+setTheme(S.rmTheme||(S.hc?'sun':'range')); lookLabel();
 
 /* ---------- Offline ---------- */
 function showOnline(){const off=!navigator.onLine;['offChip','offChip2'].forEach(id=>{const e=$('#'+id);if(e)e.hidden=!off})}
