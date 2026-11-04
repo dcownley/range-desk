@@ -186,6 +186,11 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
 #psFaceSlot #face{max-width:none;width:100%;max-height:62vh}
 #psFaceSlot .facewrap > .note{display:none}
 .ps-side{display:flex;flex-direction:column;gap:8px}
+.ns-box{border:3px solid var(--accent);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.ns-lab{font:600 14px/1 var(--display);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.ns-vals{display:flex;gap:18px;flex-wrap:wrap;font:700 44px/1 var(--display);font-variant-numeric:tabular-nums}
+.ns-chg{font:700 22px/1.1 var(--display);color:var(--accent)}
+#nsApply{min-height:52px;font:700 20px var(--display);letter-spacing:.06em;text-transform:uppercase}
 .ps-next{font:700 22px/1.2 var(--display);letter-spacing:.04em;text-transform:uppercase}
 .ps-score{font:700 20px var(--mono)}
 .ps-wind{border:1px solid var(--line);border-left:6px solid var(--wind);border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
@@ -753,6 +758,16 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
       </ul>
     </section>
 
+    <section id="h-next">
+      <h2>Next shot</h2>
+      <p>On the plot sheet, after every shot you plot (tapped from ShotMarker's screen or copied from a paper plot), the <b>Next shot</b> box gives the elevation and windage to put on for the next shot, and the change in clicks. <b>Put on scope</b> sets the dial in one tap.</p>
+      <ul>
+        <li><b>Elevation</b> centres on your recent shots, the latest weighted most. It offers a change only when it comes to a whole click, so one wide shot isn't chased.</li>
+        <li><b>Windage with the Calypso live</b>: the wind now × this range's trued factor, plus spin drift, plus the string's own recent trend. Once the wind has varied during the string, the factor is refined on the string itself.</li>
+        <li><b>Without a live wind</b>, it follows where your recent shots needed the wind; watch the flags for a change.</li>
+        <li>A ShotMarker import afterwards replaces the tapped positions with ShotMarker's, and those strings then feed the trued factor for next time.</li>
+      </ul>
+    </section>
     <section id="h-rec">
       <h2>Records</h2>
       <p>Records (in the header and in Range mode) lists every string on this device, newest first.</p>
@@ -929,6 +944,13 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px}
             <div id="psFaceSlot"></div>
             <div class="ps-side">
               <div class="ps-next" id="psNext">Next: sighter 1</div>
+              <div class="ns-box" id="nsBox" hidden>
+                <div class="ns-lab">Next shot: put on</div>
+                <div class="ns-vals"><span id="nsE">–</span><span id="nsW">–</span></div>
+                <div class="ns-chg" id="nsChg"></div>
+                <button type="button" id="nsApply" class="primary">Put on scope</button>
+                <p class="rm-note" id="nsWhy"></p>
+              </div>
               <div class="rm-lab"><span>Elevation on the scope (<span class="sUnit">MOA</span>)</span></div>
               <div class="rm-step"><button type="button" data-pe="-1">▼ 1</button><output id="psE">–</output><button type="button" data-pe="1">▲ 1</button></div>
               <div class="rm-lab"><span>Windage on the scope</span></div>
@@ -3563,7 +3585,72 @@ function renderPS(){
       return`<tr class="${x.role==='sighter'?'sight':''}"><td>${x.lab}</td><td>${scoreShot(s)}</td><td>${f2(s.dialE)}</td><td>${w2(s.dialW)}</td><td>${f2(s.predE)} / ${w2(s.predW)}</td><td>${(yE/RAD_PER[u])>=0?'↑':'↓'}${Math.abs(yE/RAD_PER[u]).toFixed(2)} ${xW>=0?'→':'←'}${Math.abs(xW/RAD_PER[u]).toFixed(2)}</td><td>${f2(nE)} / ${w2(nW)}</td></tr>`}).reverse().join(''):'';
   const plotted=q.length>0; $('#strGrp').hidden=plotted; $('#strGrpLbl').hidden=plotted;
   const wb=windBracket(); $('#psWind').hidden=!wb; if(wb)$('#psWind').innerHTML=renderBracket(wb);
+  renderNextShot();
 }
+/* Next shot: the dial for the next shot, trued from this string so far.
+   Each plotted shot says what elevation and windage it needed (its dial, corrected by where it landed).
+   Elevation: recent shots weighted most, shrunk towards the current dial so one wide shot doesn't chase the group;
+   a change is offered only when it comes to a whole click or more.
+   Windage with the Calypso live: spin drift and Coriolis + the crosswind now × this range's trued factor (refined
+   on this string once the wind has varied) + the string's recent bias. Without a live wind: the recent trend alone. */
+function nextShot(){
+  if(!S.str)return null;
+  const l=curLoad(), u=(l&&l.scopeUnit)||'moa', ck=(l&&+l.click)||0.125, R=RAD_PER[u];
+  const q=psShots().map(x=>x.s).filter(s=>s.dialE!=null&&s.dialW!=null);
+  const td=trueDistance(), sol=computeSolution(td.yd,{rowsYd:[td.yd]}), r=sol&&sol.rows[0];
+  const dialE=parseFloat(S.dial.e)*R, dialW=dialSigned()*R;
+  const ca=S.src==='calypso'?calAvg():null, cNow=ca?ca.spd*Math.sin(ca.rel*D2R):null;
+  if(!q.length){
+    if(!S.lastSol)return null;
+    return{e:S.lastSol.elevRad,w:S.lastSol.windRad,why:'No shots yet: start on Range Desk\'s solution'+'.',n:0};
+  }
+  const last=q.slice(-5), wts=last.map((_,i)=>Math.pow(0.6,last.length-1-i)), W=wts.reduce((a,b)=>a+b,0);
+  const wm=a=>a.reduce((t,v,i)=>t+v*wts[i],0)/W;
+  const needE=last.map(s=>s.dialE-ANG_IN(s.yIn,s.yd)), needW=last.map(s=>s.dialW-ANG_IN(s.xIn,s.yd));
+  const shrink=q.length/(q.length+1);
+  const cur=isFinite(dialE)?dialE:last[last.length-1].dialE;
+  let e=cur+shrink*(wm(needE)-cur);
+  if(Math.abs(e-cur)<ck*R*0.75)e=cur;                       // under a click: hold
+  let w, why;
+  const k=r&&r.w10>0?r.w10/10:null, s0=r?r.parts.spin+r.parts.cor:0;
+  if(k&&cNow!=null){
+    const stored=wtFactorOn('calypso'), f0=stored?stored.f:1;
+    const withC=q.filter(s=>s.calX!=null);
+    let f=f0, fNote=stored?`your trued factor ${f0.toFixed(2)}`:'factor 1.00 (not trued yet)';
+    const cs=withC.map(s=>s.calX), span=cs.length?Math.max(...cs)-Math.min(...cs):0;
+    if(withC.length>=4&&span>=1.5){
+      const nw=withC.map(s=>s.dialW-ANG_IN(s.xIn,s.yd)-s0), sxy=withC.reduce((a,s,i)=>a+nw[i]*s.calX,0), sxx=withC.reduce((a,s)=>a+k*s.calX*s.calX,0);
+      if(sxx>0){const fs=sxy/sxx; if(fs>0.2&&fs<3){f=(f0*4+fs*withC.length)/(4+withC.length); fNote=`factor ${f.toFixed(2)}, refined on this string from ${f0.toFixed(2)}`}}
+    }
+    const res=last.map((s,i)=>s.calX!=null?needW[i]-(s0+k*f*s.calX):null), okI=res.map((v,i)=>v!=null?i:-1).filter(i=>i>=0);
+    const bias=okI.length?okI.reduce((a,i)=>a+res[i]*wts[i],0)/okI.reduce((a,i)=>a+wts[i],0)*shrink:0;
+    w=s0+k*f*cNow+bias;
+    why=`Calypso ${Math.abs(cNow).toFixed(1)} mph ${cNow>=0?'R':'L'} × ${fNote}${Math.abs(bias)>=ck*R*0.5?`, plus this string's trend ${bias>=0?'R':'L'} ${Math.abs(bias/R).toFixed(2)}`:''}.`;
+  }else{
+    w=dialW+shrink*(wm(needW)-dialW);
+    why=`No live wind, so this follows where your last ${last.length} shot${last.length>1?'s':''} needed the wind. Watch the flags for a change.`;
+  }
+  if(Math.abs(w-dialW)<ck*R*0.75)w=dialW;
+  why=`From ${q.length} shot${q.length>1?'s':''}: elevation centred on the recent shots; wind: ${why}`;
+  return{e,w,why,n:q.length};
+}
+function renderNextShot(){
+  const box=$('#nsBox'); if(!box)return; const ns=nextShot(); box.hidden=!ns; if(!ns)return;
+  const l=curLoad(), u=(l&&l.scopeUnit)||'moa', ck=(l&&+l.click)||0.125, R=RAD_PER[u];
+  const rc=v=>Math.round(v/R/ck)*ck, eV=rc(ns.e), wV=rc(ns.w);
+  const curE=parseFloat(S.dial.e), curW=dialSigned();
+  const dp=ck<0.25?3:2; $('#nsE').textContent=eV.toFixed(dp);
+  $('#nsW').textContent=Math.abs(wV)<1e-9?'0':`${Math.abs(wV).toFixed(dp)} ${wV>0?'R':'L'}`;
+  const dEc=isFinite(curE)?Math.round((eV-curE)/ck):null, dWc=Math.round((wV-curW)/ck);
+  const parts=[dEc==null?'set elevation':dEc===0?'elevation: hold':`${Math.abs(dEc)} click${Math.abs(dEc)>1?'s':''} ${dEc>0?'up':'down'}`,
+    dWc===0?'wind: hold':`${Math.abs(dWc)} click${Math.abs(dWc)>1?'s':''} ${dWc>0?'right':'left'}`];
+  $('#nsChg').textContent=parts.join(' · ');
+  $('#nsApply').disabled=dEc===0&&dWc===0;
+  $('#nsWhy').textContent=ns.why;
+  box.dataset.e=eV; box.dataset.w=wV;
+}
+$('#nsApply').onclick=()=>{const b=$('#nsBox'), e=+b.dataset.e, w=+b.dataset.w; if(!isFinite(e)||!isFinite(w))return;
+  S.dial.e=String(+e.toFixed(3)); S.dial.w=Math.abs(w).toFixed(3); S.dial.wd=w<0?'L':'R'; const de=$('#rmDE');if(de)de.value=S.dial.e; save(); render()};
 $('#psBox').addEventListener('click',e=>{
   const b=e.target.closest('button'); if(!b||!S.str)return;
   const l=curLoad(), ck=(l&&+l.click)||0.125, par=b.parentNode.id;
