@@ -329,7 +329,7 @@ main section.card.fv-folded > :not(h2){display:none!important}
         <div class="row">
           <label>Range<select id="rgSel"><option value="century">Century (1–128, 300–600 yd)</option><option value="stickledown">Stickledown (1–51, 800–1200 yd)</option></select></label>
           <label>Target number<input id="rgN" type="number" min="1" max="128" style="width:6em"></label>
-          <label>Distance<select id="rgDist"></select></label><button type="button" id="rgPin">Pin it on the map</button><button type="button" id="rgGps">Pin this firing point (GPS)</button><button type="button" id="rgUseT">Use the T pin</button>
+          <label>Distance<select id="rgDist"></select></label><button type="button" id="rgPin">Pin it on the map</button><button type="button" id="rgGps">Pin this firing point (GPS)</button><button type="button" id="rgUseT">Use the T pin</button><button type="button" id="rgPair">Use the FP and T pins</button>
           <label hidden><input type="checkbox" id="rgRev"> Numbers rise to the left</label>
         </div>
         <p class="note" id="rgMsg"></p>
@@ -3292,13 +3292,23 @@ function rangesInit(){
   if(c.dirAz==null)c.dirAz=vincenty(FP600.lat,FP600.lng,T49.lat,T49.lng).az;
   for(const r of Object.values(S.ranges)){r.pins=r.pins||[];r.fpPins=r.fpPins||[]}
 }
-const ENU=(o,p)=>({x:(p.lng-o.lng)*111320*Math.cos(o.lat*D2R),y:(p.lat-o.lat)*110540});
-const LL=(o,v)=>({lat:o.lat+v.y/110540,lng:o.lng+v.x/(111320*Math.cos(o.lat*D2R))});
+// metres per degree at this latitude (WGS84), so planned distances match the surveyed ones
+const MLAT=φ=>111132.92-559.82*Math.cos(2*φ*D2R)+1.175*Math.cos(4*φ*D2R), MLON=φ=>111412.84*Math.cos(φ*D2R)-93.5*Math.cos(3*φ*D2R);
+const ENU=(o,p)=>({x:(p.lng-o.lng)*MLON(o.lat),y:(p.lat-o.lat)*MLAT(o.lat)});
+const LL=(o,v)=>({lat:o.lat+v.y/MLAT(o.lat),lng:o.lng+v.x/MLON(o.lat)});
 // The range layout from whichever is known, best first: two pinned targets; two GPS firing points on one mound;
 // or one target plus the direction of fire (positions then use a standard spacing, which never affects the ballistics).
 const STD_SPACING=2.75;
 function rangeGeo(id){
   const r=S.ranges&&S.ranges[id]; if(!r)return null;
+  // Best of all: a firing point and its own target, marked together. The direction of fire is exactly from one to the other;
+  // other known points only set the spacing between targets.
+  const pr=(r.pairs||[]); if(pr.length){const P=pr[pr.length-1], dv=ENU(P.fp,P.tgt), L=Math.hypot(dv.x,dv.y);
+    if(L>50){const down={x:dv.x/L,y:dv.y/L}, right={x:down.y,y:-down.x}, a={n:P.n,lat:P.tgt.lat,lng:P.tgt.lng};
+      const others=[...r.pins.filter(q=>q.n!==P.n).map(q=>({n:q.n,pt:q})),...pr.filter(q=>q.n!==P.n).map(q=>({n:q.n,pt:q.tgt}))];
+      let sp=STD_SPACING, spSrc='standard spacing';
+      if(others.length){const o=others.sort((u,v)=>Math.abs(v.n-P.n)-Math.abs(u.n-P.n))[0], v=ENU(a,o.pt), k=(v.x*right.x+v.y*right.y)/(o.n-P.n); if(k>1&&k<8){sp=k;spSrc=`spacing from target ${o.n}`}}
+      return{a,step:{x:right.x*sp,y:right.y*sp},down,spacing:sp,how:`firing point and target ${P.n} at ${P.dist} yd marked together; ${spSrc}`}}}
   const fromLine=(a,b,dn)=>{const v=ENU(a,b), step={x:v.x/dn,y:v.y/dn}, L=Math.hypot(step.x,step.y); if(L<0.3||L>15)return null;
     const u={x:step.x/L,y:step.y/L}; return{step,down:{x:-u.y,y:u.x},spacing:L}};      // numbers rise to the right looking downrange
   if(r.pins.length>=2){const [a,b]=r.pins.slice(-2), g=b.n!==a.n&&fromLine(a,b,b.n-a.n); if(g)return{a,...g,how:'two pinned targets'}}
@@ -3428,6 +3438,13 @@ function rangePinAt(id,n,ll){rangesInit(); const r=S.ranges[id]; r.pins=r.pins.f
   const g=rangeGeo(id); $('#rgMsg').textContent=g?`${RANGE_DEF[id].name} ready: target ${n} pinned; targets about ${g.spacing.toFixed(1)} m apart.`:`Target ${n} pinned. Pin one more target, well apart from it.`}
 $('#rgGps').onclick=()=>{const n=parseInt($('#rgN').value,10), id=$('#rgSel').value; if(!(n>=1&&n<=RANGE_DEF[id].lanes)){$('#rgMsg').textContent=`Enter the target number for this firing point (1 to ${RANGE_DEF[id].lanes}) first.`;return}
   $('#rgMsg').dataset.keep='1'; pinFpGps(id,n,+$('#rgDist').value,$('#rgMsg')); setTimeout(()=>{delete $('#rgMsg').dataset.keep},20000)};
+$('#rgPair').onclick=()=>{const n=parseInt($('#rgN').value,10), id=$('#rgSel').value, dist=+$('#rgDist').value;
+  if(!(n>=1&&n<=RANGE_DEF[id].lanes)){$('#rgMsg').textContent=`Enter the number of the target the T pin is on (1 to ${RANGE_DEF[id].lanes}) first, and the distance of the FP pin's mound.`;return}
+  const m=vincenty(S.fp.lat,S.fp.lng,S.tgt.lat,S.tgt.lng).m/M_PER_YD;
+  if(Math.abs(m-dist)>dist*0.08){$('#rgMsg').textContent=`The FP and T pins are ${m.toFixed(0)} yd apart, which doesn't match ${dist} yd. Place FP on the ${dist} yd firing point of target ${n}, and T on target ${n}.`;return}
+  rangesInit(); const r=S.ranges[id]; r.pairs=(r.pairs||[]).filter(q=>q.n!==n); r.pairs.push({n,dist,fp:{lat:S.fp.lat,lng:S.fp.lng},tgt:{lat:S.tgt.lat,lng:S.tgt.lng}}); if(r.pairs.length>3)r.pairs=r.pairs.slice(-3);
+  save(); planCompute(); renderPlan(); const g=rangeGeo(id);
+  $('#rgMsg').dataset.keep='1'; $('#rgMsg').textContent=`${RANGE_DEF[id].name}: direction of fire set from your FP and T pins (${vincenty(S.fp.lat,S.fp.lng,S.tgt.lat,S.tgt.lng).az.toFixed(1)}°, ${m.toFixed(0)} yd). ${g?g.how.replace(/^.*; /,'Targets: '):''}.`; setTimeout(()=>{delete $('#rgMsg').dataset.keep},15000)};
 $('#rgUseT').onclick=()=>{const n=parseInt($('#rgN').value,10), id=$('#rgSel').value; if(!(n>=1&&n<=RANGE_DEF[id].lanes)){$('#rgMsg').textContent=`Enter the number of the target the T pin is on (1 to ${RANGE_DEF[id].lanes}) first.`;return}
   rangePinAt(id,n,S.tgt)};
 $('#rfAdd').onclick=()=>{const n=$('#rfName').value.trim(); if(!n){$('#plMsg').textContent='Enter the rifle make and model first.';return}
