@@ -309,6 +309,7 @@ main section.card.fv-folded > :not(h2){display:none!important}
     <button id="btnFP" type="button">Place firing point</button>
     <button id="btnT" type="button">Place target</button>
     <button id="btnRM" type="button" class="primary">Range mode</button>
+    <button id="btnLoad" type="button">Load</button>
     <button id="btnRec" type="button">Records</button>
     <button id="btnHelp" type="button">Help</button>
   </div>
@@ -354,6 +355,44 @@ main section.card.fv-folded > :not(h2){display:none!important}
       <div class="row"><button type="button" id="plRefresh">Refresh forecasts</button><label>Sheet<select id="plSheet"><option value="zoom">Zoomed (finer plotting)</option><option value="whole">Whole face</option><option value="both">Both</option></select></label><button type="button" id="plPrint">Print plot sheets</button></div>
       <p class="note" id="plMsg"></p>
     </section>
+    <section class="card" id="cardLoad">
+      <h2>Load <small id="loadCardLbl"></small></h2>
+      <p class="note">The load the app uses for every solution, plan and plot sheet. Choose it here, edit it below, or add a new one. Rifles are listed under Match plan; the ammunition batch goes in Session details.</p>
+      <div class="row">
+        <label style="flex:1;min-width:0">Load
+          <select id="loadSel" style="width:100%"></select>
+        </label>
+      </div>
+      <details id="loadEdit" open>
+        <summary>Edit this load</summary>
+        <div class="loadgrid" style="margin-top:8px">
+          <label>Name<input id="lName"></label>
+          <label>Calibre<input id="lCal"></label>
+          <label>Bullet<input id="lBullet"></label>
+          <label>Weight (gr)<input id="lGr" inputmode="decimal"></label>
+          <label>Drag model<select id="lDrag"><option>G7</option><option>G1</option></select></label>
+          <label>BC<input id="lBc" inputmode="decimal"></label>
+          <label>Muzzle velocity (fps)<input id="lMv" inputmode="decimal"></label>
+          <label>MV measured at (°C)<input id="lMvT" inputmode="decimal"></label>
+          <label>MV change (fps per °C)<input id="lMvS" inputmode="decimal"></label>
+          <label>Zero distance (yd)<input id="lZero" inputmode="decimal"></label>
+          <label>Sight height (in)<input id="lSh" inputmode="decimal"></label>
+          <label>Twist (in per turn)<input id="lTw" inputmode="decimal"></label>
+          <label>Twist direction<select id="lTwD"><option value="R">Right hand</option><option value="L">Left hand</option></select></label>
+          <label>Bullet length (in)<input id="lLen" inputmode="decimal"></label>
+          <label>Bullet diameter (in)<input id="lDia" inputmode="decimal"></label>
+          <label>Scope unit<select id="lSU"><option value="moa">True MOA</option><option value="smoa">Shooter's MOA (IPHY)</option><option value="mil">Mil</option></select></label>
+          <label>Click value<input id="lClick" inputmode="decimal"></label>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <button type="button" id="loadNew">New load</button>
+          <button type="button" id="loadDup">Duplicate</button>
+          <button type="button" id="loadDel">Delete</button>
+        </div>
+        <p class="note" id="loadDelConfirm" hidden>Tap Delete again to remove this load.</p>
+        <p class="note">The rifle is zeroed in standard conditions (15 °C, 1013 hPa) with no wind. MV change per °C is your powder's temperature sensitivity; leave 0 if unknown.</p>
+      </details>
+    </section>
     <section class="card" id="cardDist">
       <h2>Distance truing <small id="distSourceLbl"></small></h2>
       <div class="row">
@@ -374,11 +413,7 @@ main section.card.fv-folded > :not(h2){display:none!important}
 
     <section class="card" id="cardSol">
       <h2>Ballistic solution <small id="solLoadLbl"></small></h2>
-      <div class="row">
-        <label style="flex:1;min-width:0">Load
-          <select id="loadSel" style="width:100%"></select>
-        </label>
-      </div>
+      <p class="note">Using the load shown above. To change or edit it, use the <b>Load</b> card or the Load button at the top.</p>
       <div class="solbig">
         <div><span>Elevation from zero</span><b id="sElev">–</b><small id="sElevC"></small></div>
         <div><span>Windage to dial</span><b id="sWind">–</b><small id="sWindC"></small></div>
@@ -415,35 +450,6 @@ main section.card.fv-folded > :not(h2){display:none!important}
         <label class="note" style="display:flex;flex-direction:row;gap:6px;align-items:center;text-transform:none;letter-spacing:0;font-size:13px"><input type="checkbox" id="optAJ"> Aerodynamic jump</label>
         <label class="note" style="display:flex;flex-direction:row;gap:6px;align-items:center;text-transform:none;letter-spacing:0;font-size:13px"><input type="checkbox" id="optCor"> Coriolis</label>
       </div>
-      <details id="loadEdit">
-        <summary>Edit load</summary>
-        <div class="loadgrid" style="margin-top:8px">
-          <label>Name<input id="lName"></label>
-          <label>Calibre<input id="lCal"></label>
-          <label>Bullet<input id="lBullet"></label>
-          <label>Weight (gr)<input id="lGr" inputmode="decimal"></label>
-          <label>Drag model<select id="lDrag"><option>G7</option><option>G1</option></select></label>
-          <label>BC<input id="lBc" inputmode="decimal"></label>
-          <label>Muzzle velocity (fps)<input id="lMv" inputmode="decimal"></label>
-          <label>MV measured at (°C)<input id="lMvT" inputmode="decimal"></label>
-          <label>MV change (fps per °C)<input id="lMvS" inputmode="decimal"></label>
-          <label>Zero distance (yd)<input id="lZero" inputmode="decimal"></label>
-          <label>Sight height (in)<input id="lSh" inputmode="decimal"></label>
-          <label>Twist (in per turn)<input id="lTw" inputmode="decimal"></label>
-          <label>Twist direction<select id="lTwD"><option value="R">Right hand</option><option value="L">Left hand</option></select></label>
-          <label>Bullet length (in)<input id="lLen" inputmode="decimal"></label>
-          <label>Bullet diameter (in)<input id="lDia" inputmode="decimal"></label>
-          <label>Scope unit<select id="lSU"><option value="moa">True MOA</option><option value="smoa">Shooter's MOA (IPHY)</option><option value="mil">Mil</option></select></label>
-          <label>Click value<input id="lClick" inputmode="decimal"></label>
-        </div>
-        <div class="row" style="margin-top:8px">
-          <button type="button" id="loadNew">New load</button>
-          <button type="button" id="loadDup">Duplicate</button>
-          <button type="button" id="loadDel">Delete</button>
-        </div>
-        <p class="note" id="loadDelConfirm" hidden>Tap Delete again to remove this load.</p>
-        <p class="note">The rifle is zeroed in standard conditions (15 °C, 1013 hPa) with no wind. MV change per °C is your powder's temperature sensitivity; leave 0 if unknown.</p>
-      </details>
     </section>
 
     <section class="card">
@@ -461,6 +467,7 @@ main section.card.fv-folded > :not(h2){display:none!important}
 
     <section class="card">
       <h2>Wind on the line <small id="wxTime"></small></h2>
+      <p class="note"><a href="#" id="windyLink">Open Windy for this range</a> (forecast animation, in a new tab).</p>
       <div class="row" style="justify-content:space-between">
         <span class="note" id="updLine">Fetching…</span>
         <button type="button" id="refreshNow">Refresh now</button>
@@ -538,7 +545,7 @@ main section.card.fv-folded > :not(h2){display:none!important}
       <p class="note">Tick the models to include in the consensus. Tap a model's name to make it the one driving the wind card. Crosswind cells show the speed with R for wind from the right and L for wind from the left. A model with no data here doesn't cover this location.</p>
     </section>
 
-    <section class="card">
+    <section class="card" id="cardWindy" hidden>
       <h2>Windy map</h2>
       <details id="windyBox">
         <summary>Show the animated Windy wind map for this range</summary>
@@ -979,7 +986,7 @@ main section.card.fv-folded > :not(h2){display:none!important}
     <button type="button" id="rmAcc" title="Accent colour" hidden><span class="acc-dot"></span><span id="rmAccLbl">Amber</span></button>
     <button type="button" id="rmSun" aria-pressed="false" hidden>Sun mode</button>
     <span class="rm-menu"><button type="button" id="rmMenu" aria-expanded="false">Menu ▾</button>
-      <span class="rm-menu-pop" id="rmMenuPop" hidden><button type="button" id="rmRec">Records</button><button type="button" id="rmHelp">Help</button></span></span>
+      <span class="rm-menu-pop" id="rmMenuPop" hidden><button type="button" id="rmLoad">Load</button><button type="button" id="rmRec">Records</button><button type="button" id="rmHelp">Help</button></span></span>
     <button type="button" id="rmExit">Full view</button>
   </div>
   <div class="rm-body">
@@ -1828,6 +1835,7 @@ function computeSolution(trueYd,opt){
 const fmtAng=(rad,u,dp)=>(rad/RAD_PER[u]).toFixed(dp??(u==='mil'?2:3));
 function renderSolution(trueYd){
   const sol=computeSolution(trueYd), l=curLoad();
+  { const ll=$('#loadCardLbl'); if(ll)ll.textContent=l.name||''; }
   $('#loadSel').innerHTML=S.loads.map(x=>`<option value="${x.id}" ${x.id===l.id?'selected':''}>${x.name||'Unnamed load'}</option>`).join('');
   if(!sol){['#sElev','#sWind'].forEach(k=>$(k).textContent='–');$('#sWarn').hidden=false;$('#sWarn').textContent='Enter BC, muzzle velocity, zero distance and sight height under Edit load.';$('#solTbl').innerHTML='';return}
   const u=l.scopeUnit||'moa', ck=+l.click||0.125, U=UNIT_LBL[u];
@@ -2459,6 +2467,10 @@ for(const [id,k] of Object.entries(LOAD_FIELDS)){
   });
 }
 $('#loadSel').onchange=e=>{S.loadId=e.target.value;fillLoadEditor();save();render()};
+function openLoadCard(){const c=$('#cardLoad'); c.classList.remove('fv-folded'); if(S.fvFold){S.fvFold.cardLoad=false;store.set('fvFold',S.fvFold)} $('#loadEdit').open=true; c.scrollIntoView({behavior:'smooth',block:'start'})}
+$('#btnLoad').onclick=openLoadCard;
+$('#rmLoad').onclick=()=>{$('#rmMenuPop').hidden=true; if(!$('#rm').hidden)$('#rmExit').click(); setTimeout(openLoadCard,150)};
+$('#windyLink').onclick=e=>{e.preventDefault(); window.open(`https://www.windy.com/?${S.tgt.lat.toFixed(3)},${S.tgt.lng.toFixed(3)},13`,'_blank','noopener')};
 $('#loadNew').onclick=()=>{const id='ld'+Date.now();S.loads.push({...DEFAULT_LOADS[0],id,name:'New load'});S.loadId=id;fillLoadEditor();save();render();$('#loadEdit').open=true};
 $('#loadDup').onclick=()=>{const id='ld'+Date.now(),l=curLoad();S.loads.push({...l,id,name:(l.name||'Load')+' copy'});S.loadId=id;fillLoadEditor();save();render()};
 let delArmed=false;
