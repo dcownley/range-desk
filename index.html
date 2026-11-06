@@ -1007,7 +1007,7 @@ header .row button,header > .row > button{min-height:44px;font-size:16px;padding
     <button type="button" id="rmAcc" title="Accent colour" hidden><span class="acc-dot"></span><span id="rmAccLbl">Amber</span></button>
     <button type="button" id="rmSun" aria-pressed="false" hidden>Sun mode</button>
     <span class="rm-menu"><button type="button" id="rmMenu" aria-expanded="false">Menu ▾</button>
-      <span class="rm-menu-pop" id="rmMenuPop" hidden><button type="button" id="rmLoad">Load</button><button type="button" id="rmRec">Records</button><button type="button" id="rmHelp">Help</button></span></span>
+      <span class="rm-menu-pop" id="rmMenuPop" hidden><button type="button" id="rmSaveData">Save all data</button><button type="button" id="rmOpenData">Open a data file</button><button type="button" id="rmLoad">Load</button><button type="button" id="rmRec">Records</button><button type="button" id="rmHelp">Help</button></span></span>
     <button type="button" id="rmExit">Full view</button>
   </div>
   <div class="rm-body">
@@ -1140,6 +1140,7 @@ header .row button,header > .row > button{min-height:44px;font-size:16px;padding
       <p class="rm-note" id="rmAtmMsg"></p>
       <div class="rm-step" style="grid-template-columns:1fr auto">
         <button type="button" id="wdBtn" class="primary">Connect Weatherdot (live)</button>
+        <p class="rm-note bt-note" hidden></p>
         <button type="button" id="wdRead">Read now</button>
       </div>
       <p class="rm-note" id="wdStatus"></p>
@@ -1197,6 +1198,7 @@ header .row button,header > .row > button{min-height:44px;font-size:16px;padding
       <div id="rmCal" hidden>
         <div class="rm-step" style="grid-template-columns:1fr 1fr">
           <button type="button" id="calBtn" class="primary">Connect Calypso</button>
+          <p class="rm-note bt-note" hidden></p>
           <select id="calWin" aria-label="Averaging time"><option value="5">5 s average</option><option value="10">10 s average</option><option value="30">30 s average</option></select>
         </div>
         <p class="rm-note" id="calStatus">Not connected. Point the orientation mark on the Calypso at the target.</p>
@@ -1303,6 +1305,12 @@ header .row button,header > .row > button{min-height:44px;font-size:16px;padding
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
 "use strict";
+// Any error is shown in a bar at the top, so a fault on one device can be read and reported rather than failing silently
+function showErr(msg){try{let b=document.getElementById('errBar'); if(!b){b=document.createElement('div');b.id='errBar';
+  b.style.cssText='position:fixed;left:0;right:0;top:0;z-index:9999;background:#b42318;color:#fff;font:14px/1.4 Arial,sans-serif;padding:8px 12px;max-height:40vh;overflow:auto';
+  b.onclick=()=>b.remove(); document.body.appendChild(b)} b.textContent='Range Desk error (tap to hide; please send a screenshot): '+msg}catch(e){}}
+window.addEventListener('error',e=>showErr(`${e.message} (line ${e.lineno})`));
+window.addEventListener('unhandledrejection',e=>showErr('async: '+((e.reason&&e.reason.message)||e.reason)));
 const $ = s => document.querySelector(s);
 const R2D = 180/Math.PI, D2R = Math.PI/180;
 const M_PER_YD = 0.9144;
@@ -1487,9 +1495,15 @@ const S={
   light:store.get('light','Full sun'),
   mirage:store.get('mirage',{dir:'none',str:'',focus:'mid'}), obs:store.get('obs',[]),
   stn:store.get('stn','auto'), metars:[],
-  str:store.get('str',null), viewLog:store.get('viewLog','all'), sess:store.get('sess',{type:'practice',event:'',match:'',coach:'',shooterId:null}), shooters:store.get('shooters',[]), dayMv:store.get('dayMv',null), velLog:store.get('velLog',[]), folded:store.get('folded',null), ps:store.get('ps',{sight:2,cnt:15}), ciKind:store.get('ciKind','auto'), wdotScale:store.get('wdotScale','ms100'), kestrelT:store.get('kestrelT',null), manualT:store.get('manualT',null), hc:store.get('hc',false), fcOk:store.get('fcOk',null), dayWind:store.get('dayWind',null), dayWindOn:store.get('dayWindOn',true), aim:store.get('aim',{x:0,y:0}), planLive:store.get('planLive',null), rifles:store.get('rifles',[]), planLoaded:store.get('planLoaded',null), ranges:store.get('ranges',null), plan:store.get('plan',[]), rmTheme:store.get('rmTheme',null), rmAccent:store.get('rmAccent','amber'), windTrue:store.get('windTrue',{}),
+  str:store.get('str',null), viewLog:store.get('viewLog','all'), sess:store.get('sess',{type:'practice',event:'',match:'',coach:'',shooterId:null}), shooters:store.get('shooters',[]), dayMv:store.get('dayMv',null), velLog:store.get('velLog',[]), folded:store.get('folded',null), ps:store.get('ps',{sight:2,cnt:15}), ciKind:store.get('ciKind','auto'), wdotScale:store.get('wdotScale','ms100'), kestrelT:store.get('kestrelT',null), manualT:store.get('manualT',null), hc:store.get('hc',false), lastBackup:store.get('lastBackup',null), fcOk:store.get('fcOk',null), dayWind:store.get('dayWind',null), dayWindOn:store.get('dayWindOn',true), aim:store.get('aim',{x:0,y:0}), planLive:store.get('planLive',null), rifles:store.get('rifles',[]), planLoaded:store.get('planLoaded',null), ranges:store.get('ranges',null), plan:store.get('plan',[]), rmTheme:store.get('rmTheme',null), rmAccent:store.get('rmAccent','amber'), windTrue:store.get('windTrue',{}),
   mode:null, wx:null, metar:null, elev:null
 };
+// Saved data from older versions or another device: put every list and setting into the shape this version expects
+for(const k of ['plan','rifles','logs','shots','velLog','shooters','loads'])if(!Array.isArray(S[k]))S[k]=[];
+if(!S.aim||typeof S.aim!=='object')S.aim={x:0,y:0};
+if(S.dayWind&&!Array.isArray(S.dayWind.entries))S.dayWind=null;
+if(S.planLive&&typeof S.planLive!=='object')S.planLive=null;
+S.plan=S.plan.filter(d=>d&&d.id&&d.range&&d.date);
 let sigK=JSON.stringify(S.kestrel), sigM=JSON.stringify(S.manual);
 const save=()=>{
   const k=JSON.stringify(S.kestrel), m=JSON.stringify(S.manual);          // time-stamp meter readings when they change
@@ -2025,7 +2039,8 @@ function fixSvgVars(root){
 }
 try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>render())}catch(e){}
 /* ---------- Rendering ---------- */
-function render(){
+function render(){try{renderInner()}catch(e){showErr(`${e.message} (${(e.stack||'').split('\n')[1]||''})`)}}
+function renderInner(){
   document.querySelectorAll('.fc-ok').forEach(b=>{const on=fcAccepted(b.dataset.fc), m=b.dataset.fc==='atm'?S.atmSrc!=='kestrel':!['calypso','manual'].includes(S.src);
     b.hidden=!m; b.classList.toggle('sel',on); b.textContent=on?'Forecast accepted for today ✓ (tap to undo)':'Use the forecast today'});
   { const rm=$('#rm'); if(rm){const was=rm.classList.contains('ph-str'), now=!!S.str; rm.classList.toggle('ph-str',now); rm.classList.toggle('ph-pre',!now);
@@ -2512,6 +2527,9 @@ for(const [id,k] of Object.entries(LOAD_FIELDS)){
 $('#loadSel').onchange=e=>{S.loadId=e.target.value;fillLoadEditor();save();render()};
 function openLoadCard(){const c=$('#cardLoad'); c.classList.remove('fv-folded'); if(S.fvFold){S.fvFold.cardLoad=false;store.set('fvFold',S.fvFold)} $('#loadEdit').open=true; c.scrollIntoView({behavior:'smooth',block:'start'})}
 $('#btnLoad').onclick=openLoadCard;
+$('#rmSaveData').onclick=()=>{$('#rmMenuPop').hidden=true; $('#dataSave').click(); const lb=$('#strLast'); if(lb){lb.hidden=false; lb.innerHTML='<b>Saved.</b> The file is in Downloads (on the iPad: Files → Downloads, or Chrome → Downloads).'}};
+$('#rmOpenData').onclick=()=>{$('#rmMenuPop').hidden=true; $('#dataOpen').click()};
+$('#dataOpen').addEventListener('change',()=>setTimeout(()=>{const lb=$('#strLast'); if(lb&&!$('#rm').hidden){lb.hidden=false; lb.textContent=$('#dataMsg').textContent}},300));
 $('#rmLoad').onclick=()=>{$('#rmMenuPop').hidden=true; if(!$('#rm').hidden)$('#rmExit').click(); setTimeout(openLoadCard,150)};
 $('#windyLink').onclick=e=>{e.preventDefault(); window.open(`https://www.windy.com/?${S.tgt.lat.toFixed(3)},${S.tgt.lng.toFixed(3)},13`,'_blank','noopener')};
 $('#loadNew').onclick=()=>{const id='ld'+Date.now();S.loads.push({...DEFAULT_LOADS[0],id,name:'New load'});S.loadId=id;fillLoadEditor();save();render();$('#loadEdit').open=true};
@@ -2702,9 +2720,9 @@ function renderImport(){
   document.querySelectorAll('.impWd').forEach(x=>x.onchange=e=>{IMP[+e.target.dataset.i].dWd=e.target.value});
 }
 /* ---------- Data files: save everything, or merge a backup / archive / team mate's file ---------- */
-const DATA_KEYS=['logs','shots','velLog','shooters','obs','history','loads','windTrue'];
+const DATA_KEYS=['logs','shots','velLog','shooters','obs','history','loads','windTrue','ranges','plan','rifles','sess','dayWind','fcOk'];
 $('#dataSave').onclick=()=>{
-  const items={}; DATA_KEYS.forEach(k=>items['frd_'+k]=S[k]);
+  const items={}; DATA_KEYS.forEach(k=>items['frd_'+k]=S[k]); items.frd_calLog=CALLOG; items.frd_wdLog=WDLOG; S.lastBackup=new Date().toISOString(); store.set('lastBackup',S.lastBackup);
   const txt=JSON.stringify({exported:new Date().toISOString(),app:'Range Desk',items},null,1);
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type:'application/json'}));a.download=`range-desk-data-${new Date().toISOString().slice(0,10)}.json`;document.body.appendChild(a);a.click();a.remove();
   $('#dataMsg').textContent=`Saved ${S.logs.length} strings and ${S.shots.length} shots.`;
@@ -2728,11 +2746,21 @@ function mergeData(j,fname){
     for(const v of get('velLog')||[]){if(!v)continue;if(haveV.has(v.t+'|'+v.fps)){const o=S.velLog.find(x=>x.t===v.t&&x.fps===v.fps);if(o&&v.batch&&!o.batch)o.batch=v.batch;continue}S.velLog.push(v);nv++}
     for(const p of get('shooters')||[]){if(!p||!p.name||S.shooters.some(q=>q.name===p.name&&String(q.number||'')===String(p.number||'')))continue;S.shooters.push({...p,id:'s'+Date.now()+Math.random().toString(36).slice(2,6)});nsh++}
     for(const l of get('loads')||[]){if(l&&l.id&&!S.loads.some(q=>q.id===l.id))S.loads.push(l)}
+    // set-up: ranges, plan, rifles, session; only fills what this device doesn't already have
+    let nset=0; const rg=get('ranges'); if(rg&&typeof rg==='object'){rangesInit(); for(const [k,r] of Object.entries(rg)){if(!r||!S.ranges[k])continue; const o=S.ranges[k];
+      for(const f of ['pins','fpPins','pairs']){if(Array.isArray(r[f])&&r[f].length&&!(o[f]||[]).length){o[f]=r[f];nset++}}
+      if(r.trued&&typeof r.trued==='object'){o.trued={...r.trued,...(o.trued||{})}} if(o.dirAz==null&&r.dirAz!=null)o.dirAz=r.dirAz}}
+    for(const d of get('plan')||[]){if(d&&d.id&&d.range&&d.date&&!S.plan.some(x=>x.id===d.id)){S.plan.push(d);nset++}}
+    for(const r of get('rifles')||[]){if(r&&r.id&&!S.rifles.some(x=>x.id===r.id)){S.rifles.push(r);nset++}}
+    const ss=get('sess'); if(ss&&typeof ss==='object')for(const [k,v] of Object.entries(ss)){if(v&&!S.sess[k]){S.sess[k]=v;nset++}}
+    // the Calypso and Weatherdot minute records (from the logger phone), then each string's averages and today's factor
+    let nlog=0; for(const [key,src] of [['calLog',CALLOG],['wdLog',WDLOG]]){const inc=get(key); if(inc&&typeof inc==='object')for(const [m,b] of Object.entries(inc)){if(!src[m]||src[m].n<b.n){src[m]=b;nlog++}}}
+    if(nlog){try{localStorage.setItem('frd_calLog',JSON.stringify(CALLOG));localStorage.setItem('frd_wdLog',JSON.stringify(WDLOG))}catch(e){} recomputeFromLogs()}
     S.logs.sort((a,b)=>Date.parse(a.t)-Date.parse(b.t)); S.shots.sort((a,b)=>Date.parse(a.t)-Date.parse(b.t));
     save(); render();
-    return`Opened ${fname}: added ${nl} strings, ${ns} shots${nv?`, ${nv} velocity readings`:''}${nsh?`, ${nsh} shooters`:''}${nv2?`; target speeds added to ${nv2} shots already here`:''}${nb?`; batch tags added to ${nb} strings already here`:''}. Anything already here was skipped.`;
+    return`Opened ${fname}: added ${nl} strings, ${ns} shots${nset?`, ${nset} set-up items (plan, rifles, ranges)`:''}${nlog?`, ${nlog} minutes of Calypso / Weatherdot readings (each string's averages updated)`:''}${nv?`, ${nv} velocity readings`:''}${nsh?`, ${nsh} shooters`:''}${nv2?`; target speeds added to ${nv2} shots already here`:''}${nb?`; batch tags added to ${nb} strings already here`:''}. Anything already here was skipped.`;
 }
-const isRangeDeskData=j=>j&&typeof j==='object'&&((j.items&&(j.items.frd_logs||j.items.frd_shots))||j.frd_logs||j.frd_shots);
+const isRangeDeskData=j=>j&&typeof j==='object'&&['frd_logs','frd_shots','frd_calLog','frd_plan','frd_ranges'].some(k=>(j.items&&j.items[k])||j[k]);
 $('#dataOpen').onchange=async e=>{
   const f=e.target.files[0]; if(!f)return;
   try{const j=JSON.parse(await f.text()); if(!isRangeDeskData(j))throw new Error('no strings or shots in it'); $('#dataMsg').textContent=mergeData(j,f.name)}
@@ -3338,7 +3366,8 @@ $('#recBcCopy').onclick=async()=>{
 // Layouts from the NSC range regulations: Century 128 lanes (10 butts), target 1 at the left end; Stickledown 50 lanes + Buffalo 51.
 const RANGE_DEF={century:{name:'Century',lanes:128,dists:[300,400,500,600]},stickledown:{name:'Stickledown',lanes:51,dists:[800,900,1000,1100,1200]}};
 function rangesInit(){
-  if(!S.ranges)S.ranges={century:{pins:[],rev:false},stickledown:{pins:[],rev:false}};
+  if(!S.ranges||typeof S.ranges!=='object')S.ranges={};
+  for(const k of Object.keys(RANGE_DEF))if(!S.ranges[k]||typeof S.ranges[k]!=='object')S.ranges[k]={pins:[],rev:false};
   const c=S.ranges.century;
   // Saturday 31 Oct, measured: Century target 49 (ShotMarker) and its 600 yd firing point, which fix the direction of fire
   const T49={lat:51.31626287348501,lng:-0.6545222482121639}, FP600={lat:51.31268920664141,lng:-0.6489711181449477};
@@ -3546,6 +3575,10 @@ function renderRmPlan(){
   $('#rpDay').textContent=dl?`Use today's wind factor: ${dl.replace(/^Today's wind factor: /,'')}`:"Use today's wind factor (learned after your first detail)";
 }
 $('#rpPick').onchange=renderRmPlan;
+if(!navigator.bluetooth){ // iPad and iPhone: no Bluetooth from a web page in any browser
+  ['#wdBtn','#calBtn'].forEach(id=>{const b=$(id); if(!b)return; b.disabled=true; b.textContent='Live connection not possible on this device';});
+  document.querySelectorAll('.bt-note').forEach(n=>{n.hidden=false; n.innerHTML='<b>This device can\'t connect Bluetooth from a browser</b> (Apple blocks it on iPad and iPhone). Use your Android phone as the logger: open Range Desk there in Chrome, connect the Calypso and Weatherdot, and leave it in Range mode. Later, on the phone: Menu → <b>Save all data</b>, send the file to this iPad (email or Drive), then here: Menu → <b>Open a data file</b>. Each detail then gets its Calypso and Weatherdot averages. Meanwhile, type readings under Kestrel / mine, or use the forecast.'});
+}
 document.addEventListener('click',e=>{if(e.target.id==='strReport'){const g=[...S.logs].reverse().find(x=>x.guided); if(g)openReport([g],logLabel(g))}});
 document.addEventListener('click',e=>{const b=e.target.closest('.fc-ok'); if(b)fcToggle(b.dataset.fc)});
 $('#rpDayOn').onchange=e=>{S.dayWindOn=e.target.checked; save(); planCompute(); render()};
@@ -3628,8 +3661,8 @@ $('#plPrint').onclick=()=>{
 </style></head><body>${P.map(d=>{const m=$('#plSheet').value;return m==='both'?page(d,'zoom')+page(d,'whole'):page(d,m)}).join('')}<script>onload=()=>print()<\/script></body></html>`;
   const w=window.open('','_blank'); if(w){w.document.write(html);w.document.close()}else{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([html],{type:'text/html'}));a.download='plot-sheets.html';a.click()}
 };
-rangesInit(); if(!$('#plDate').value){const t=new Date(Date.now()+864e5);$('#plDate').value=t.toISOString().slice(0,10)}
-renderPlan(); if(S.plan.length)setTimeout(planCompute,1500);
+try{rangesInit()}catch(e){showErr('ranges: '+e.message)} if(!$('#plDate').value){const t=new Date(Date.now()+864e5);$('#plDate').value=t.toISOString().slice(0,10)}
+try{renderPlan()}catch(e){showErr('plan: '+e.message)} if(S.plan.length)setTimeout(()=>planCompute().catch(e=>showErr('plan: '+e.message)),1500);
 
 /* ---------- Reports: one page per string, and a day report with a summary on top ---------- */
 function strShotsFor(g){return S.shots.filter(x=>logFor(x.t)===g).sort((a,b)=>Date.parse(a.t)-Date.parse(b.t))}
@@ -3716,7 +3749,7 @@ function renderMirage(){
 // Temperature 0x2A6E (sint16, 0.01 °C), pressure 0x2A6D (uint32, 0.1 Pa; absolute = station pressure), humidity 0x2A6F (uint16, 0.01 %).
 const WD={dev:null,chars:{},last:null,status:'Not connected. Close Anemotracker first, so the Weatherdot is free.',timer:null,lastSave:0};
 function wdApply(){
-  const v=WD.last; if(!v)return;
+  const v=WD.last; if(!v)return; try{wdLogAdd(v)}catch(e){}
   const ok=v.T!=null&&v.T>-40&&v.T<60&&v.P!=null&&v.P>700&&v.P<1100&&(v.RH==null||(v.RH>=0&&v.RH<=100));
   if(!ok){WD.status=`Weatherdot sends values that don't look right (temp ${v.T}, pressure ${v.P}, humidity ${v.RH}); not applied. Send Claude a screenshot.`;render();return}
   S.kestrel={T:v.T.toFixed(1),P:v.P.toFixed(1),RH:v.RH!=null?v.RH.toFixed(0):S.kestrel.RH}; S.atmSrc='kestrel'; S.atmLive='Weatherdot';
@@ -3763,6 +3796,20 @@ function calAvg(){
 const CALLOG=(()=>{try{return JSON.parse(localStorage.getItem('frd_calLog')||'{}')}catch(e){return{}}})(); let calLogTimer=null;
 function calLogAdd(spd,rel){const m=Math.floor(Date.now()/60000)*60000, b=CALLOG[m]||(CALLOG[m]={n:0,c:0,h:0,s:0}); b.n++; b.c+=spd*Math.sin(rel*D2R); b.h+=spd*Math.cos(rel*D2R); b.s+=spd;
   if(!calLogTimer)calLogTimer=setTimeout(()=>{calLogTimer=null; const cut=Date.now()-14*3600e3; for(const k of Object.keys(CALLOG))if(+k<cut)delete CALLOG[k]; try{localStorage.setItem('frd_calLog',JSON.stringify(CALLOG))}catch(e){}},15000)}
+const WDLOG=(()=>{try{return JSON.parse(localStorage.getItem('frd_wdLog')||'{}')}catch(e){return{}}})(); let wdLogTimer=null;
+function wdLogAdd(v){if(v.T==null||v.P==null)return; const m=Math.floor(Date.now()/60000)*60000, b=WDLOG[m]||(WDLOG[m]={n:0,T:0,P:0,RH:0,nRH:0}); b.n++; b.T+=v.T; b.P+=v.P; if(v.RH!=null){b.RH+=v.RH;b.nRH++}
+  if(!wdLogTimer)wdLogTimer=setTimeout(()=>{wdLogTimer=null; const cut=Date.now()-14*3600e3; for(const k of Object.keys(WDLOG))if(+k<cut)delete WDLOG[k]; try{localStorage.setItem('frd_wdLog',JSON.stringify(WDLOG))}catch(e){}},15000)}
+function wdBetween(t0,t1){let n=0,T=0,P=0,RH=0,nRH=0; for(const [k,b] of Object.entries(WDLOG)){const m=+k; if(m>=t0-30000&&m<=t1){n+=b.n;T+=b.T;P+=b.P;RH+=b.RH;nRH+=b.nRH}} return n?{Tc:T/n,PhPa:P/n,RH:nRH?RH/nRH:null,n}:null}
+// After a logger file arrives: each string without its own readings takes the Calypso and Weatherdot averages for its minutes,
+// and today's wind factor is rebuilt from the day's strings in order
+function recomputeFromLogs(){
+  for(const g of S.logs){ if(!g.tEnd)continue; const t0=Date.parse(g.t), t1=Date.parse(g.tEnd);
+    if(!(g.calN>=5)){const c=calBetween(t0,t1); if(c){g.calCross=c.c/c.n; g.calN=c.n}}
+    if(g.atmSrc!=='kestrel'){const w=wdBetween(t0,t1); if(w){g.Tc=+w.Tc.toFixed(1); g.PhPa=+w.PhPa.toFixed(1); if(w.RH!=null)g.RH=+w.RH.toFixed(0); g.atmSrc='kestrel'; g.atmNote='Weatherdot (logger)'}} }
+  const today=new Date().toLocaleDateString('en-CA'), mine=S.logs.filter(g=>g.guided&&g.tEnd&&new Date(g.t).toLocaleDateString('en-CA')===today);
+  if(mine.length){S.dayWind={date:today,entries:[]}; for(const g of mine){const sh=strShotsFor(g), skip=g.detail?Math.max(0,(g.detail.sighters||0)-(g.detail.conv||0)):0; dayWindLearn(g,sh.slice(skip))}}
+  save(); if(typeof planCompute==='function'&&S.plan.length)planCompute();
+}
 function calBetween(t0,t1){const o={n:0,c:0,h:0,s:0}; for(const [k,b] of Object.entries(CALLOG)){const m=+k; if(m>=t0-30000&&m<=t1){o.n+=b.n;o.c+=b.c;o.h+=b.h;o.s+=b.s}} return o.n?o:null}
 function calPush(spd,rel){                 // spd in mph, rel = wind-from angle relative to the orientation mark
   CAL.live={spd,rel}; CAL.samples.push({t:Date.now(),spd,rel}); calLogAdd(spd,rel);
